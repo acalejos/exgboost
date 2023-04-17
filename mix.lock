@@ -1,0 +1,4 @@
+%{
+  "elixir_cmake": {:hex, :elixir_cmake, "0.8.0", "675a8d0b401096dee01dd5b1108e86e5f399db01c3e34edc0f92034bf38d8764", [:mix], [], "hexpm", "afd87e2ed89dc02eb3efc4e9025a0b79c8322bea8a5f6d9abc6063ca696a67f8"},
+  "xgboost": {:git, "https://github.com/dmlc/xgboost.git", "191d0aa5cfac87cfc122ebbe8b14da4177309d13", [submodules: true]},
+}
