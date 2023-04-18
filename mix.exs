@@ -7,6 +7,7 @@ defmodule Exgboost.MixProject do
       version: "0.1.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      compilers: [:elixir_make] ++ Mix.compilers(),
       deps: deps()
     ]
   end
@@ -21,10 +22,7 @@ defmodule Exgboost.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:xgboost,
-       git: "https://github.com/dmlc/xgboost.git",
-       submodules: true,
-       compile: "mkdir build && cmake -B build && make -C build install"}
+      {:elixir_make, "~> 0.4", runtime: false}
     ]
   end
 end

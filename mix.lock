@@ -1,4 +1,5 @@
 %{
   "elixir_cmake": {:hex, :elixir_cmake, "0.8.0", "675a8d0b401096dee01dd5b1108e86e5f399db01c3e34edc0f92034bf38d8764", [:mix], [], "hexpm", "afd87e2ed89dc02eb3efc4e9025a0b79c8322bea8a5f6d9abc6063ca696a67f8"},
+  "elixir_make": {:hex, :elixir_make, "0.7.6", "67716309dc5d43e16b5abbd00c01b8df6a0c2ab54a8f595468035a50189f9169", [:mix], [{:castore, "~> 0.1 or ~> 1.0", [hex: :castore, repo: "hexpm", optional: true]}], "hexpm", "5a0569756b0f7873a77687800c164cca6dfc03a09418e6fcf853d78991f49940"},
   "xgboost": {:git, "https://github.com/dmlc/xgboost.git", "191d0aa5cfac87cfc122ebbe8b14da4177309d13", [submodules: true]},
 }
