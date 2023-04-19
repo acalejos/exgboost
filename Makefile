@@ -31,25 +31,24 @@ endif
 
 C_SRCS = $(EXGBOOST_DIR)/src/exgboost.c $(EXGBOOST_DIR)/include/exgboost.h
 
-
 LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR)/lib -lxgboost
 
-# ifeq ($(shell uname -s), Darwin)
-# 	LDFLAGS += -flat_namespace -undefined suppress
-# 	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libXGBOOST.dylib @loader_path/lib/libXGBOOST.dylib
+ifeq ($(shell uname -s), Darwin)
+	LDFLAGS += -flat_namespace -undefined suppress
+	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libXGBOOST.dylib @loader_path/lib/libxgboost.dylib
 
-# 	ifeq ($(USE_LLVM_BREW), true)
-# 		LLVM_PREFIX=$(shell brew --prefix llvm)
-# 		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
-# 	endif
-# else
-# 	# Use a relative RPATH, so at runtime libexgboost.so looks for libXGBOOST.so
-# 	# in ./lib regardless of the absolute location. This way priv can be safely
-# 	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
-# 	# and single quotes to escape shell variable
-# 	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
-# 	POST_INSTALL = $(NOOP)
-# endif
+	ifeq ($(USE_LLVM_BREW), true)
+		LLVM_PREFIX=$(shell brew --prefix llvm)
+		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
+	endif
+else
+	# Use a relative RPATH, so at runtime libexgboost.so looks for libxgboost.so
+	# in ./lib regardless of the absolute location. This way priv can be safely
+	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
+	# and single quotes to escape shell variable
+	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
+	POST_INSTALL = $(NOOP)
+endif
 
 $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
 	@ mkdir -p $(PRIV_DIR)
@@ -76,7 +75,7 @@ $(XGBOOST_LIB_DIR_FLAG):
 			git fetch --depth 1 --recurse-submodules origin $(XGBOOST_GIT_REV) && \
 			git checkout FETCH_HEAD && \
 			git submodule update --init --recursive && \
-			cmake -DCMAKE_INSTALL_PREFIX=$(PRIV_DIR) -B build . $(CMAKE_FLAGS) && \
+			cmake -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -B build . $(CMAKE_FLAGS) && \
 			make -C build -j install
 		touch $(XGBOOST_LIB_DIR_FLAG)
 

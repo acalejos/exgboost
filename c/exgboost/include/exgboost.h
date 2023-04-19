@@ -12,4 +12,9 @@
   } \
 }
 
+#define atom_ok enif_make_atom(env, "ok")
+#define atom_error enif_make_atom(env, "error")
+
+ERL_NIF_TERM XGBoostVersion(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
+
 #endif

@@ -7,5 +7,5 @@ defmodule Exgboost.NIF do
     :erlang.load_nif(path, 0)
   end
 
-  def fast_compare(_a, _b), do: :erlang.nif_error(:not_implemented)
+  def exgboost_version, do: :erlang.nif_error(:not_implemented)
 end
