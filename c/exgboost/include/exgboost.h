@@ -4,6 +4,9 @@
 #include <cstring>
 #include <erl_nif.h>
 #include <xgboost/c_api.h>
+#include <sys/stat.h>
+
+ErlNifResourceType* DMatrix_RESOURCE_TYPE;
 
 #define safe_xgboost(call) {  \
   int err = (call); \

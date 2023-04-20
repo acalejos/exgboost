@@ -62,4 +62,6 @@ defmodule Exgboost.NIF do
       {:ok, '{"use_rmm":false,"verbosity":1}'}
   """
   def exg_get_global_config, do: :erlang.nif_error(:not_implemented)
+
+  def exg_dmatrix_create_from_file(_file_path, _silent), do: :erlang.nif_error(:not_implemented)
 end
