@@ -5,11 +5,11 @@
 TEMP ?= $(HOME)/.cache
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-XGBOOST_GIT_REV ?= ba9d24ff7ba70632403ebce3de931c769cd93c46#21d95f3d8f23873a76f8afaad0fee5fa3e00eafe # v1.7.5 Patch Release (https://github.com/dmlc/xgboost/releases/tag/v1.7.5)
+XGBOOST_GIT_REV ?= 21d95f3d8f23873a76f8afaad0fee5fa3e00eafe# v1.7.5 Patch Release (https://github.com/dmlc/xgboost/releases/tag/v1.7.5)
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
-XGBOOST_LIB_DIR_FLAG = $(XGBOOST_DIR)/build/xgboost/exgboost.ok
+XGBOOST_LIB_DIR_FLAG = $(XGBOOST_LIB_DIR)/exgboost.ok
 
 # Private configuration
 PRIV_DIR = $(MIX_APP_PATH)/priv
