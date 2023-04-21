@@ -29,7 +29,10 @@ else
 	CMAKE_FLAGS += -DUSE_CUDA=OFF -DBUILD_WITH_CUDA_CUB=OFF
 endif
 
-C_SRCS = $(EXGBOOST_DIR)/src/exgboost.c $(EXGBOOST_DIR)/include/exgboost.h
+#C_SRCS = $(EXGBOOST_DIR)/src/exgboost.c $(EXGBOOST_DIR)/include/exgboost.h
+C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
+$(info $(C_SRCS))
+
 
 LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR)/lib -lxgboost
 
@@ -63,7 +66,7 @@ $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	@mkdir -p cache
 	cp -a $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
-	$(CXX) $(CFLAGS) $(EXGBOOST_DIR)/src/exgboost.c -o $(EXGBOOST_CACHE_SO) $(LDFLAGS)
+	$(CXX) $(CFLAGS) $(C_SRCS) -o $(EXGBOOST_CACHE_SO) $(LDFLAGS)
 	$(POST_INSTALL)
 
 $(XGBOOST_LIB_DIR_FLAG):

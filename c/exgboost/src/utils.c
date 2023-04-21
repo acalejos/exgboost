@@ -61,7 +61,7 @@ int get_list(ErlNifEnv* env, ERL_NIF_TERM term, double **out) {
         return 0;
     }
     while (enif_get_list_cell(env, term, &head, &tail)) {
-        ret = enif_get_double(env, head, &((*out)[i]));
+        int ret = enif_get_double(env, head, &((*out)[i]));
         if (!ret) {
             return 0;
         }

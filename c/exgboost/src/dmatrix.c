@@ -1,4 +1,4 @@
-#include "dmatix.h"
+#include "dmatrix.h"
 
 ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -19,15 +19,6 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv* env, int argc, const ERL_NIF_TE
         ret = error(env, "Silent must be an integer");
         goto END;
     }
-    struct stat st;
-    if (stat(fname, &st) != 0) {
-        ret = error(env, "Failed to stat file");
-        goto END;
-    }
-    if (!S_ISREG(st.st_mode)) {
-        ret = error(env, "Not a regular file");
-        goto END;
-    }
     result = XGDMatrixCreateFromFile("test/data/testfile.txt", 1, &handle);
     printf("After creating from file\n");
     if (result == 0) {
@@ -45,9 +36,12 @@ END:
 
 ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    double *data = NULL;
+    ErlNifBinary bin;
+    int result = -1;
+    float *mat = NULL;
     int nrow = 0;
     int ncol = 0;
+    int num_floats = 0;
     double missing = 0.0;
     DMatrixHandle handle;
     ERL_NIF_TERM ret = 0;
@@ -55,8 +49,8 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv* env, int argc, const ERL_NIF_TER
         ret = error(env, "Wrong number of arguments");
         goto END;
     }
-    if (!get_list(env, argv[0], &data)) {
-        ret = error(env, "Data must be a list of floats");
+    if (!enif_inspect_binary(env, argv[0], &bin)) {
+        ret = error(env, "Data must be a binary");
         goto END;
     }
     if (!enif_get_int(env, argv[1], &nrow)) {
@@ -71,11 +65,18 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv* env, int argc, const ERL_NIF_TER
         ret = error(env, "Missing must be a float");
         goto END;
     }
+    mat = (float *)bin.data;
+    num_floats = bin.size / sizeof(float);
+    if (num_floats != nrow * ncol) {
+        ret = error(env, "Data size does not match nrow and ncol");
+        goto END;
+    }
     // The DMatrix wlil keep ahold of this data, so we don't need to free it
     // Will be freed when DMatrix is freed in resource destructor
-    int result = XGDMatrixCreateFromMat((float *)data, (bst_ulong)nrow, (bst_ulong)ncol, missing, &handle);
+    result = XGDMatrixCreateFromMat(mat, (bst_ulong)nrow, (bst_ulong)ncol, missing, &handle);
     if (result == 0) {
         ret = ok(env, enif_make_resource(env, handle));
+        enif_release_resource(handle);
     } else {
         ret = error(env, XGBGetLastError());
     }

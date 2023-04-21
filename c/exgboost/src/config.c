@@ -10,6 +10,7 @@ ERL_NIF_TERM EXGBoostVersion(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 ERL_NIF_TERM EXGBuildInfo(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     char const *out = NULL;
+    int result = -1;
     ERL_NIF_TERM ret = 0;
     // Don't need to free this since it's a pointer to a static string defined in the xgboost config struct
     // https://github.com/dmlc/xgboost/blob/21d95f3d8f23873a76f8afaad0fee5fa3e00eafe/src/c_api/c_api.cc#L107
@@ -17,7 +18,7 @@ ERL_NIF_TERM EXGBuildInfo(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         ret = error(env, "Wrong number of arguments");
         goto END;
     }
-    int result = XGBuildInfo(&out);
+    result = XGBuildInfo(&out);
     if (result == 0) {
         ret = ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
     } else {
@@ -57,13 +58,14 @@ END:
 ERL_NIF_TERM EXGBGetGlobalConfig(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     char *out = NULL;
+    int result = -1;
     ERL_NIF_TERM ret = 0;
     if (argc != 0) {
         ret = error(env, "Wrong number of arguments");
         goto END;
     }
     // No need to free out, it's a pointer to a static string defined in the xgboost config struct
-    int result = XGBGetGlobalConfig((char const **)&out);
+    result = XGBGetGlobalConfig((char const **)&out);
     if (result == 0) {
         ret = ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
     } else {

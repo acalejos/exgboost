@@ -22,7 +22,8 @@ defmodule Exgboost.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false}
+      {:elixir_make, "~> 0.4", runtime: false},
+      {:nx, "~> 0.5"}
     ]
   end
 end

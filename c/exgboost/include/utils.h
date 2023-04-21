@@ -5,7 +5,7 @@
 #include <erl_nif.h>
 #include <xgboost/c_api.h>
 
-ErlNifResourceType* DMatrix_RESOURCE_TYPE;
+extern ErlNifResourceType* DMatrix_RESOURCE_TYPE;
 typedef uint64_t bst_ulong;
 
 void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv* env, void* arg);

@@ -1,5 +1,5 @@
-#ifndef EXGBOOST_BOOSTER_H
-#define EXGBOOST_BOOSTER_H
+#ifndef EXGBOOST_DMATRIX_H
+#define EXGBOOST_DMATRIX_H
 
 #include "utils.h"
 
