@@ -43,7 +43,7 @@ ERL_NIF_TERM EXGBSetGlobalConfig(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
     }
     result = XGBSetGlobalConfig((char const *)config);
     if (result == 0) {
-        ret = ok(env);
+        ret = ok_atom(env);
     } else {
         ret = error(env, XGBGetLastError());
     }

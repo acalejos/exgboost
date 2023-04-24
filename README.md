@@ -2,6 +2,11 @@
 
 Elixir bindings to the XGBoost C API (https://xgboost.readthedocs.io/en/stable/c.html) using Native Implemented Functions (NIFs)
 
+# Requirements
+* Make
+* CMake
+* If MacOS: `brew install libomp`
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

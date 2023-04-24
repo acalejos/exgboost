@@ -140,12 +140,12 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv* env, int argc, const ERL_NIF_T
     ErlNifBinary indices_bin;
     ErlNifBinary data_bin;
     int result = -1;
-    uint64_t *indptr = NULL;
+    ErlNifUInt64 *indptr = NULL;
     uint32_t *indices = NULL;
     float *data = NULL;
     uint32_t nindptr = 0;
-    uint64_t nelem = 0;
-    uint64_t ncol = 0;
+    ErlNifUInt64 nelem = 0;
+    ErlNifUInt64 ncol = 0;
     DMatrixHandle handle;
     ERL_NIF_TERM ret = 0;
     if (argc != 6) {
@@ -176,10 +176,10 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv* env, int argc, const ERL_NIF_T
         ret = error(env, "Ncol must be a uint64_t");
         goto END;
     }
-    indptr = (uint64_t *)indptr_bin.data;
+    indptr = (ErlNifUInt64 *)indptr_bin.data;
     indices = (uint32_t *)indices_bin.data;
     data = (float *)data_bin.data;
-    if (indptr_bin.size != nindptr * sizeof(uint64_t)) {
+    if (indptr_bin.size != nindptr * sizeof(ErlNifUInt64)) {
         ret = error(env, "Indptr size does not match nindptr");
         goto END;
     }
@@ -195,5 +195,5 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv* env, int argc, const ERL_NIF_T
         ret = error(env, XGBGetLastError());
     }
 END:
-    return ret b;
+    return ret;
 }

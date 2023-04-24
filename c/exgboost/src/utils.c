@@ -6,12 +6,12 @@ ERL_NIF_TERM error(ErlNifEnv* env, const char* msg) {
     return enif_make_tuple2(env, atom, msg_term);
 }
 
-ERL_NIF_TERM ok(ErlNifEnv* env) {
+ERL_NIF_TERM ok_atom(ErlNifEnv* env) {
     return enif_make_atom(env, "ok");
 }
 
 ERL_NIF_TERM ok(ErlNifEnv* env, ERL_NIF_TERM term) {
-    return enif_make_tuple2(env, ok(env), term);
+    return enif_make_tuple2(env, ok_atom(env), term);
 }
 
 void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv* env, void* arg) {

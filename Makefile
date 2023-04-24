@@ -20,8 +20,7 @@ EXGBOOST_SO = $(PRIV_DIR)/libexgboost.so
 EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
-CFLAGS = -I$(ERTS_INCLUDE_DIR) -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -fPIC -O3 -shared -std=c++11
-
+CFLAGS = -I$(ERTS_INCLUDE_DIR) -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -fPIC -O3 --verbose -shared -std=c11
 # TODO: Check CUDA_TOOLKIT_VERSION before setting BUILD_WITH_CUDA_CUB to ON
 ifeq ($(USE_CUDA), true)
 	CMAKE_FLAGS += -DUSE_CUDA=ON -DBUILD_WITH_CUDA_CUB=ON
@@ -31,15 +30,12 @@ endif
 
 #C_SRCS = $(EXGBOOST_DIR)/src/exgboost.c $(EXGBOOST_DIR)/include/exgboost.h
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
-$(info $(C_SRCS))
-
 
 LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR)/lib -lxgboost
 
 ifeq ($(shell uname -s), Darwin)
+	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libxgboost.dylib @loader_path/lib/lib/libxgboost.dylib
 	LDFLAGS += -flat_namespace -undefined suppress
-	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libXGBOOST.dylib @loader_path/lib/libxgboost.dylib
-
 	ifeq ($(USE_LLVM_BREW), true)
 		LLVM_PREFIX=$(shell brew --prefix llvm)
 		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
@@ -66,7 +62,7 @@ $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	@mkdir -p cache
 	cp -a $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
-	$(CXX) $(CFLAGS) $(C_SRCS) -o $(EXGBOOST_CACHE_SO) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
 	$(POST_INSTALL)
 
 $(XGBOOST_LIB_DIR_FLAG):

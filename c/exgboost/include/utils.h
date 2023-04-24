@@ -1,7 +1,8 @@
 #ifndef EXGBOOST_UTILS_H
 #define EXGBOOST_UTILS_H
 
-#include <cstring>
+#include <stdio.h>
+#include <string.h>
 #include <erl_nif.h>
 #include <xgboost/c_api.h>
 
@@ -14,7 +15,7 @@ void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv* env, void* arg);
 
 ERL_NIF_TERM error(ErlNifEnv* env, const char* msg);
 
-ERL_NIF_TERM ok(ErlNifEnv* env);
+ERL_NIF_TERM ok_atom(ErlNifEnv* env);
 
 ERL_NIF_TERM ok(ErlNifEnv* env, ERL_NIF_TERM term);
 
