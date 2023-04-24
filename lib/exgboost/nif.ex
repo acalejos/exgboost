@@ -63,11 +63,51 @@ defmodule Exgboost.NIF do
   """
   def exg_get_global_config, do: :erlang.nif_error(:not_implemented)
 
+  @doc """
+  Create a DMatrix from a filename
+
+  This function will break on an improper file type and parse and should thus be avoided.
+  This is here for completeness sake but should not be used.
+
+  Refer to https://github.com/dmlc/xgboost/issues/9059
+
+  """
   def exg_dmatrix_create_from_file(_file_path, _silent), do: :erlang.nif_error(:not_implemented)
 
+  @doc """
+  Create a DMatrix from an Nx Tensor of type {:f, 32}.
+
+  Returns a reference to the DMatrix.
+
+  ## Examples
+
+      iex> Exgboost.NIF.exg_dmatrix_create_from_tensor(Nx.to_binary(Nx.tensor([1.0, 2.0, 3.0, 4.0])),1,4, -1.0)
+      {:ok, #Reference<>}
+      iex> Exgboost.NIF.exg_dmatrix_create_from_tensor(Nx.to_binary(Nx.tensor([1, 2, 3, 4])),1,2, -1.0)
+      {:error, 'Data size does not match nrow and ncol'}
+  """
   def exg_dmatrix_create_from_mat(_data, _nrow, _ncol, _missing),
     do: :erlang.nif_error(:not_implemented)
 
-  def exg_dmatrix_create_from_csr(_indptr, _indices, _data, _nrow, _ncol, _missing),
+  @doc """
+  Create a DMatrix from a CSR matrix
+
+  Returns a reference to the DMatrix.
+
+  ## Examples
+
+      iex> Exgboost.NIF.exg_dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
+      {:ok, #Reference<>}
+
+      iex> Exgboost.NIF.exg_dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
+      {:error #Reference<>}
+  """
+  def exg_dmatrix_create_from_csr(_indptr, _indices, _data, _ncol, _config),
+    do: :erlang.nif_error(:not_implemented)
+
+  @doc """
+  WARNING: XGDMatrixCreateFromCSREx` is deprecated since 2.0.0, use `XGDMatrixCreateFromCSR` instead
+  """
+  def exg_dmatrix_create_from_csrex(_indptr, _indices, _data, _nindptr, _nelem, _ncol),
     do: :erlang.nif_error(:not_implemented)
 end

@@ -9,6 +9,17 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv* env, int argc, const ERL_NIF_TER
 
 ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 
+/**
+ * @brief Create a DMatrix from a CSR matrix in the format of CSREx
+ * @note WARNING: c_api.cc:64: `XGDMatrixCreateFromCSREx` is deprecated since 2.0.0, use `XGDMatrixCreateFromCSR` instead
+ *
+ * @param env
+ * @param argc
+ * @param argv
+ * @return ERL_NIF_TERM Resource handle to DMatrix
+ */
+ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
+
 ERL_NIF_TERM EXGDMatrixCreateFromCSC(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 
 ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
