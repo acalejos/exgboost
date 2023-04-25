@@ -25,7 +25,7 @@ static ErlNifFunc nif_funcs[] = {
     {"exg_build_info", 0, EXGBuildInfo},
     {"exg_set_global_config", 1, EXGBSetGlobalConfig},
     {"exg_get_global_config", 0, EXGBGetGlobalConfig},
-    {"exg_dmatrix_create_from_file",2,EXGDMatrixCreateFromFile},
+    {"exg_dmatrix_create_from_file",3,EXGDMatrixCreateFromFile},
     {"exg_dmatrix_create_from_mat",4,EXGDMatrixCreateFromMat},
     {"exg_dmatrix_create_from_csr",5,EXGDMatrixCreateFromCSR},
     {"exg_dmatrix_create_from_csrex",6,EXGDMatrixCreateFromCSREx}

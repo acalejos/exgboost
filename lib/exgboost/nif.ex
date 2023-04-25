@@ -72,7 +72,8 @@ defmodule Exgboost.NIF do
   Refer to https://github.com/dmlc/xgboost/issues/9059
 
   """
-  def exg_dmatrix_create_from_file(_file_path, _silent), do: :erlang.nif_error(:not_implemented)
+  def exg_dmatrix_create_from_file(_file_path, _silent, _file_format),
+    do: :erlang.nif_error(:not_implemented)
 
   @doc """
   Create a DMatrix from an Nx Tensor of type {:f, 32}.
