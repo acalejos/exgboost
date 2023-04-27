@@ -230,7 +230,7 @@ END:
 ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
                                        const ERL_NIF_TERM argv[]) {
   ErlNifBinary data_bin;
-  char _array_interface[256];
+  char data[512] = {0};
   int result = -1;
   char *array_interface = NULL;
   char *config = NULL;
@@ -247,18 +247,25 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
     ret = error(env, "Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!get_string(env, argv[1], &config)) {
+  if (!get_string(env, argv[2], &config)) {
     ret = error(env, "Config must be a JSON-Encoded string");
     goto END;
   }
-  sprintf(_array_interface, array_interface, data_bin.data);
-  //   printf("array_interface: %s\n", _array_interface);
-  result = XGDMatrixCreateFromDense(_array_interface, config, &out);
-  if (0 != result) {
-    ret = error(env, XGBGetLastError());
+  sprintf(data, array_interface, (size_t)data_bin.data);
+  result = XGDMatrixCreateFromDense(data, config, &out);
+  if (0 == result) {
+    printf("Result is 0\n");
+    DMatrixHandle **resource =
+        enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
+    if (resource != NULL) {
+      *resource = out;
+      ret = enif_make_resource(env, resource);
+      enif_release_resource(resource);
+    } else {
+      ret = error(env, "Failed to allocate memory for XGBoost DMatrix");
+    }
   } else {
-    ret = ok(env, enif_make_resource(env, out));
-    enif_release_resource(out);
+    ret = error(env, XGBGetLastError());
   }
 END:
   if (array_interface != NULL) {

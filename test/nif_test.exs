@@ -165,7 +165,7 @@ defmodule NifTest do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     array_interface = Shared.to_array_interface(mat)
 
-    config = config = Jason.encode!(%{"missing" => -1.0})
+    config = Jason.encode!(%{"missing" => -1.0})
 
     assert Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config) ==
              {:ok, _Reference}

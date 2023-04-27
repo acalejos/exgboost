@@ -31,7 +31,7 @@ defmodule Exgboost.Shared do
       version: 3,
       typestr: type_char,
       shape: Tuple.to_list(Nx.shape(tensor)),
-      data: ["%lu", false]
+      data: ["%lu", true]
     }
     |> Jason.encode!()
     |> String.replace(~s(\"%lu\"), "%lu")

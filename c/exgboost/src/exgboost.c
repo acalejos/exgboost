@@ -31,4 +31,4 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_create_from_csr", 5, EXGDMatrixCreateFromCSR},
     {"dmatrix_create_from_csrex", 6, EXGDMatrixCreateFromCSREx},
     {"dmatrix_create_from_dense", 3, EXGDMatrixCreateFromDense}};
-ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, NULL, NULL, NULL, NULL)
+ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)
