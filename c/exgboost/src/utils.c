@@ -63,6 +63,29 @@ int get_list(ErlNifEnv *env, ERL_NIF_TERM term, double **out) {
     if (!ret) {
       return 0;
     }
+    term = tail;
+    i++;
+  }
+  return 1;
+}
+
+int get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
+                    unsigned *len) {
+  ERL_NIF_TERM head, tail;
+  int i = 0;
+  if (!enif_get_list_length(env, term, len)) {
+    return 0;
+  }
+  *out = (char **)enif_alloc(*len * sizeof(char *));
+  if (*out == NULL) {
+    return 0;
+  }
+  while (enif_get_list_cell(env, term, &head, &tail)) {
+    int ret = get_string(env, head, &((*out)[i]));
+    if (!ret) {
+      return 0;
+    }
+    term = tail;
     i++;
   }
   return 1;

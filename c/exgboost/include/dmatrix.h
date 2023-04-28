@@ -43,37 +43,19 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSC(ErlNifEnv *env, int argc,
 ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
                                        const ERL_NIF_TERM argv[]);
 
-ERL_NIF_TERM EXGDMatrixCreateFromDT(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc,
-                                  const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixSetFloatInfo(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixSetUIntInfo(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixSetGroup(ErlNifEnv *env, int argc,
-                                const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixFree(ErlNifEnv *env, int argc,
-                            const ERL_NIF_TERM argv[]);
-
+ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]);
+/**
+ * @brief Set feature information (feature names)
+ * for integer, q for quantitive, c for categorical.  Similarly "int" and
+ * "float" are also reconized.
+ *
+ *
+ * @param env
+ * @param argc
+ * @param argv
+ * @return ERL_NIF_TERM
+ */
+ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]);
 #endif

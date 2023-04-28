@@ -25,4 +25,7 @@ int get_string(ErlNifEnv *env, ERL_NIF_TERM term, char **var);
 
 int get_list(ErlNifEnv *env, ERL_NIF_TERM term, double **out);
 
+int get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
+                    unsigned *len);
+
 #endif

@@ -81,8 +81,9 @@ defmodule NifTest do
         1.0
       ])
 
-    assert Exgboost.NIF.dmatrix_create_from_csr(indptr, indices, data, ncols, config) ==
-             {:ok, _Reference}
+    assert Exgboost.NIF.dmatrix_create_from_csr(indptr, indices, data, ncols, config)
+           |> Shared.unwrap!() !=
+             :error
   end
 
   test "dmatrix_create_from_csrex" do
@@ -157,8 +158,9 @@ defmodule NifTest do
              nindptr,
              nelem,
              ncols
-           ) ==
-             {:ok, _Reference}
+           )
+           |> Shared.unwrap!() !=
+             :error
   end
 
   test "test_dmatrix_create_from_dense" do
@@ -167,7 +169,40 @@ defmodule NifTest do
 
     config = Jason.encode!(%{"missing" => -1.0})
 
-    assert Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config) ==
-             {:ok, _Reference}
+    assert Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+           |> Shared.unwrap!() !=
+             :error
+  end
+
+  test "test_dmatrix_set_str_feature_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = Shared.to_array_interface(mat)
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> Shared.unwrap!()
+
+    assert Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', [
+             'name',
+             'color',
+             'length'
+           ]) == :ok
+  end
+
+  test "test_dmatrix_get_str_feature_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = Shared.to_array_interface(mat)
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> Shared.unwrap!()
+
+    Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', ['name', 'color', 'length'])
+
+    assert Exgboost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> Shared.unwrap!()
   end
 end

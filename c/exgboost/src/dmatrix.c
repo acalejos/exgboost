@@ -1,5 +1,20 @@
 #include "dmatrix.h"
 
+static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
+                                          DMatrixHandle handle) {
+  ERL_NIF_TERM ret = -1;
+  DMatrixHandle **resource =
+      enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
+  if (resource != NULL) {
+    *resource = handle;
+    ret = ok(env, enif_make_resource(env, resource));
+    enif_release_resource(resource);
+  } else {
+    ret = error(env, "Failed to allocate memory for XGBoost DMatrix");
+  }
+  return ret;
+}
+
 ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   char *fname = NULL;
@@ -39,9 +54,9 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
     ret = error(env, "Error creating filename URI");
     goto END;
   }
-  result = XGDMatrixCreateFromFile("test/data/testfile.txt", 1, &handle);
+  result = XGDMatrixCreateFromFile(uri, 1, &handle);
   if (result == 0) {
-    ret = ok(env, enif_make_resource(env, handle));
+    ret = make_DMatrix_resource(env, handle);
   } else {
     ret = error(env, XGBGetLastError());
   }
@@ -103,8 +118,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
   result = XGDMatrixCreateFromMat(mat, (bst_ulong)nrow, (bst_ulong)ncol,
                                   missing, &handle);
   if (result == 0) {
-    ret = ok(env, enif_make_resource(env, handle));
-    enif_release_resource(handle);
+    ret = make_DMatrix_resource(env, handle);
   } else {
     ret = error(env, XGBGetLastError());
   }
@@ -112,6 +126,7 @@ END:
   return ret;
 }
 
+// TODO: Fix this to use ArrayInterface
 ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
                                      const ERL_NIF_TERM argv[]) {
   int result = -1;
@@ -146,15 +161,9 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
     ret = error(env, "Config must be a string");
     goto END;
   }
-  printf("indptr: %s\n", indptr);
-  printf("indices: %s\n", indices);
-  printf("data: %s\n", data);
-  printf("ncol: %d\n", ncol);
-  printf("config: %s\n", config);
   result = XGDMatrixCreateFromCSR(indptr, indices, data, ncol, config, &handle);
   if (result == 0) {
-    ret = ok(env, enif_make_resource(env, handle));
-    enif_release_resource(handle);
+    ret = make_DMatrix_resource(env, handle);
   } else {
     ret = error(env, XGBGetLastError());
   }
@@ -254,16 +263,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
   sprintf(data, array_interface, (size_t)data_bin.data);
   result = XGDMatrixCreateFromDense(data, config, &out);
   if (0 == result) {
-    printf("Result is 0\n");
-    DMatrixHandle **resource =
-        enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
-    if (resource != NULL) {
-      *resource = out;
-      ret = enif_make_resource(env, resource);
-      enif_release_resource(resource);
-    } else {
-      ret = error(env, "Failed to allocate memory for XGBoost DMatrix");
-    }
+    ret = make_DMatrix_resource(env, out);
   } else {
     ret = error(env, XGBGetLastError());
   }
@@ -273,6 +273,101 @@ END:
   }
   if (config != NULL) {
     enif_free(config);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char **features = NULL;
+  unsigned num_features = 0;
+  char *field = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 3) {
+    ret = error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!get_string(env, argv[1], &field)) {
+    ret = error(env, "Field must be a string");
+    goto END;
+  }
+  if (!get_string_list(env, argv[2], &features, &num_features)) {
+    ret = error(env, "Features must be a list");
+    goto END;
+  }
+  if (strcmp(field, "feature_type") != 0 &&
+      strcmp(field, "feature_name") != 0) {
+    ret = error(env, "Field must be in ['feature_type', 'feature_name']");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixSetStrFeatureInfo(handle, field, features, num_features);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = error(env, XGBGetLastError());
+  }
+END:
+  if (features != NULL) {
+    enif_free(features);
+    features = NULL;
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char const **c_out_features = NULL;
+  bst_ulong out_size = 0;
+  char *field = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 2) {
+    ret = error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!get_string(env, argv[1], &field)) {
+    ret = error(env, "Field must be a string");
+    goto END;
+  }
+  if (strcmp(field, "feature_type") != 0 &&
+      strcmp(field, "feature_name") != 0) {
+    ret = error(env, "Field must be in ['feature_type', 'feature_name']");
+    goto END;
+  }
+  handle = *resource;
+  result =
+      XGDMatrixGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
+  if (result == 0) {
+    ERL_NIF_TERM arr[out_size];
+    for (bst_ulong i = 0; i < out_size; ++i) {
+      char *local = enif_alloc(strlen(c_out_features[i]) + 1);
+      strcpy(local, c_out_features[i]);
+      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
+      // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
+    }
+    ret = ok(env, enif_make_list_from_array(env, arr, out_size));
+  } else {
+    ret = error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
   }
   return ret;
 }

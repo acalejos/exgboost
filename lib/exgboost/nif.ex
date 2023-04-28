@@ -20,7 +20,7 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.exgboost_version()
+      iex> Exgboost.NIF.xgboost_version()
       {:ok, {2, 0, 0}}
   """
   def xgboost_version, do: :erlang.nif_error(:not_implemented)
@@ -32,7 +32,7 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-    iex> Exgboost.NIF.build_info()
+    iex> Exgboost.NIF.xgboost_build_info()
     {:ok,'{"BUILTIN_PREFETCH_PRESENT":true,"DEBUG":false,"GCC_VERSION":[9,3,0],"MM_PREFETCH_PRESENT":true,"USE_CUDA":false,"USE_FEDERATED":false,"USE_NCCL":false,"USE_OPENMP":true,"USE_RMM":false}'}
   """
   def xgboost_build_info, do: :erlang.nif_error(:not_implemented)
@@ -82,9 +82,9 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.dmatrix_create_from_tensor(Nx.to_binary(Nx.tensor([1.0, 2.0, 3.0, 4.0])),1,4, -1.0)
+      iex> Exgboost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1.0, 2.0, 3.0, 4.0])),1,4, -1.0)
       {:ok, #Reference<>}
-      iex> Exgboost.NIF.dmatrix_create_from_tensor(Nx.to_binary(Nx.tensor([1, 2, 3, 4])),1,2, -1.0)
+      iex> Exgboost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1, 2, 3, 4])),1,2, -1.0)
       {:error, 'Data size does not match nrow and ncol'}
   """
   def dmatrix_create_from_mat(_data, _nrow, _ncol, _missing),
@@ -118,5 +118,11 @@ defmodule Exgboost.NIF do
 
   """
   def dmatrix_create_from_dense(_data, _array_interface, _config),
+    do: :erlang.nif_error(:not_implemented)
+
+  def dmatrix_get_str_feature_info(_dmatrix_resource, _field),
+    do: :erlang.nif_error(:not_implemented)
+
+  def dmatrix_set_str_feature_info(_dmatrix_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 end
