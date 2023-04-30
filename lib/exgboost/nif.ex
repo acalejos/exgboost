@@ -185,4 +185,13 @@ defmodule Exgboost.NIF do
         ) :: exgboost_return_type(:ok)
   def dmatrix_set_dense_info(_handle, _field, _data, _size, _type),
     do: :erlang.nif_error(:not_implemented)
+
+  @spec dmatrix_num_row(reference()) :: exgboost_return_type(pos_integer())
+  def dmatrix_num_row(_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec dmatrix_num_col(reference()) :: exgboost_return_type(pos_integer())
+  def dmatrix_num_col(_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec dmatrix_num_non_missing(reference()) :: exgboost_return_type(pos_integer())
+  def dmatrix_num_non_missing(_handle), do: :erlang.nif_error(:not_implemented)
 end

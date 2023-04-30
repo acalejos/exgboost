@@ -473,3 +473,84 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc,
+                              const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  bst_ulong out = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 1) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixNumRow(handle, &out);
+  if (result == 0) {
+    ret = exg_ok(env, enif_make_ulong(env, out));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc,
+                              const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  bst_ulong out = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 1) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixNumCol(handle, &out);
+  if (result == 0) {
+    ret = exg_ok(env, enif_make_ulong(env, out));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc,
+                                     const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  bst_ulong out = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 1) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixNumNonMissing(handle, &out);
+  if (result == 0) {
+    ret = exg_ok(env, enif_make_ulong(env, out));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
