@@ -212,4 +212,30 @@ defmodule NifTest do
 
     assert Exgboost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> Shared.unwrap!()
   end
+
+  test "dmatrix_set_dense_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = Shared.to_array_interface(mat)
+    labels = Nx.tensor([1.0, 0.0])
+    {size} = labels.shape
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> Shared.unwrap!()
+
+    type = Shared.get_xgboost_data_type(labels) |> Shared.unwrap!()
+
+    assert Exgboost.NIF.dmatrix_set_dense_info(dmat, 'weight', Nx.to_binary(labels), size, type) ==
+             :ok
+
+    assert Exgboost.NIF.dmatrix_set_dense_info(
+             dmat,
+             'unsupported',
+             Nx.to_binary(labels),
+             size,
+             type
+           ) |> != :ok
+  end
 end

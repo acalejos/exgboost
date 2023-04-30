@@ -9,6 +9,26 @@ defmodule Exgboost.Shared do
     end
   end
 
+  def get_xgboost_data_type(%Nx.Tensor{} = tensor) do
+    case Nx.type(tensor) do
+      {:f, 32} ->
+        {:ok, 1}
+
+      {:f, 64} ->
+        {:ok, 2}
+
+      {:u, 32} ->
+        {:ok, 3}
+
+      {:u, 64} ->
+        {:ok, 4}
+
+      true ->
+        {:error,
+         "invalid type #{inspect(Nx.type(tensor))}\nxgboost DMatrix only supports data types of float32, float64, uint32, and uint64"}
+    end
+  end
+
   def to_array_interface(%Nx.Tensor{} = tensor) do
     type_char =
       case Nx.type(tensor) do

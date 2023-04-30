@@ -410,3 +410,66 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixSetDenseInfo(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  ErlNifBinary data_bin;
+  DMatrixHandle **resource = NULL;
+  char *field = NULL;
+  bst_ulong size = 0;
+  int type = -1;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 5) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[2], &data_bin)) {
+    ret = exg_error(env, "Data must be a binary");
+    goto END;
+  }
+  if (!enif_get_ulong(env, argv[3], &size)) {
+    ret = exg_error(env, "Size must be an integer");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[4], &type)) {
+    ret = exg_error(env, "Type must be an integer");
+    goto END;
+  }
+  if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
+      strcmp(field, "base_margin") != 0 && strcmp(field, "group") != 0 &&
+      strcmp(field, "label_lower_bound") != 0 &&
+      strcmp(field, "label_upper_bound") != 0 &&
+      strcmp(field, "feature_weights") != 0) {
+    ret = exg_error(env, "Field must be in ['label', 'weight', "
+                         "'base_margin','group','label_lower_bound','label_"
+                         "upper_bound','feature_weights']");
+    goto END;
+  }
+  if (type < 1 && type > 4) {
+    ret = exg_error(env, "Type must be in [1..4]");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixSetDenseInfo(handle, field, data_bin.data, size, type);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
+  }
+  return ret;
+}
