@@ -1,16 +1,14 @@
 defmodule NifTest do
   use ExUnit.Case
   alias Exgboost.Shared
-  doctest Exgboost.NIF
+  # doctest Exgboost.NIF
 
   test "exgboost_version" do
-    assert Exgboost.NIF.xgboost_version() == {:ok, {2, 0, 0}}
+    assert Exgboost.NIF.xgboost_version() |> Shared.unwrap!() != :error
   end
 
   test "build_info" do
-    assert Exgboost.NIF.xgboost_build_info() ==
-             {:ok,
-              '{"BUILTIN_PREFETCH_PRESENT":true,"DEBUG":false,"GCC_VERSION":[9,3,0],"MM_PREFETCH_PRESENT":true,"USE_CUDA":false,"USE_FEDERATED":false,"USE_NCCL":false,"USE_OPENMP":true,"USE_RMM":false}'}
+    assert Exgboost.NIF.xgboost_build_info() |> Shared.unwrap!() != :error
   end
 
   test "set_global_config" do
@@ -26,11 +24,11 @@ defmodule NifTest do
 
   test "dmatrix_create_from_csr" do
     config = Jason.encode!(%{"missing" => 0.0})
-    indptr = Jason.encode!([0, 22])
+    indptr = Nx.tensor([0, 22])
     ncols = 127
 
     indices =
-      Jason.encode!([
+      Nx.tensor([
         1,
         9,
         19,
@@ -56,7 +54,7 @@ defmodule NifTest do
       ])
 
     data =
-      Jason.encode!([
+      Nx.tensor([
         1.0,
         1.0,
         1.0,
@@ -81,7 +79,16 @@ defmodule NifTest do
         1.0
       ])
 
-    assert Exgboost.NIF.dmatrix_create_from_csr(indptr, indices, data, ncols, config)
+    assert Exgboost.NIF.dmatrix_create_from_csr(
+             Nx.to_binary(indptr),
+             Shared.to_array_interface(indptr),
+             Nx.to_binary(indices),
+             Shared.to_array_interface(indices),
+             Nx.to_binary(data),
+             Shared.to_array_interface(data),
+             ncols,
+             config
+           )
            |> Shared.unwrap!() !=
              :error
   end

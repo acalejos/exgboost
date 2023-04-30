@@ -103,8 +103,17 @@ defmodule Exgboost.NIF do
       iex> Exgboost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
       {:error #Reference<>}
   """
-  def dmatrix_create_from_csr(_indptr, _indices, _data, _ncol, _config),
-    do: :erlang.nif_error(:not_implemented)
+  def dmatrix_create_from_csr(
+        _indptr,
+        _indptr_interface,
+        _indices,
+        _indices_interface,
+        _data,
+        _data_interface,
+        _ncol,
+        _config
+      ),
+      do: :erlang.nif_error(:not_implemented)
 
   @doc """
   WARNING: XGDMatrixCreateFromCSREx` is deprecated since 2.0.0, use `XGDMatrixCreateFromCSR` instead

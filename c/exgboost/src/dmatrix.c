@@ -126,48 +126,85 @@ END:
   return ret;
 }
 
-// TODO: Fix this to use ArrayInterface
 ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
                                      const ERL_NIF_TERM argv[]) {
   int result = -1;
+  ErlNifBinary indptr_bin;
+  ErlNifBinary indices_bin;
+  ErlNifBinary data_bin;
   char *indptr = NULL;
   char *indices = NULL;
   char *data = NULL;
+  char data_interface[512] = {0};
+  char indptr_interface[512] = {0};
+  char indices_interface[512] = {0};
   int ncol = 0;
   char *config = NULL;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
-  if (argc != 5) {
+  if (argc != 8) {
     ret = error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!get_string(env, argv[0], &indptr)) {
-    ret = error(env, "Indptr must be a string");
+  if (!enif_inspect_binary(env, argv[0], &indptr_bin)) {
+    ret = error(env, "Indptr_bin must be a binary");
     goto END;
   }
-  if (!get_string(env, argv[1], &indices)) {
-    ret = error(env, "Indices must be a string");
+  if (!get_string(env, argv[1], &indptr)) {
+    ret = error(env, "Indptr Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!get_string(env, argv[2], &data)) {
-    ret = error(env, "Data must be a string");
+  if (!enif_inspect_binary(env, argv[2], &indices_bin)) {
+    ret = error(env, "Indices_bin must be a binary");
     goto END;
   }
-  if (!enif_get_int(env, argv[3], &ncol)) {
+  if (!get_string(env, argv[3], &indices)) {
+    ret = error(env, "Indices Array Interface must be a JSON-Encoded string");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[4], &data_bin)) {
+    ret = error(env, "Data_bin must be a binary");
+    goto END;
+  }
+  if (!get_string(env, argv[5], &data)) {
+    ret = error(env, "Data Array Interface must be a JSON-Encoded string");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[6], &ncol)) {
     ret = error(env, "Ncol must be an integer");
     goto END;
   }
-  if (!get_string(env, argv[4], &config)) {
+  if (!get_string(env, argv[7], &config)) {
     ret = error(env, "Config must be a string");
     goto END;
   }
-  result = XGDMatrixCreateFromCSR(indptr, indices, data, ncol, config, &handle);
+  sprintf(indptr_interface, indptr, (size_t)indptr_bin.data);
+  sprintf(indices_interface, indices, (size_t)indices_bin.data);
+  sprintf(data_interface, data, (size_t)data_bin.data);
+  result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface,
+                                  data_interface, ncol, config, &handle);
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
     ret = error(env, XGBGetLastError());
   }
 END:
+  if (config != NULL) {
+    enif_free(config);
+    config = NULL;
+  }
+  if (indptr != NULL) {
+    enif_free(indptr);
+    indptr = NULL;
+  }
+  if (indices != NULL) {
+    enif_free(indices);
+    indices = NULL;
+  }
+  if (data != NULL) {
+    enif_free(data);
+    data = NULL;
+  }
   return ret;
 }
 
