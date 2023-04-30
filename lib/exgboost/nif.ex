@@ -150,9 +150,7 @@ defmodule Exgboost.NIF do
 
   @spec dmatrix_create_from_csrex(binary, binary, binary, Integer, Integer, Integer) ::
           exgboost_return_type(reference)
-  @doc """
-  WARNING: XGDMatrixCreateFromCSREx` is deprecated since 2.0.0, use `XGDMatrixCreateFromCSR` instead
-  """
+  @deprecated "Use dmatrix_create_from_csr/8 instead (as of XGBoost 2.0.0)"
   def dmatrix_create_from_csrex(_indptr, _indices, _data, _nindptr, _nelem, _ncol),
     do: :erlang.nif_error(:not_implemented)
 
@@ -176,6 +174,7 @@ defmodule Exgboost.NIF do
   def dmatrix_set_str_feature_info(_dmatrix_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 
+  @deprecated "Use dmatrix_set_info_from_interface/4 instead"
   @spec dmatrix_set_dense_info(
           reference(),
           String.t(),
@@ -194,4 +193,30 @@ defmodule Exgboost.NIF do
 
   @spec dmatrix_num_non_missing(reference()) :: exgboost_return_type(pos_integer())
   def dmatrix_num_non_missing(_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec dmatrix_set_info_from_interface(
+          reference(),
+          String.t(),
+          binary(),
+          array_interface()
+        ) :: exgboost_return_type(:ok)
+  @doc """
+  Set the info from an array interface
+  Valid fields are:
+  Set meta info from dense matrix. Valid field names are:
+  * label
+  * weight
+  * base_margin
+  * group
+  * label_lower_bound
+  * label_upper_bound
+  * feature_weights
+  """
+  def dmatrix_set_info_from_interface(_handle, _field, _data, _data_interface),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec dmatrix_save_binary(reference(), String.t(), integer()) ::
+          exgboost_return_type(:ok)
+  def dmatrix_save_binary(_handle, _fname, _silent),
+    do: :erlang.nif_error(:not_implemented)
 end

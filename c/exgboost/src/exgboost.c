@@ -36,5 +36,7 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_set_dense_info", 5, EXGDMatrixSetDenseInfo},
     {"dmatrix_num_row", 1, EXGDMatrixNumRow},
     {"dmatrix_num_col", 1, EXGDMatrixNumCol},
-    {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing}};
+    {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing},
+    {"dmatrix_set_info_from_interface", 4, EXGDMatrixSetInfoFromInterface},
+    {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

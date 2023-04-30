@@ -264,4 +264,64 @@ defmodule NifTest do
 
     assert Exgboost.NIF.dmatrix_num_col(dmat) |> unwrap! == 3
   end
+
+  test "dmatrix_num_non_missing" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = to_array_interface(mat)
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> unwrap!()
+
+    assert Exgboost.NIF.dmatrix_num_non_missing(dmat) |> unwrap! == 6
+  end
+
+  test "dmatrix_set_info_from_interface" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = to_array_interface(mat)
+    labels = Nx.tensor([1.0, 0.0])
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> unwrap!()
+
+    interface = to_array_interface(labels)
+
+    assert Exgboost.NIF.dmatrix_set_info_from_interface(
+             dmat,
+             'label',
+             Nx.to_binary(labels),
+             interface
+           ) ==
+             :ok
+
+    assert Exgboost.NIF.dmatrix_set_info_from_interface(
+             dmat,
+             'unsupported',
+             Nx.to_binary(labels),
+             interface
+           ) != :ok
+  end
+
+  test "dmatrix_save_binary" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = to_array_interface(mat)
+    labels = Nx.tensor([1.0, 0.0])
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      |> unwrap!()
+
+    interface = to_array_interface(labels)
+
+    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'label', Nx.to_binary(labels), interface)
+
+    assert Exgboost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
+  end
 end

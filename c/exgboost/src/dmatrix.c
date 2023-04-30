@@ -554,3 +554,101 @@ ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
+                                            const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char *field = NULL;
+  char *data = NULL;
+  char data_interface[256] = {0};
+  ErlNifBinary data_bin;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 4) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[2], &data_bin)) {
+    ret = exg_error(env, "Data must be a binary");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[3], &data)) {
+    ret = exg_error(env, "Data must be a string");
+    goto END;
+  }
+  if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
+      strcmp(field, "base_margin") != 0 && strcmp(field, "group") != 0 &&
+      strcmp(field, "label_lower_bound") != 0 &&
+      strcmp(field, "label_upper_bound") != 0 &&
+      strcmp(field, "feature_weights") != 0) {
+    ret = exg_error(env, "Field must be in ['label', 'weight', "
+                         "'base_margin','group','label_lower_bound','label_"
+                         "upper_bound','feature_weights']");
+    goto END;
+  }
+  handle = *resource;
+  sprintf(data_interface, data, data_bin.data);
+  result = XGDMatrixSetInfoFromInterface(handle, field, data_interface);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
+  }
+  if (data != NULL) {
+    enif_free(data);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc,
+                                  const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char *fname = NULL;
+  int silent = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 3) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &fname)) {
+    ret = exg_error(env, "File name must be a string");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[2], &silent)) {
+    ret = exg_error(env, "Silent must be an integer");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixSaveBinary(handle, fname, silent);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fname != NULL) {
+    enif_free(fname);
+  }
+  return ret;
+}
