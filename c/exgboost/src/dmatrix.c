@@ -7,10 +7,10 @@ static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
       enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
   if (resource != NULL) {
     *resource = handle;
-    ret = ok(env, enif_make_resource(env, resource));
+    ret = exg_ok(env, enif_make_resource(env, resource));
     enif_release_resource(resource);
   } else {
-    ret = error(env, "Failed to allocate memory for XGBoost DMatrix");
+    ret = exg_error(env, "Failed to allocate memory for XGBoost DMatrix");
   }
   return ret;
 }
@@ -26,39 +26,39 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
   if (argc != 3) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!get_string(env, argv[0], &fname)) {
-    ret = error(env, "File name must be a string");
+  if (!exg_get_string(env, argv[0], &fname)) {
+    ret = exg_error(env, "File name must be a string");
     goto END;
   }
   if (!enif_get_int(env, argv[1], &silent)) {
-    ret = error(env, "Silent must be an integer");
+    ret = exg_error(env, "Silent must be an integer");
     goto END;
   }
-  if (!get_string(env, argv[2], &format)) {
-    ret = error(env, "File Format must be a string");
+  if (!exg_get_string(env, argv[2], &format)) {
+    ret = exg_error(env, "File Format must be a string");
     goto END;
   }
   if ((0 != strcmp(format, "csv")) && (0 != strcmp(format, "libsvm"))) {
-    ret = error(env, "File format must be either 'csv' or 'libsvm'");
+    ret = exg_error(env, "File format must be either 'csv' or 'libsvm'");
     goto END;
   }
-  // strlen is safe because get_string always null terminates on success
+  // strlen is safe because exg_get_string always null terminates on success
   // +1 for the null terminator
   size_t uri_len = strlen(fname) + strlen(format) + strlen(uri_param) + 1;
   uri = (char *)malloc(uri_len * sizeof(char));
   result = snprintf(uri, uri_len, "%s%s%s", fname, uri_param, format);
   if ((size_t)result != uri_len - 1) {
-    ret = error(env, "Error creating filename URI");
+    ret = exg_error(env, "Error creating filename URI");
     goto END;
   }
   result = XGDMatrixCreateFromFile(uri, 1, &handle);
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (fname != NULL) {
@@ -88,29 +88,29 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
   if (argc != 4) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[0], &bin)) {
-    ret = error(env, "Data must be a binary");
+    ret = exg_error(env, "Data must be a binary");
     goto END;
   }
   if (!enif_get_int(env, argv[1], &nrow)) {
-    ret = error(env, "Nrow must be an integer");
+    ret = exg_error(env, "Nrow must be an integer");
     goto END;
   }
   if (!enif_get_int(env, argv[2], &ncol)) {
-    ret = error(env, "Ncol must be an integer");
+    ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
   if (!enif_get_double(env, argv[3], &missing)) {
-    ret = error(env, "Missing must be a float");
+    ret = exg_error(env, "Missing must be a float");
     goto END;
   }
   mat = (float *)bin.data;
   num_floats = bin.size / sizeof(float);
   if (num_floats != nrow * ncol) {
-    ret = error(env, "Data size does not match nrow and ncol");
+    ret = exg_error(env, "Data size does not match nrow and ncol");
     goto END;
   }
   // The DMatrix wlil keep ahold of this data, so we don't need to free it
@@ -120,7 +120,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   return ret;
@@ -143,39 +143,41 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
   if (argc != 8) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[0], &indptr_bin)) {
-    ret = error(env, "Indptr_bin must be a binary");
+    ret = exg_error(env, "Indptr_bin must be a binary");
     goto END;
   }
-  if (!get_string(env, argv[1], &indptr)) {
-    ret = error(env, "Indptr Array Interface must be a JSON-Encoded string");
+  if (!exg_get_string(env, argv[1], &indptr)) {
+    ret =
+        exg_error(env, "Indptr Array Interface must be a JSON-Encoded string");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[2], &indices_bin)) {
-    ret = error(env, "Indices_bin must be a binary");
+    ret = exg_error(env, "Indices_bin must be a binary");
     goto END;
   }
-  if (!get_string(env, argv[3], &indices)) {
-    ret = error(env, "Indices Array Interface must be a JSON-Encoded string");
+  if (!exg_get_string(env, argv[3], &indices)) {
+    ret =
+        exg_error(env, "Indices Array Interface must be a JSON-Encoded string");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[4], &data_bin)) {
-    ret = error(env, "Data_bin must be a binary");
+    ret = exg_error(env, "Data_bin must be a binary");
     goto END;
   }
-  if (!get_string(env, argv[5], &data)) {
-    ret = error(env, "Data Array Interface must be a JSON-Encoded string");
+  if (!exg_get_string(env, argv[5], &data)) {
+    ret = exg_error(env, "Data Array Interface must be a JSON-Encoded string");
     goto END;
   }
   if (!enif_get_int(env, argv[6], &ncol)) {
-    ret = error(env, "Ncol must be an integer");
+    ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
-  if (!get_string(env, argv[7], &config)) {
-    ret = error(env, "Config must be a string");
+  if (!exg_get_string(env, argv[7], &config)) {
+    ret = exg_error(env, "Config must be a string");
     goto END;
   }
   sprintf(indptr_interface, indptr, (size_t)indptr_bin.data);
@@ -186,7 +188,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (config != NULL) {
@@ -223,51 +225,51 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
   if (argc != 6) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[0], &indptr_bin)) {
-    ret = error(env, "Indptr must be a binary of uint64_t");
+    ret = exg_error(env, "Indptr must be a binary of uint64_t");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[1], &indices_bin)) {
-    ret = error(env, "Indices must be a binary of uint64_t");
+    ret = exg_error(env, "Indices must be a binary of uint64_t");
     goto END;
   }
   if (!enif_inspect_binary(env, argv[2], &data_bin)) {
-    ret = error(env, "Data must be a binary of uint64_t");
+    ret = exg_error(env, "Data must be a binary of uint64_t");
     goto END;
   }
   if (!enif_get_uint(env, argv[3], &nindptr)) {
-    ret = error(env, "Nindptr must be a uint64_t");
+    ret = exg_error(env, "Nindptr must be a uint64_t");
     goto END;
   }
   if (!enif_get_uint64(env, argv[4], &nelem)) {
-    ret = error(env, "Nelem must be a uint64_t");
+    ret = exg_error(env, "Nelem must be a uint64_t");
     goto END;
   }
   if (!enif_get_uint64(env, argv[5], &ncol)) {
-    ret = error(env, "Ncol must be a uint64_t");
+    ret = exg_error(env, "Ncol must be a uint64_t");
     goto END;
   }
   indptr = (ErlNifUInt64 *)indptr_bin.data;
   indices = (uint32_t *)indices_bin.data;
   data = (float *)data_bin.data;
   if (indptr_bin.size != nindptr * sizeof(ErlNifUInt64)) {
-    ret = error(env, "Indptr size does not match nindptr");
+    ret = exg_error(env, "Indptr size does not match nindptr");
     goto END;
   }
   if (data_bin.size != nelem * sizeof(float)) {
-    ret = error(env, "Data size does not match nelem");
+    ret = exg_error(env, "Data size does not match nelem");
     goto END;
   }
   result = XGDMatrixCreateFromCSREx(indptr, indices, data, nindptr, nelem, ncol,
                                     &handle);
   if (result == 0) {
-    ret = ok(env, enif_make_resource(env, handle));
+    ret = exg_ok(env, enif_make_resource(env, handle));
     enif_release_resource(handle);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   return ret;
@@ -283,18 +285,18 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
   DMatrixHandle out;
   ERL_NIF_TERM ret = 0;
   if (argc != 3) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
   }
   if (!enif_inspect_binary(env, argv[0], &data_bin)) {
-    ret = error(env, "Data must be a binary");
+    ret = exg_error(env, "Data must be a binary");
     goto END;
   }
-  if (!get_string(env, argv[1], &array_interface)) {
-    ret = error(env, "Array Interface must be a JSON-Encoded string");
+  if (!exg_get_string(env, argv[1], &array_interface)) {
+    ret = exg_error(env, "Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!get_string(env, argv[2], &config)) {
-    ret = error(env, "Config must be a JSON-Encoded string");
+  if (!exg_get_string(env, argv[2], &config)) {
+    ret = exg_error(env, "Config must be a JSON-Encoded string");
     goto END;
   }
   sprintf(data, array_interface, (size_t)data_bin.data);
@@ -302,7 +304,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
   if (0 == result) {
     ret = make_DMatrix_resource(env, out);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (array_interface != NULL) {
@@ -324,25 +326,25 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
   int result = -1;
   ERL_NIF_TERM ret = 0;
   if (argc != 3) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
   if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
                          (void *)&resource)) {
-    ret = error(env, "DMatrix must be a resource");
+    ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
-  if (!get_string(env, argv[1], &field)) {
-    ret = error(env, "Field must be a string");
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
     goto END;
   }
-  if (!get_string_list(env, argv[2], &features, &num_features)) {
-    ret = error(env, "Features must be a list");
+  if (!exg_get_string_list(env, argv[2], &features, &num_features)) {
+    ret = exg_error(env, "Features must be a list");
     goto END;
   }
   if (strcmp(field, "feature_type") != 0 &&
       strcmp(field, "feature_name") != 0) {
-    ret = error(env, "Field must be in ['feature_type', 'feature_name']");
+    ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
   handle = *resource;
@@ -350,7 +352,7 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     ret = ok_atom(env);
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (features != NULL) {
@@ -370,21 +372,21 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
   int result = -1;
   ERL_NIF_TERM ret = 0;
   if (argc != 2) {
-    ret = error(env, "Wrong number of arguments");
+    ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
   if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
                          (void *)&resource)) {
-    ret = error(env, "DMatrix must be a resource");
+    ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
-  if (!get_string(env, argv[1], &field)) {
-    ret = error(env, "Field must be a string");
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
     goto END;
   }
   if (strcmp(field, "feature_type") != 0 &&
       strcmp(field, "feature_name") != 0) {
-    ret = error(env, "Field must be in ['feature_type', 'feature_name']");
+    ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
   handle = *resource;
@@ -398,9 +400,9 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
       arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
       // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
     }
-    ret = ok(env, enif_make_list_from_array(env, arr, out_size));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
   } else {
-    ret = error(env, XGBGetLastError());
+    ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (field != NULL) {
