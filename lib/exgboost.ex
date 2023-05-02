@@ -2,6 +2,7 @@ defmodule Exgboost do
   alias Exgboost.DMatrix
   import Exgboost.Internal
 
+  # TODO: Pull "missing" key out of config for construction to mirror Python API
   def dmatrix(value, opts \\ [])
 
   def dmatrix(%Nx.Tensor{} = tensor, opts) do
@@ -53,10 +54,10 @@ defmodule Exgboost do
         %Nx.Tensor{} = indptr,
         %Nx.Tensor{} = indices,
         %Nx.Tensor{} = data,
-        ncol,
+        n,
         opts \\ []
       )
-      when is_integer(ncol) do
+      when is_integer(n) do
     opts =
       Keyword.validate!(opts, [
         :label,
@@ -66,18 +67,21 @@ defmodule Exgboost do
         :label_upper_bound,
         :label_lower_bound,
         :feature_weights,
+        format: :csr,
         config: %{missing: -1.0}
       ])
 
     {config, opts} = Keyword.pop!(opts, :config)
+    {format, opts} = Keyword.pop!(opts, :format)
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_csr(
+      Exgboost.NIF.dmatrix_create_from_sparse(
         Jason.encode!(array_interface(indptr)),
         Jason.encode!(array_interface(indices)),
         Jason.encode!(array_interface(data)),
-        ncol,
-        Jason.encode!(config)
+        n,
+        Jason.encode!(config),
+        Atom.to_string(format)
       )
       |> unwrap!()
 

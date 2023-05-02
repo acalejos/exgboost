@@ -113,15 +113,16 @@ defmodule Exgboost.NIF do
   def dmatrix_create_from_mat(_data, _nrow, _ncol, _missing),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_create_from_csr(
+  @spec dmatrix_create_from_sparse(
           array_interface(),
           array_interface(),
           array_interface(),
           integer(),
+          String.t(),
           String.t()
         ) :: exgboost_return_type(reference)
   @doc """
-  Create a DMatrix from a CSR matrix
+  Create a DMatrix from a Sparse matrix (CSR / CSC)
 
   Returns a reference to the DMatrix.
 
@@ -133,20 +134,15 @@ defmodule Exgboost.NIF do
       iex> Exgboost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
       {:error #Reference<>}
   """
-  def dmatrix_create_from_csr(
+  def dmatrix_create_from_sparse(
         _indptr_interface,
         _indices_interface,
         _data_interface,
-        _ncol,
-        _config
+        _n,
+        _config,
+        _format
       ),
       do: :erlang.nif_error(:not_implemented)
-
-  @spec dmatrix_create_from_csrex(binary, binary, binary, Integer, Integer, Integer) ::
-          exgboost_return_type(reference)
-  @deprecated "Use dmatrix_create_from_csr/8 instead (as of XGBoost 2.0.0)"
-  def dmatrix_create_from_csrex(_indptr, _indices, _data, _nindptr, _nelem, _ncol),
-    do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_dense(array_interface(), String.t()) ::
           exgboost_return_type(reference)

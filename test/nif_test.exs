@@ -22,7 +22,7 @@ defmodule NifTest do
     assert Exgboost.NIF.get_global_config() == {:ok, '{"use_rmm":false,"verbosity":1}'}
   end
 
-  test "dmatrix_create_from_csr" do
+  test "dmatrix_create_from_sparse" do
     config = Jason.encode!(%{"missing" => 0.0})
     indptr = Nx.tensor([0, 22])
     ncols = 127
@@ -79,92 +79,39 @@ defmodule NifTest do
         1.0
       ])
 
-    assert Exgboost.NIF.dmatrix_create_from_csr(
+    assert Exgboost.NIF.dmatrix_create_from_sparse(
              array_interface(indptr) |> Jason.encode!(),
              array_interface(indices) |> Jason.encode!(),
              array_interface(data) |> Jason.encode!(),
              ncols,
-             config
+             config,
+             "csr"
            )
            |> unwrap!() !=
              :error
-  end
 
-  test "dmatrix_create_from_csrex" do
-    indptr = Nx.tensor([0, 22], type: {:u, 64})
-    {nindptr} = indptr.shape
-    ncols = 127
-
-    indices =
-      Nx.tensor(
-        [
-          1,
-          9,
-          19,
-          21,
-          24,
-          34,
-          36,
-          39,
-          42,
-          53,
-          56,
-          65,
-          69,
-          77,
-          86,
-          88,
-          92,
-          95,
-          102,
-          106,
-          117,
-          122
-        ],
-        type: {:u, 64}
-      )
-
-    data =
-      Nx.tensor(
-        [
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        type: {:f, 32}
-      )
-
-    {nelem} = data.shape
-
-    assert Exgboost.NIF.dmatrix_create_from_csrex(
-             Nx.to_binary(indptr),
-             Nx.to_binary(indices),
-             Nx.to_binary(data),
-             nindptr,
-             nelem,
-             ncols
+    assert Exgboost.NIF.dmatrix_create_from_sparse(
+             array_interface(indptr) |> Jason.encode!(),
+             array_interface(indices) |> Jason.encode!(),
+             array_interface(data) |> Jason.encode!(),
+             ncols,
+             config,
+             "csc"
            )
            |> unwrap!() !=
              :error
+
+    {status, _} =
+      Exgboost.NIF.dmatrix_create_from_sparse(
+        array_interface(indptr) |> Jason.encode!(),
+        array_interface(indices) |> Jason.encode!(),
+        array_interface(data) |> Jason.encode!(),
+        ncols,
+        config,
+        "csa"
+      )
+
+    assert status == :error
   end
 
   test "test_dmatrix_create_from_dense" do

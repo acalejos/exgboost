@@ -126,17 +126,18 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]) {
   int result = -1;
   char *indptr_interface = NULL;
   char *indices_interface = NULL;
   char *data_interface = NULL;
-  int ncol = 0;
+  int n = 0;
   char *config = NULL;
+  char *format = NULL;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
-  if (argc != 5) {
+  if (argc != 6) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
@@ -154,7 +155,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Data Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!enif_get_int(env, argv[3], &ncol)) {
+  if (!enif_get_int(env, argv[3], &n)) {
     ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
@@ -162,8 +163,20 @@ ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Config must be a string");
     goto END;
   }
-  result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface,
-                                  data_interface, ncol, config, &handle);
+  if (!exg_get_string(env, argv[5], &format)) {
+    ret = exg_error(env, "Format must be a string");
+    goto END;
+  }
+  if (strcmp(format, "csr") == 0) {
+    result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface,
+                                    data_interface, n, config, &handle);
+  } else if (strcmp(format, "csc") == 0) {
+    result = XGDMatrixCreateFromCSC(indptr_interface, indices_interface,
+                                    data_interface, n, config, &handle);
+  } else {
+    ret = exg_error(env, "Format must in ['csr','csc']");
+    goto END;
+  }
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
@@ -185,6 +198,10 @@ END:
   if (data_interface != NULL) {
     enif_free(data_interface);
     data_interface = NULL;
+  }
+  if (format != NULL) {
+    enif_free(format);
+    format = NULL;
   }
   return ret;
 }

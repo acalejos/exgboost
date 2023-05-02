@@ -9,14 +9,8 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
 ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
                                      const ERL_NIF_TERM argv[]);
 
-ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixCreateFromCSREx(ErlNifEnv *env, int argc,
-                                       const ERL_NIF_TERM argv[]);
-
-ERL_NIF_TERM EXGDMatrixCreateFromCSC(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]);
 
 ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
                                        const ERL_NIF_TERM argv[]);
