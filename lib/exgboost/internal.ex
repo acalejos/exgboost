@@ -1,4 +1,4 @@
-defmodule Exgboost.Shared do
+defmodule Exgboost.Internal do
   @moduledoc false
 
   def validate_type!(%Nx.Tensor{} = tensor, type) do
@@ -29,7 +29,7 @@ defmodule Exgboost.Shared do
     end
   end
 
-  def to_array_interface(%Nx.Tensor{} = tensor) do
+  def array_interface(%Nx.Tensor{} = tensor) do
     type_char =
       case Nx.type(tensor) do
         {:s, width} ->
@@ -44,17 +44,15 @@ defmodule Exgboost.Shared do
           "<#{Atom.to_string(tensor_type)}#{div(type_width, 8)}"
       end
 
-    # %lu needs to be removed as a string within the encoding since it will be used as a format
-    # specifier within the C side of the NIF. We pass the tensor as a binary and will need to
-    # put the memory location into that format specifier.
-    %{
-      version: 3,
+    tensor_addr = Exgboost.NIF.get_binary_address(Nx.to_binary(tensor)) |> unwrap!()
+
+    %Exgboost.ArrayInterface{
       typestr: type_char,
-      shape: Tuple.to_list(Nx.shape(tensor)),
-      data: ["%lu", true]
+      shape: Nx.shape(tensor),
+      address: tensor_addr,
+      readonly: true,
+      tensor: tensor
     }
-    |> Jason.encode!()
-    |> String.replace(~s(\"%lu\"), "%lu")
   end
 
   def unwrap!({:ok, val}), do: val

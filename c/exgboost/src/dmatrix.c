@@ -129,60 +129,39 @@ END:
 ERL_NIF_TERM EXGDMatrixCreateFromCSR(ErlNifEnv *env, int argc,
                                      const ERL_NIF_TERM argv[]) {
   int result = -1;
-  ErlNifBinary indptr_bin;
-  ErlNifBinary indices_bin;
-  ErlNifBinary data_bin;
-  char *indptr = NULL;
-  char *indices = NULL;
-  char *data = NULL;
-  char data_interface[512] = {0};
-  char indptr_interface[512] = {0};
-  char indices_interface[512] = {0};
+  char *indptr_interface = NULL;
+  char *indices_interface = NULL;
+  char *data_interface = NULL;
   int ncol = 0;
   char *config = NULL;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
-  if (argc != 8) {
+  if (argc != 5) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_inspect_binary(env, argv[0], &indptr_bin)) {
-    ret = exg_error(env, "Indptr_bin must be a binary");
-    goto END;
-  }
-  if (!exg_get_string(env, argv[1], &indptr)) {
+  if (!exg_get_string(env, argv[0], &indptr_interface)) {
     ret =
         exg_error(env, "Indptr Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!enif_inspect_binary(env, argv[2], &indices_bin)) {
-    ret = exg_error(env, "Indices_bin must be a binary");
-    goto END;
-  }
-  if (!exg_get_string(env, argv[3], &indices)) {
+  if (!exg_get_string(env, argv[1], &indices_interface)) {
     ret =
         exg_error(env, "Indices Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!enif_inspect_binary(env, argv[4], &data_bin)) {
-    ret = exg_error(env, "Data_bin must be a binary");
-    goto END;
-  }
-  if (!exg_get_string(env, argv[5], &data)) {
+  if (!exg_get_string(env, argv[2], &data_interface)) {
     ret = exg_error(env, "Data Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!enif_get_int(env, argv[6], &ncol)) {
+  if (!enif_get_int(env, argv[3], &ncol)) {
     ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
-  if (!exg_get_string(env, argv[7], &config)) {
+  if (!exg_get_string(env, argv[4], &config)) {
     ret = exg_error(env, "Config must be a string");
     goto END;
   }
-  sprintf(indptr_interface, indptr, (size_t)indptr_bin.data);
-  sprintf(indices_interface, indices, (size_t)indices_bin.data);
-  sprintf(data_interface, data, (size_t)data_bin.data);
   result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface,
                                   data_interface, ncol, config, &handle);
   if (result == 0) {
@@ -195,17 +174,17 @@ END:
     enif_free(config);
     config = NULL;
   }
-  if (indptr != NULL) {
-    enif_free(indptr);
-    indptr = NULL;
+  if (indptr_interface != NULL) {
+    enif_free(indptr_interface);
+    indptr_interface = NULL;
   }
-  if (indices != NULL) {
-    enif_free(indices);
-    indices = NULL;
+  if (indices_interface != NULL) {
+    enif_free(indices_interface);
+    indices_interface = NULL;
   }
-  if (data != NULL) {
-    enif_free(data);
-    data = NULL;
+  if (data_interface != NULL) {
+    enif_free(data_interface);
+    data_interface = NULL;
   }
   return ret;
 }
@@ -277,30 +256,23 @@ END:
 
 ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
                                        const ERL_NIF_TERM argv[]) {
-  ErlNifBinary data_bin;
-  char data[512] = {0};
   int result = -1;
   char *array_interface = NULL;
   char *config = NULL;
   DMatrixHandle out;
   ERL_NIF_TERM ret = 0;
-  if (argc != 3) {
+  if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
   }
-  if (!enif_inspect_binary(env, argv[0], &data_bin)) {
-    ret = exg_error(env, "Data must be a binary");
-    goto END;
-  }
-  if (!exg_get_string(env, argv[1], &array_interface)) {
+  if (!exg_get_string(env, argv[0], &array_interface)) {
     ret = exg_error(env, "Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &config)) {
+  if (!exg_get_string(env, argv[1], &config)) {
     ret = exg_error(env, "Config must be a JSON-Encoded string");
     goto END;
   }
-  sprintf(data, array_interface, (size_t)data_bin.data);
-  result = XGDMatrixCreateFromDense(data, config, &out);
+  result = XGDMatrixCreateFromDense(array_interface, config, &out);
   if (0 == result) {
     ret = make_DMatrix_resource(env, out);
   } else {
@@ -560,12 +532,10 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
-  char *data = NULL;
-  char data_interface[256] = {0};
-  ErlNifBinary data_bin;
+  char *data_interface = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
-  if (argc != 4) {
+  if (argc != 3) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
@@ -578,11 +548,7 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Field must be a string");
     goto END;
   }
-  if (!enif_inspect_binary(env, argv[2], &data_bin)) {
-    ret = exg_error(env, "Data must be a binary");
-    goto END;
-  }
-  if (!exg_get_string(env, argv[3], &data)) {
+  if (!exg_get_string(env, argv[2], &data_interface)) {
     ret = exg_error(env, "Data must be a string");
     goto END;
   }
@@ -597,7 +563,6 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
     goto END;
   }
   handle = *resource;
-  sprintf(data_interface, data, data_bin.data);
   result = XGDMatrixSetInfoFromInterface(handle, field, data_interface);
   if (result == 0) {
     ret = ok_atom(env);
@@ -608,8 +573,8 @@ END:
   if (field != NULL) {
     enif_free(field);
   }
-  if (data != NULL) {
-    enif_free(data);
+  if (data_interface != NULL) {
+    enif_free(data_interface);
   }
   return ret;
 }

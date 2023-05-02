@@ -1,6 +1,6 @@
 defmodule NifTest do
   use ExUnit.Case
-  import Exgboost.Shared
+  import Exgboost.Internal
   # doctest Exgboost.NIF
 
   test "exgboost_version" do
@@ -80,12 +80,9 @@ defmodule NifTest do
       ])
 
     assert Exgboost.NIF.dmatrix_create_from_csr(
-             Nx.to_binary(indptr),
-             to_array_interface(indptr),
-             Nx.to_binary(indices),
-             to_array_interface(indices),
-             Nx.to_binary(data),
-             to_array_interface(data),
+             array_interface(indptr) |> Jason.encode!(),
+             array_interface(indices) |> Jason.encode!(),
+             array_interface(data) |> Jason.encode!(),
              ncols,
              config
            )
@@ -172,23 +169,23 @@ defmodule NifTest do
 
   test "test_dmatrix_create_from_dense" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
-    assert Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+    assert Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
            |> unwrap!() !=
              :error
   end
 
   test "test_dmatrix_set_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     assert Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', [
@@ -200,12 +197,12 @@ defmodule NifTest do
 
   test "test_dmatrix_get_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', ['name', 'color', 'length'])
@@ -215,14 +212,14 @@ defmodule NifTest do
 
   test "dmatrix_set_dense_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
     labels = Nx.tensor([1.0, 0.0])
     {size} = labels.shape
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     type = get_xgboost_data_type(labels) |> unwrap!()
@@ -241,12 +238,12 @@ defmodule NifTest do
 
   test "dmatrix_num_row" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     assert Exgboost.NIF.dmatrix_num_row(dmat) |> unwrap! == 2
@@ -254,12 +251,12 @@ defmodule NifTest do
 
   test "dmatrix_num_col" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     assert Exgboost.NIF.dmatrix_num_col(dmat) |> unwrap! == 3
@@ -267,12 +264,12 @@ defmodule NifTest do
 
   test "dmatrix_num_non_missing" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     assert Exgboost.NIF.dmatrix_num_non_missing(dmat) |> unwrap! == 6
@@ -280,47 +277,45 @@ defmodule NifTest do
 
   test "dmatrix_set_info_from_interface" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
     labels = Nx.tensor([1.0, 0.0])
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    interface = to_array_interface(labels)
+    label_interface = array_interface(labels) |> Jason.encode!()
 
     assert Exgboost.NIF.dmatrix_set_info_from_interface(
              dmat,
              'label',
-             Nx.to_binary(labels),
-             interface
+             label_interface
            ) ==
              :ok
 
     assert Exgboost.NIF.dmatrix_set_info_from_interface(
              dmat,
              'unsupported',
-             Nx.to_binary(labels),
-             interface
+             label_interface
            ) != :ok
   end
 
   test "dmatrix_save_binary" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = to_array_interface(mat)
+    array_interface = array_interface(mat) |> Jason.encode!()
     labels = Nx.tensor([1.0, 0.0])
 
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(Nx.to_binary(mat), array_interface, config)
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    interface = to_array_interface(labels)
+    interface = array_interface(labels) |> Jason.encode!()
 
-    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'label', Nx.to_binary(labels), interface)
+    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
 
     assert Exgboost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
   end

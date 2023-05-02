@@ -28,15 +28,16 @@ static ErlNifFunc nif_funcs[] = {
     {"get_global_config", 0, EXGBGetGlobalConfig},
     {"dmatrix_create_from_file", 3, EXGDMatrixCreateFromFile},
     {"dmatrix_create_from_mat", 4, EXGDMatrixCreateFromMat},
-    {"dmatrix_create_from_csr", 8, EXGDMatrixCreateFromCSR},
+    {"dmatrix_create_from_csr", 5, EXGDMatrixCreateFromCSR},
     {"dmatrix_create_from_csrex", 6, EXGDMatrixCreateFromCSREx},
-    {"dmatrix_create_from_dense", 3, EXGDMatrixCreateFromDense},
+    {"dmatrix_create_from_dense", 2, EXGDMatrixCreateFromDense},
     {"dmatrix_set_str_feature_info", 3, EXGDMatrixSetStrFeatureInfo},
     {"dmatrix_get_str_feature_info", 2, EXGDMatrixGetStrFeatureInfo},
     {"dmatrix_set_dense_info", 5, EXGDMatrixSetDenseInfo},
     {"dmatrix_num_row", 1, EXGDMatrixNumRow},
     {"dmatrix_num_col", 1, EXGDMatrixNumCol},
     {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing},
-    {"dmatrix_set_info_from_interface", 4, EXGDMatrixSetInfoFromInterface},
-    {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary}};
+    {"dmatrix_set_info_from_interface", 3, EXGDMatrixSetInfoFromInterface},
+    {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary},
+    {"get_binary_address", 1, exg_get_binary_address}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

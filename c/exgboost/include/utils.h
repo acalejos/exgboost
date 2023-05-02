@@ -19,6 +19,9 @@ ERL_NIF_TERM ok_atom(ErlNifEnv *env);
 
 ERL_NIF_TERM exg_ok(ErlNifEnv *env, ERL_NIF_TERM term);
 
+ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]);
+
 // Argument helpers
 
 int exg_get_string(ErlNifEnv *env, ERL_NIF_TERM term, char **var);

@@ -91,3 +91,20 @@ int exg_get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
   }
   return 1;
 }
+
+ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  ErlNifBinary bin;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 1) {
+    ret = exg_error(env, "exg_get_binary_address: wrong number of arguments");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[0], &bin)) {
+    ret = exg_error(env, "exg_get_binary_address: invalid binary");
+    goto END;
+  }
+  ret = exg_ok(env, enif_make_uint64(env, (uint64_t)bin.data));
+END:
+  return ret;
+}

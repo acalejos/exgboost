@@ -114,11 +114,8 @@ defmodule Exgboost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_csr(
-          binary,
           array_interface(),
-          binary,
           array_interface(),
-          binary,
           array_interface(),
           integer(),
           String.t()
@@ -137,11 +134,8 @@ defmodule Exgboost.NIF do
       {:error #Reference<>}
   """
   def dmatrix_create_from_csr(
-        _indptr,
         _indptr_interface,
-        _indices,
         _indices_interface,
-        _data,
         _data_interface,
         _ncol,
         _config
@@ -154,14 +148,14 @@ defmodule Exgboost.NIF do
   def dmatrix_create_from_csrex(_indptr, _indices, _data, _nindptr, _nelem, _ncol),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_create_from_dense(binary, array_interface(), String.t()) ::
+  @spec dmatrix_create_from_dense(array_interface(), String.t()) ::
           exgboost_return_type(reference)
   @doc """
   Create a DMatrix from a JSON-Encoded Array-Interface
   https://numpy.org/doc/stable/reference/arrays.interface.html
 
   """
-  def dmatrix_create_from_dense(_data, _array_interface, _config),
+  def dmatrix_create_from_dense(_array_interface, _config),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_get_str_feature_info(reference(), String.t()) ::
@@ -197,7 +191,6 @@ defmodule Exgboost.NIF do
   @spec dmatrix_set_info_from_interface(
           reference(),
           String.t(),
-          binary(),
           array_interface()
         ) :: exgboost_return_type(:ok)
   @doc """
@@ -212,11 +205,15 @@ defmodule Exgboost.NIF do
   * label_upper_bound
   * feature_weights
   """
-  def dmatrix_set_info_from_interface(_handle, _field, _data, _data_interface),
+  def dmatrix_set_info_from_interface(_handle, _field, _data_interface),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_save_binary(reference(), String.t(), integer()) ::
           exgboost_return_type(:ok)
   def dmatrix_save_binary(_handle, _fname, _silent),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec get_binary_address(reference()) :: exgboost_return_type(integer)
+  def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 end
