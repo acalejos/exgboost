@@ -73,10 +73,7 @@ defmodule Exgboost.DMatrix do
     :feature_weights
   ]
   @config_features [:missing, :nthread]
-
-  # TODO: Define access for the following: rows, cols, non_missing, weight, label, base_margin, group, label_upper_bound, label_lower_bound, feature_weights
   @behaviour Access
-
   @impl Access
   def fetch(dmatrix, feature)
       when feature in [
@@ -100,6 +97,9 @@ defmodule Exgboost.DMatrix do
 
   def fetch(dmatrix, "non_missing"),
     do: {:ok, Exgboost.NIF.dmatrix_num_non_missing(dmatrix.ref)}
+
+  def fetch(dmatrix, "data"),
+    do: {:ok, Exgboost.NIF.dmatrix_get_data_as_csr(dmatrix.ref, Jason.encode!(%{}))}
 
   def fetch(_dmatrix, _other), do: :error
 
@@ -148,6 +148,34 @@ defmodule Exgboost.DMatrix do
   @impl Access
   def pop(_data, _key) do
     raise "Pop not a supported operation for DMatrix"
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(dmatrix, _opts) do
+      {indptr, indices, data} = dmatrix["data"] |> Exgboost.Internal.unwrap!()
+      num_rows = dmatrix["rows"] |> Exgboost.Internal.unwrap!()
+      num_cols = dmatrix["cols"] |> Exgboost.Internal.unwrap!()
+      non_missing = dmatrix["non_missing"] |> Exgboost.Internal.unwrap!()
+      group = dmatrix["group"] |> Exgboost.Internal.unwrap!()
+
+      concat([
+        "DMatrix<",
+        line(),
+        "  {#{num_rows}x#{num_cols}x#{non_missing}}",
+        line(),
+        if(group != nil, do: "  group: #{inspect(group)}"),
+        line(),
+        "  indptr: #{inspect(indptr)}",
+        line(),
+        "  indices: #{inspect(indices)}",
+        line(),
+        "  data: #{inspect(data)}",
+        line(),
+        ">"
+      ])
+    end
   end
 
   def get_args_groups(args, opts) when is_list(opts) and is_list(args) do

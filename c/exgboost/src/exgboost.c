@@ -40,5 +40,6 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary},
     {"get_binary_address", 1, exg_get_binary_address},
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
-    {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo}};
+    {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
+    {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

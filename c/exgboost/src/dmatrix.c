@@ -719,8 +719,6 @@ ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
   }
   handle = *resource;
   result = XGDMatrixGetUIntInfo(handle, field, &len, &out);
-  printf("len: %d\n", len);
-  printf("result: %d\n", out);
   if (result == 0) {
     arr = enif_alloc(sizeof(ERL_NIF_TERM) * len);
     for (int i = 0; i < len; i++) {
@@ -739,3 +737,94 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  bst_ulong num_non_missing = 0;
+  bst_ulong num_rows = 0;
+  char *config = NULL;
+  bst_ulong *out_indptr = NULL;
+  unsigned *out_indices = NULL;
+  float *out_data = NULL;
+  ERL_NIF_TERM *indptr = NULL;
+  ERL_NIF_TERM *indices = NULL;
+  ERL_NIF_TERM *data = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 2) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &config)) {
+    ret = exg_error(env, "Config must be a JSON-Encoded string");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixNumRow(handle, &num_rows);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  result = XGDMatrixNumNonMissing(handle, &num_non_missing);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  out_indptr = malloc(sizeof(bst_ulong) * (num_rows + 1));
+  out_indices = malloc(sizeof(unsigned) * num_non_missing);
+  out_data = malloc(sizeof(float) * num_non_missing);
+  if (!out_indptr || !out_indices || !out_data) {
+    ret = exg_error(env, "Failed to allocate memory");
+    goto END;
+  }
+  result =
+      XGDMatrixGetDataAsCSR(handle, config, out_indptr, out_indices, out_data);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  indptr = enif_alloc(sizeof(ERL_NIF_TERM) * (num_rows + 1));
+  indices = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
+  data = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
+  if (!indptr || !indices || !data) {
+    ret = exg_error(env, "Failed to allocate memory");
+    goto END;
+  }
+  for (int i = 0; i < num_rows + 1; i++) {
+    indptr[i] = enif_make_ulong(env, out_indptr[i]);
+  }
+  for (int i = 0; i < num_non_missing; i++) {
+    indices[i] = enif_make_uint(env, out_indices[i]);
+    data[i] = enif_make_double(env, out_data[i]);
+  }
+  ret =
+      exg_ok(env, enif_make_tuple3(
+                      env, enif_make_list_from_array(env, indptr, num_rows + 1),
+                      enif_make_list_from_array(env, indices, num_non_missing),
+                      enif_make_list_from_array(env, data, num_non_missing)));
+END:
+  if (config != NULL) {
+    enif_free(config);
+    config = NULL;
+  }
+  if (out_indptr != NULL) {
+    free(out_indptr);
+    out_indptr = NULL;
+  }
+  if (out_indices != NULL) {
+    free(out_indices);
+    out_indices = NULL;
+  }
+  if (out_data != NULL) {
+    free(out_data);
+    out_data = NULL;
+  }
+  return ret;
+};

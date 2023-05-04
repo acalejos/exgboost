@@ -54,7 +54,7 @@ defmodule Exgboost.NIF do
   """
   def xgboost_build_info, do: :erlang.nif_error(:not_implemented)
 
-  @spec set_global_config(String.t()) :: exgboost_return_type(:ok)
+  @spec set_global_config(String.t()) :: :ok | {:error, String.t()}
   @doc """
   Set global config for XGBoost using a string encoded flat json.
 
@@ -171,7 +171,7 @@ defmodule Exgboost.NIF do
           binary,
           pos_integer(),
           xgboost_data_type()
-        ) :: exgboost_return_type(:ok)
+        ) :: :ok | {:error, String.t()}
   def dmatrix_set_dense_info(_handle, _field, _data, _size, _type),
     do: :erlang.nif_error(:not_implemented)
 
@@ -188,7 +188,7 @@ defmodule Exgboost.NIF do
           reference(),
           String.t(),
           array_interface()
-        ) :: exgboost_return_type(:ok)
+        ) :: :ok | {:error, String.t()}
   @doc """
   Set the info from an array interface
   Valid fields are:
@@ -222,7 +222,7 @@ defmodule Exgboost.NIF do
   * label_upper_bound
   * feature_weights
   """
-  @spec dmatrix_get_float_info(reference(), String.t()) :: any
+  @spec dmatrix_get_float_info(reference(), String.t()) :: exgboost_return_type([float])
   def dmatrix_get_float_info(_handle, _field),
     do: :erlang.nif_error(:not_implemented)
 
@@ -230,7 +230,19 @@ defmodule Exgboost.NIF do
   Gets a field from the DMatrix. Valid fields are:
   * group_ptr
   """
-  @spec dmatrix_get_uint_info(reference(), String.t()) :: any
+  @spec dmatrix_get_uint_info(reference(), String.t()) :: exgboost_return_type([pos_integer()])
   def dmatrix_get_uint_info(_handle, _field),
+    do: :erlang.nif_error(:not_implemented)
+
+  @doc """
+  Get data field from DMatrix.
+
+  * config: At the moment it should be an empty document, preserved for future use.
+
+  Returns 3-tuple of {indptr, indices, data}
+  """
+  @spec dmatrix_get_data_as_csr(reference(), String.t()) ::
+          exgboost_return_type({[pos_integer()], [pos_integer()], [float]})
+  def dmatrix_get_data_as_csr(_handle, _config),
     do: :erlang.nif_error(:not_implemented)
 end
