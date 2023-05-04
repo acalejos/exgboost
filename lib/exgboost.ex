@@ -2,7 +2,6 @@ defmodule Exgboost do
   alias Exgboost.DMatrix
   import Exgboost.Internal
 
-  # TODO: Pull "missing" key out of config for construction to mirror Python API
   def dmatrix(value, opts \\ [])
 
   def dmatrix(%Nx.Tensor{} = tensor, opts) do
