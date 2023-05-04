@@ -93,6 +93,10 @@ defmodule Exgboost do
     config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
     format = Keyword.fetch!(format_opts, :format)
 
+    if format not in [:csr, :csc] do
+      raise ArgumentError, "Sparse format must be :csr or :csc"
+    end
+
     dmat =
       Exgboost.NIF.dmatrix_create_from_sparse(
         Jason.encode!(array_interface(indptr)),
