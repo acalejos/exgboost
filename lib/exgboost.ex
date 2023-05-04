@@ -82,7 +82,7 @@ defmodule Exgboost do
         :feature_weights,
         :feature_name,
         :feature_type,
-        format: :dense,
+        format: :csr,
         missing: -1.0,
         nthread: 0
       ])
