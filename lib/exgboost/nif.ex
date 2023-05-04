@@ -212,4 +212,25 @@ defmodule Exgboost.NIF do
   @spec get_binary_address(reference()) :: exgboost_return_type(integer)
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
+
+  @doc """
+  Gets a field from the DMatrix. Valid fields are:
+  * label
+  * weight
+  * base_margin
+  * label_lower_bound
+  * label_upper_bound
+  * feature_weights
+  """
+  @spec dmatrix_get_float_info(reference(), String.t()) :: any
+  def dmatrix_get_float_info(_handle, _field),
+    do: :erlang.nif_error(:not_implemented)
+
+  @doc """
+  Gets a field from the DMatrix. Valid fields are:
+  * group_ptr
+  """
+  @spec dmatrix_get_uint_info(reference(), String.t()) :: any
+  def dmatrix_get_uint_info(_handle, _field),
+    do: :erlang.nif_error(:not_implemented)
 end

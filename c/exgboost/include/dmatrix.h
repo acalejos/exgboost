@@ -37,4 +37,8 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
                                             const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc,
                                   const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
+                                   const ERL_NIF_TERM argv[]);
 #endif

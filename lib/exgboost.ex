@@ -15,10 +15,18 @@ defmodule Exgboost do
         :label_upper_bound,
         :label_lower_bound,
         :feature_weights,
-        config: %{missing: -1.0}
+        :feature_name,
+        :feature_type,
+        format: :dense,
+        missing: -1.0,
+        nthread: 0
       ])
 
-    {config, opts} = Keyword.pop!(opts, :config)
+    {config_opts, format_opts, meta_opts, str_opts} =
+      DMatrix.get_args_groups(opts, [:config, :format, :meta, :str])
+
+    config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
+    format = Keyword.fetch!(format_opts, :format)
 
     dmat =
       Exgboost.NIF.dmatrix_create_from_dense(
@@ -27,7 +35,7 @@ defmodule Exgboost do
       )
       |> unwrap!()
 
-    dmatrix(%DMatrix{ref: dmat}, opts)
+    dmatrix(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
   end
 
   def dmatrix(%DMatrix{} = dmat, opts) do
@@ -42,9 +50,15 @@ defmodule Exgboost do
         :feature_weights
       ])
 
-    Enum.each(opts, fn {key, value} ->
+    {meta_opts, str_opts} = DMatrix.get_args_groups(opts, [:meta, :str])
+
+    Enum.each(meta_opts, fn {key, value} ->
       data_interface = array_interface(value) |> Jason.encode!()
       Exgboost.NIF.dmatrix_set_info_from_interface(dmat.ref, Atom.to_string(key), data_interface)
+    end)
+
+    Enum.each(str_opts, fn {key, value} ->
+      Exgboost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
     end)
 
     dmat
@@ -57,7 +71,7 @@ defmodule Exgboost do
         n,
         opts \\ []
       )
-      when is_integer(n) do
+      when is_integer(n) and n > 0 do
     opts =
       Keyword.validate!(opts, [
         :label,
@@ -67,12 +81,18 @@ defmodule Exgboost do
         :label_upper_bound,
         :label_lower_bound,
         :feature_weights,
-        format: :csr,
-        config: %{missing: -1.0}
+        :feature_name,
+        :feature_type,
+        format: :dense,
+        missing: -1.0,
+        nthread: 0
       ])
 
-    {config, opts} = Keyword.pop!(opts, :config)
-    {format, opts} = Keyword.pop!(opts, :format)
+    {config_opts, format_opts, meta_opts, str_opts} =
+      DMatrix.get_args_groups(opts, [:config, :format, :meta, :str])
+
+    config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
+    format = Keyword.fetch!(format_opts, :format)
 
     dmat =
       Exgboost.NIF.dmatrix_create_from_sparse(
@@ -85,6 +105,6 @@ defmodule Exgboost do
       )
       |> unwrap!()
 
-    dmatrix(%DMatrix{ref: dmat}, opts)
+    dmatrix(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
   end
 end

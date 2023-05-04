@@ -266,4 +266,38 @@ defmodule NifTest do
 
     assert Exgboost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
   end
+
+  test "dmatrix_get_float_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+    weights = Nx.tensor([1.0, 0.0])
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    interface = array_interface(weights) |> Jason.encode!()
+    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'feature_weights', interface)
+
+    assert Exgboost.NIF.dmatrix_get_float_info(dmat, 'feature_weights') |> unwrap!() ==
+             Nx.to_list(weights)
+  end
+
+  test "dmatrix_get_uint_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+    groups = Nx.tensor([1])
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    interface = array_interface(groups) |> Jason.encode!()
+    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
+    assert Exgboost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
+  end
 end

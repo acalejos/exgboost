@@ -634,3 +634,108 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char *field = NULL;
+  float *out = NULL;
+  bst_ulong len = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  ERL_NIF_TERM *arr = NULL;
+
+  if (argc != 2) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
+      strcmp(field, "base_margin") != 0 && strcmp(field, "label_lower_bound") &&
+      strcmp(field, "label_upper_bound") &&
+      strcmp(field, "feature_weights") != 0) {
+    ret = exg_error(env, "Field must be in ['label', 'weight', "
+                         "'base_margin','label_lower_bound','label_"
+                         "upper_bound','feature_weights']");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixGetFloatInfo(handle, field, &len, &out);
+  if (result == 0) {
+    arr = enif_alloc(sizeof(ERL_NIF_TERM) * len);
+    for (int i = 0; i < len; i++) {
+      arr[i] = enif_make_double(env, out[i]);
+    }
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, len));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
+  }
+  if (arr != NULL) {
+    enif_free(arr);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
+                                   const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char *field = NULL;
+  unsigned *out = NULL;
+  bst_ulong len = 0;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  ERL_NIF_TERM *arr = NULL;
+
+  if (argc != 2) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (strcmp(field, "group_ptr") != 0) {
+    ret = exg_error(env, "Field must be in ['group_ptr']");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixGetUIntInfo(handle, field, &len, &out);
+  printf("len: %d\n", len);
+  printf("result: %d\n", out);
+  if (result == 0) {
+    arr = enif_alloc(sizeof(ERL_NIF_TERM) * len);
+    for (int i = 0; i < len; i++) {
+      arr[i] = enif_make_uint(env, out[i]);
+    }
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, len));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
+  }
+  if (arr != NULL) {
+    enif_free(arr);
+  }
+  return ret;
+}
