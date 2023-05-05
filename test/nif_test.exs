@@ -304,7 +304,6 @@ defmodule NifTest do
   test "dmatrix_get_data_as_csr" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     array_interface = array_interface(mat) |> Jason.encode!()
-    groups = Nx.tensor([1])
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -313,5 +312,18 @@ defmodule NifTest do
       |> unwrap!()
 
     assert Exgboost.NIF.dmatrix_get_data_as_csr(dmat, Jason.encode!(%{})) |> unwrap!() != :error
+  end
+
+  test "booster_create" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    assert Exgboost.NIF.booster_create([dmat]) |> unwrap!() != :error
   end
 end

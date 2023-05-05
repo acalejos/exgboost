@@ -161,17 +161,17 @@ defmodule Exgboost.DMatrix do
       group = dmatrix["group"] |> Exgboost.Internal.unwrap!()
 
       concat([
-        "DMatrix<",
+        "#DMatrix<",
         line(),
         "  {#{num_rows}x#{num_cols}x#{non_missing}}",
         line(),
         if(group != nil, do: "  group: #{inspect(group)}"),
         line(),
-        "  indptr: #{inspect(indptr)}",
+        "  indptr: #{inspect(Nx.tensor(indptr))}",
         line(),
-        "  indices: #{inspect(indices)}",
+        "  indices: #{inspect(Nx.tensor(indices))}",
         line(),
-        "  data: #{inspect(data)}",
+        "  data: #{inspect(Nx.tensor(data))}",
         line(),
         ">"
       ])

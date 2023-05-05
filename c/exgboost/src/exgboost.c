@@ -4,7 +4,10 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER), NULL);
-  if (DMatrix_RESOURCE_TYPE == NULL) {
+  Booster_RESOURCE_TYPE = enif_open_resource_type(
+      env, NULL, "Booster_RESOURCE_TYPE", Booster_RESOURCE_TYPE_cleanup,
+      (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER), NULL);
+  if (DMatrix_RESOURCE_TYPE == NULL || Booster_RESOURCE_TYPE == NULL) {
     return 1;
   }
   return 0;
@@ -15,7 +18,10 @@ static int upgrade(ErlNifEnv *env, void **priv_data, void **old_priv_data,
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       ERL_NIF_RT_TAKEOVER, NULL);
-  if (DMatrix_RESOURCE_TYPE == NULL) {
+  Booster_RESOURCE_TYPE = enif_open_resource_type(
+      env, NULL, "Booster_RESOURCE_TYPE", Booster_RESOURCE_TYPE_cleanup,
+      ERL_NIF_RT_TAKEOVER, NULL);
+  if (DMatrix_RESOURCE_TYPE == NULL || Booster_RESOURCE_TYPE == NULL) {
     return 1;
   }
   return 0;
@@ -41,5 +47,6 @@ static ErlNifFunc nif_funcs[] = {
     {"get_binary_address", 1, exg_get_binary_address},
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
-    {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR}};
+    {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},
+    {"booster_create", 1, EXGBoosterCreate}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

@@ -20,6 +20,8 @@ defmodule Exgboost.NIF do
   https://numpy.org/doc/stable/reference/arrays.interface.html
   """
   @type array_interface :: String.t()
+  @type dmatrix_reference :: reference()
+  @type booster_reference :: reference()
   @type exgboost_return_type(return_type) :: {:ok, return_type} | {:error, String.t()}
 
   def on_load do
@@ -97,7 +99,7 @@ defmodule Exgboost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::
-          exgboost_return_type(reference)
+          exgboost_return_type(dmatrix_reference())
   @doc """
   Create a DMatrix from an Nx Tensor of type {:f, 32}.
 
@@ -120,7 +122,7 @@ defmodule Exgboost.NIF do
           integer(),
           String.t(),
           String.t()
-        ) :: exgboost_return_type(reference)
+        ) :: exgboost_return_type(dmatrix_reference())
   @doc """
   Create a DMatrix from a Sparse matrix (CSR / CSC)
 
@@ -145,7 +147,7 @@ defmodule Exgboost.NIF do
       do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_dense(array_interface(), String.t()) ::
-          exgboost_return_type(reference)
+          exgboost_return_type(dmatrix_reference())
   @doc """
   Create a DMatrix from a JSON-Encoded Array-Interface
   https://numpy.org/doc/stable/reference/arrays.interface.html
@@ -154,19 +156,19 @@ defmodule Exgboost.NIF do
   def dmatrix_create_from_dense(_array_interface, _config),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_get_str_feature_info(reference(), String.t()) ::
+  @spec dmatrix_get_str_feature_info(dmatrix_reference(), String.t()) ::
           exgboost_return_type([String.t()])
   def dmatrix_get_str_feature_info(_dmatrix_resource, _field),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_set_str_feature_info(reference(), String.t(), [String.t()]) ::
+  @spec dmatrix_set_str_feature_info(dmatrix_reference(), String.t(), [String.t()]) ::
           exgboost_return_type(:ok)
   def dmatrix_set_str_feature_info(_dmatrix_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 
   @deprecated "Use dmatrix_set_info_from_interface/4 instead"
   @spec dmatrix_set_dense_info(
-          reference(),
+          dmatrix_reference(),
           String.t(),
           binary,
           pos_integer(),
@@ -175,17 +177,17 @@ defmodule Exgboost.NIF do
   def dmatrix_set_dense_info(_handle, _field, _data, _size, _type),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_num_row(reference()) :: exgboost_return_type(pos_integer())
+  @spec dmatrix_num_row(dmatrix_reference()) :: exgboost_return_type(pos_integer())
   def dmatrix_num_row(_handle), do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_num_col(reference()) :: exgboost_return_type(pos_integer())
+  @spec dmatrix_num_col(dmatrix_reference()) :: exgboost_return_type(pos_integer())
   def dmatrix_num_col(_handle), do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_num_non_missing(reference()) :: exgboost_return_type(pos_integer())
+  @spec dmatrix_num_non_missing(dmatrix_reference()) :: exgboost_return_type(pos_integer())
   def dmatrix_num_non_missing(_handle), do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_set_info_from_interface(
-          reference(),
+          dmatrix_reference(),
           String.t(),
           array_interface()
         ) :: :ok | {:error, String.t()}
@@ -204,12 +206,12 @@ defmodule Exgboost.NIF do
   def dmatrix_set_info_from_interface(_handle, _field, _data_interface),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_save_binary(reference(), String.t(), integer()) ::
+  @spec dmatrix_save_binary(dmatrix_reference(), String.t(), integer()) ::
           exgboost_return_type(:ok)
   def dmatrix_save_binary(_handle, _fname, _silent),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec get_binary_address(reference()) :: exgboost_return_type(integer)
+  @spec get_binary_address(dmatrix_reference()) :: exgboost_return_type(integer)
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
@@ -222,7 +224,7 @@ defmodule Exgboost.NIF do
   * label_upper_bound
   * feature_weights
   """
-  @spec dmatrix_get_float_info(reference(), String.t()) :: exgboost_return_type([float])
+  @spec dmatrix_get_float_info(dmatrix_reference(), String.t()) :: exgboost_return_type([float])
   def dmatrix_get_float_info(_handle, _field),
     do: :erlang.nif_error(:not_implemented)
 
@@ -230,7 +232,8 @@ defmodule Exgboost.NIF do
   Gets a field from the DMatrix. Valid fields are:
   * group_ptr
   """
-  @spec dmatrix_get_uint_info(reference(), String.t()) :: exgboost_return_type([pos_integer()])
+  @spec dmatrix_get_uint_info(dmatrix_reference(), String.t()) ::
+          exgboost_return_type([pos_integer()])
   def dmatrix_get_uint_info(_handle, _field),
     do: :erlang.nif_error(:not_implemented)
 
@@ -241,8 +244,11 @@ defmodule Exgboost.NIF do
 
   Returns 3-tuple of {indptr, indices, data}
   """
-  @spec dmatrix_get_data_as_csr(reference(), String.t()) ::
+  @spec dmatrix_get_data_as_csr(dmatrix_reference(), String.t()) ::
           exgboost_return_type({[pos_integer()], [pos_integer()], [float]})
   def dmatrix_get_data_as_csr(_handle, _config),
     do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
+  def booster_create(_handles), do: :erlang.nif_error(:not_implemented)
 end

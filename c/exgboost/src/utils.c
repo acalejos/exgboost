@@ -19,6 +19,11 @@ void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv *env, void *arg) {
   XGDMatrixFree(handle);
 }
 
+void Booster_RESOURCE_TYPE_cleanup(ErlNifEnv *env, void *arg) {
+  BoosterHandle handle = *((BoosterHandle *)arg);
+  XGBoosterFree(handle);
+}
+
 // Argument helpers
 int exg_get_string(ErlNifEnv *env, ERL_NIF_TERM term, char **var) {
   unsigned len;
