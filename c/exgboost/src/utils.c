@@ -97,6 +97,30 @@ int exg_get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
   return 1;
 }
 
+int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term,
+                         DMatrixHandle **dmats, unsigned *len) {
+  ERL_NIF_TERM head, tail;
+  int i = 0;
+  if (!enif_get_list_length(env, term, len)) {
+    return 0;
+  }
+  *dmats = (DMatrixHandle *)enif_alloc(*len * sizeof(DMatrixHandle));
+  if (NULL == dmats) {
+    return 0;
+  }
+  while (enif_get_list_cell(env, term, &head, &tail)) {
+    DMatrixHandle **resource = NULL;
+    if (!enif_get_resource(env, head, DMatrix_RESOURCE_TYPE,
+                           (void *)&(resource))) {
+      return 0;
+    }
+    *dmats[i] = *resource;
+    term = tail;
+    i++;
+  }
+  return 1;
+}
+
 ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]) {
   ErlNifBinary bin;

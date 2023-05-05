@@ -53,5 +53,11 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_set_param", 3, EXGBoosterSetParam},
     {"booster_get_num_feature", 1, EXGBoosterGetNumFeature},
     {"booster_update_one_iter", 3, EXGBoosterUpdateOneIter},
-    {"booster_boost_one_iter", 4, EXGBoosterBoostOneIter}};
+    {"booster_boost_one_iter", 4, EXGBoosterBoostOneIter},
+    {"booster_eval_one_iter", 4, EXGBoosterEvalOneIter},
+    {"booster_get_attr_names", 1, EXGBoosterGetAttrNames},
+    {"booster_get_attr", 2, EXGBoosterGetAttr},
+    {"booster_set_attr", 3, EXGBoosterSetAttr},
+    {"booster_set_str_feature_info", 3, EXGBoosterSetStrFeatureInfo},
+    {"booster_get_str_feature_info", 2, EXGBoosterGetStrFeatureInfo}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

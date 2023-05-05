@@ -162,7 +162,7 @@ defmodule Exgboost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_set_str_feature_info(dmatrix_reference(), String.t(), [String.t()]) ::
-          exgboost_return_type(:ok)
+          :ok | {:error, String.t()}
   def dmatrix_set_str_feature_info(_dmatrix_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 
@@ -275,5 +275,32 @@ defmodule Exgboost.NIF do
   @spec booster_boost_one_iter(booster_reference(), dmatrix_reference(), binary(), binary()) ::
           :ok | {:error, String.t()}
   def booster_boost_one_iter(_booster_handle, _dmatrix_handle, _grad, _hess),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_eval_one_iter(booster_reference(), pos_integer(), [dmatrix_reference()], [
+          String.t()
+        ]) :: String.t()
+  def booster_eval_one_iter(_booster_handle, _iteration, _dmatrix_handles, _eval_names),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_get_attr_names(booster_reference()) :: [String.t()]
+  def booster_get_attr_names(_booster_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_get_attr(booster_reference(), String.t()) ::
+          :ok | {:error, String.t()}
+  def booster_get_attr(_booster_handle, _key), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_set_attr(booster_reference(), String.t(), String.t()) ::
+          :ok | {:error, String.t()}
+  def booster_set_attr(_booster_handle, _key, _value), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_get_str_feature_info(booster_reference(), String.t()) ::
+          exgboost_return_type([String.t()])
+  def booster_get_str_feature_info(_booster_resource, _field),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_set_str_feature_info(booster_reference(), String.t(), [String.t()]) ::
+          :ok | {:error, String.t()}
+  def booster_set_str_feature_info(_booster_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 end

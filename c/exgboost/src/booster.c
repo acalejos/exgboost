@@ -26,7 +26,7 @@ ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_list_length(env, argv[0], &dmats_len)) {
+  if (!exg_get_dmatrix_list(env, argv[0], &dmats, &dmats_len)) {
     ret = exg_error(env, "Invalid list of DMatrix");
     goto END;
   }
@@ -39,25 +39,6 @@ ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
       ret = exg_error(env, "Error making booster");
       goto END;
     }
-  }
-  ERL_NIF_TERM head, tail, term;
-  term = argv[0];
-  int i = 0;
-  dmats = (DMatrixHandle *)enif_alloc(dmats_len * sizeof(DMatrixHandle));
-  if (NULL == dmats) {
-    ret = exg_error(env, "Failed to allocate memory for DMatrixHandle");
-    goto END;
-  }
-  while (enif_get_list_cell(env, term, &head, &tail)) {
-    DMatrixHandle **resource = NULL;
-    if (!enif_get_resource(env, head, DMatrix_RESOURCE_TYPE,
-                           (void *)&(resource))) {
-      ret = exg_error(env, "Invalid DMatrix");
-      goto ERROR;
-    }
-    dmats[i] = *resource;
-    term = tail;
-    i++;
   }
   result = XGBoosterCreate(dmats, dmats_len, &booster);
   if (result == 0) {
@@ -298,5 +279,256 @@ ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
+                                   const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  DMatrixHandle *dmats = NULL;
+  char **evnames = NULL;
+  int iter = -1;
+  unsigned num_dmats = 0;
+  unsigned num_evnames = 0;
+  char *out = NULL;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  if (4 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  if (!enif_get_int(env, argv[1], &iter)) {
+    ret = exg_error(env, "Invalid iter");
+    goto END;
+  }
+  if (!exg_get_dmatrix_list(env, argv[2], &dmats, &num_dmats)) {
+    ret = exg_error(env, "Invalid DMatrix list");
+    goto END;
+  }
+  if (!exg_get_string_list(env, argv[3], &evnames, &num_evnames)) {
+    ret = exg_error(env, "Invalid evnames list");
+    goto END;
+  }
+  if (num_dmats != num_evnames) {
+    ret = exg_error(env, "dmats and evnames must have the same length");
+    goto END;
+  }
+  result = XGBoosterEvalOneIter(booster, iter, dmats, evnames,
+                                (bst_ulong)num_dmats, &out);
+  if (result == 0) {
+    ret = exg_ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterGetAttr(ErlNifEnv *env, int argc,
+                               const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char *key = NULL;
+  char *out = NULL;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  int success = -1;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  if (!exg_get_string(env, argv[1], &key)) {
+    ret = exg_error(env, "Key must be a string");
+    goto END;
+  }
+  result = XGBoosterGetAttr(booster, key, &out, &success);
+  if (result == 0) {
+    if (success == 0) {
+      ret = enif_make_string(env, out, ERL_NIF_LATIN1);
+    } else {
+      ret = exg_ok(env, enif_make_atom(env, "undefined"));
+    }
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc,
+                               const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char *key = NULL;
+  char *value = NULL;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  if (3 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  if (!exg_get_string(env, argv[1], &key)) {
+    ret = exg_error(env, "Key must be a string");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[2], &value)) {
+    ret = exg_error(env, "Value must be a string");
+    goto END;
+  }
+  result = XGBoosterSetAttr(booster, key, value);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char **out = NULL;
+  bst_ulong out_len = 0;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterGetAttrNames(booster, &out_len, &out);
+  if (result == 0) {
+    ERL_NIF_TERM arr[out_len];
+    for (bst_ulong i = 0; i < out_len; ++i) {
+      char *local = enif_alloc(strlen(out[i]) + 1);
+      strcpy(local, out[i]);
+      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
+      // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
+    }
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  BoosterHandle handle;
+  BoosterHandle **resource = NULL;
+  char **features = NULL;
+  unsigned num_features = 0;
+  char *field = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 3) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "Booster must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (!exg_get_string_list(env, argv[2], &features, &num_features)) {
+    ret = exg_error(env, "Features must be a list");
+    goto END;
+  }
+  if (strcmp(field, "feature_type") != 0 &&
+      strcmp(field, "feature_name") != 0) {
+    ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
+    goto END;
+  }
+  handle = *resource;
+  result = XGBoosterSetStrFeatureInfo(handle, field, features, num_features);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (features != NULL) {
+    enif_free(features);
+    features = NULL;
+  }
+  return ret;
+}
+ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  BoosterHandle handle;
+  BoosterHandle **resource = NULL;
+  char const **c_out_features = NULL;
+  bst_ulong out_size = 0;
+  char *field = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 2) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "Booster must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &field)) {
+    ret = exg_error(env, "Field must be a string");
+    goto END;
+  }
+  if (strcmp(field, "feature_type") != 0 &&
+      strcmp(field, "feature_name") != 0) {
+    ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
+    goto END;
+  }
+  handle = *resource;
+  result =
+      XGBoosterGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
+  if (result == 0) {
+    ERL_NIF_TERM arr[out_size];
+    for (bst_ulong i = 0; i < out_size; ++i) {
+      char *local = enif_alloc(strlen(c_out_features[i]) + 1);
+      strcpy(local, c_out_features[i]);
+      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
+      // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
+    }
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (field != NULL) {
+    enif_free(field);
+  }
   return ret;
 }

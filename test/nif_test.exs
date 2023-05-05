@@ -325,5 +325,42 @@ defmodule NifTest do
       |> unwrap!()
 
     assert Exgboost.NIF.booster_create([dmat]) |> unwrap!() != :error
+    assert Exgboost.NIF.booster_create([]) |> unwrap!() != :error
+  end
+
+  test "test_booster_set_str_feature_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+
+    assert Exgboost.NIF.booster_set_str_feature_info(booster, 'feature_name', [
+             'name',
+             'color',
+             'length'
+           ]) == :ok
+  end
+
+  test "test_booster_get_str_feature_info" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+
+    Exgboost.NIF.booster_set_str_feature_info(booster, 'feature_name', ['name', 'color', 'length'])
+
+    assert Exgboost.NIF.booster_get_str_feature_info(booster, 'feature_name') |> unwrap!()
   end
 end
