@@ -137,3 +137,16 @@ ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
+
+ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
+                              const ERL_NIF_TERM argv[]) {
+  ERL_NIF_TERM ret = 0;
+  if (argc != 0) {
+    ret = exg_error(env, "exg_get_int_size doesn't take any arguments");
+    goto END;
+  }
+  int size = sizeof(int);
+  ret = exg_ok(env, enif_make_int(env, size));
+END:
+  return ret;
+}

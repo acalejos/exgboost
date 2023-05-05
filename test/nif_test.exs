@@ -314,6 +314,44 @@ defmodule NifTest do
     assert Exgboost.NIF.dmatrix_get_data_as_csr(dmat, Jason.encode!(%{})) |> unwrap!() != :error
   end
 
+  test "dmatrix_slice" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    # We do this because the C API uses non fixed-width types so we need to know the size they're expecting from int
+    c_int_size = Exgboost.NIF.get_int_size() |> unwrap!()
+    tensor_size = (c_int_size * 8) |> IO.inspect()
+
+    dmatrix =
+      Exgboost.NIF.dmatrix_slice(
+        dmat,
+        Nx.to_binary(Nx.tensor([0, 1], type: {:s, tensor_size})),
+        1
+      )
+      |> unwrap!()
+
+    assert Exgboost.NIF.dmatrix_num_row(dmatrix) |> unwrap!() == 2
+
+    {status, _e} =
+      Exgboost.NIF.dmatrix_slice(
+        dmat,
+        Nx.to_binary(Nx.tensor([0, 1], type: {:s, tensor_size})),
+        2
+      )
+
+    assert status == :error
+
+    {status, _e} = Exgboost.NIF.dmatrix_slice(dmat, Nx.to_binary(Nx.tensor([1.5, 1.6])), 2)
+
+    assert status == :error
+  end
+
   test "booster_create" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     array_interface = array_interface(mat) |> Jason.encode!()
@@ -326,6 +364,20 @@ defmodule NifTest do
 
     assert Exgboost.NIF.booster_create([dmat]) |> unwrap!() != :error
     assert Exgboost.NIF.booster_create([]) |> unwrap!() != :error
+  end
+
+  test "booster_get_num_feature" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+    assert Exgboost.NIF.booster_get_num_feature(booster) |> unwrap!() == 3
   end
 
   test "test_booster_set_str_feature_info" do
@@ -362,5 +414,22 @@ defmodule NifTest do
     Exgboost.NIF.booster_set_str_feature_info(booster, 'feature_name', ['name', 'color', 'length'])
 
     assert Exgboost.NIF.booster_get_str_feature_info(booster, 'feature_name') |> unwrap!()
+  end
+
+  test "test_boster_feature_score" do
+    # TODO: Make more robust test. This will just return an empty list
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    config = Jason.encode!(%{"importance_type" => "weight"})
+    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+
+    Exgboost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
   end
 end

@@ -30,6 +30,9 @@ defmodule Exgboost.NIF do
     :erlang.load_nif(path, 0)
   end
 
+  @spec get_int_size :: integer()
+  def get_int_size, do: :erlang.nif_error(:not_implemented)
+
   @spec xgboost_version :: exgboost_return_type(tuple)
   @doc """
   Get the version of the XGBoost library.
@@ -249,8 +252,22 @@ defmodule Exgboost.NIF do
   def dmatrix_get_data_as_csr(_handle, _config),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc """
+  Create a DMatrix from a slice of rows from an existing DMAtrix
+
+  Expects a binary of `int`s so you should query for the size of the C int using
+  NIF.get_int_size/0 and then use that to pack the binary, or use Nx.tensor(_intput, type: type)
+  to get a binary of the correct size.
+  """
+  @spec dmatrix_slice(dmatrix_reference(), binary(), 0 | 1) :: dmatrix_reference()
+  def dmatrix_slice(_handle, _index_set, _allow_groups), do: :erlang.nif_error(:not_implemented)
+
   @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
   def booster_create(_handles), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_slice(booster_reference(), integer(), integer(), integer()) :: booster_reference()
+  def booster_slice(_handle, _begin_layer, _end_layer, _step),
+    do: :erlang.nif_error(:not_implemented)
 
   @spec booster_boosted_rounds(booster_reference()) :: integer()
   def booster_boosted_rounds(_handle), do: :erlang.nif_error(:not_implemented)
@@ -302,5 +319,10 @@ defmodule Exgboost.NIF do
   @spec booster_set_str_feature_info(booster_reference(), String.t(), [String.t()]) ::
           :ok | {:error, String.t()}
   def booster_set_str_feature_info(_booster_resource, _field, _features),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_feature_score(booster_reference(), String.t()) ::
+          exgboost_return_type(tuple())
+  def booster_feature_score(_booster_resource, _config),
     do: :erlang.nif_error(:not_implemented)
 end

@@ -4,6 +4,10 @@ defmodule Exgboost do
 
   def dmatrix(value, opts \\ [])
 
+  def dmatrix(input, opts) when is_list(input) do
+    dmatrix(Nx.tensor(input), opts)
+  end
+
   def dmatrix(%Nx.Tensor{} = tensor, opts) do
     opts =
       Keyword.validate!(opts, [

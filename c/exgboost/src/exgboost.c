@@ -28,6 +28,7 @@ static int upgrade(ErlNifEnv *env, void **priv_data, void **old_priv_data,
 }
 
 static ErlNifFunc nif_funcs[] = {
+    {"get_int_size", 0, exg_get_int_size},
     {"xgboost_version", 0, EXGBoostVersion},
     {"xgboost_build_info", 0, EXGBuildInfo},
     {"set_global_config", 1, EXGBSetGlobalConfig},
@@ -48,6 +49,7 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
     {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},
+    {"dmatrix_slice", 3, EXGDMatrixSliceDMatrix},
     {"booster_create", 1, EXGBoosterCreate},
     {"booster_boosted_rounds", 1, EXGBoosterBoostedRounds},
     {"booster_set_param", 3, EXGBoosterSetParam},
@@ -59,5 +61,7 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_get_attr", 2, EXGBoosterGetAttr},
     {"booster_set_attr", 3, EXGBoosterSetAttr},
     {"booster_set_str_feature_info", 3, EXGBoosterSetStrFeatureInfo},
-    {"booster_get_str_feature_info", 2, EXGBoosterGetStrFeatureInfo}};
+    {"booster_get_str_feature_info", 2, EXGBoosterGetStrFeatureInfo},
+    {"booster_feature_score", 2, EXGBoosterFeatureScore},
+    {"booster_slice", 4, EXGBoosterSlice}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

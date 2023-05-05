@@ -532,3 +532,55 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char **config = NULL;
+  bst_ulong out_n_features = 0;
+  char **out_features = NULL;
+  bst_ulong out_dim = 0;
+  bst_ulong *out_shape = NULL;
+  float *out_scores = NULL;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &config)) {
+    ret = exg_error(env, "Config must be a list");
+    goto END;
+  }
+  booster = *booster_resource;
+  result =
+      XGBoosterFeatureScore(booster, config, &out_n_features, &out_features,
+                            &out_dim, &out_shape, &out_scores);
+  if (result == 0) {
+    ERL_NIF_TERM feature_arr[out_n_features];
+    for (bst_ulong i = 0; i < out_n_features; ++i) {
+      ERL_NIF_TERM shape_arr[out_dim];
+      for (bst_ulong j = 0; j < out_dim; ++j) {
+        shape_arr[j] = enif_make_int(env, out_shape[i * out_dim + j]);
+      }
+      ERL_NIF_TERM shape = enif_make_list_from_array(env, shape_arr, out_dim);
+      ERL_NIF_TERM scores = enif_make_double(env, out_scores[i]);
+      ERL_NIF_TERM feature =
+          enif_make_string(env, out_features[i], ERL_NIF_LATIN1);
+      ERL_NIF_TERM tuple[3] = {feature, shape, scores};
+      feature_arr[i] = enif_make_tuple_from_array(env, tuple, 3);
+    }
+    ret = exg_ok(env,
+                 enif_make_list_from_array(env, feature_arr, out_n_features));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}

@@ -828,3 +828,62 @@ END:
   }
   return ret;
 };
+
+ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  ErlNifBinary bin;
+  DMatrixHandle out;
+  int result = -1;
+  int allow_groups = 0;
+  ERL_NIF_TERM ret = -1;
+  if (argc != 3) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[1], &bin)) {
+    ret = exg_error(env, "Indices must be a binary of ints");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[2], &allow_groups)) {
+    ret = exg_error(env, "allow_groups must be an int");
+    goto END;
+  }
+  if (bin.size % sizeof(int) != 0) {
+    ret = exg_error(env, "Indices must be a binary of ints");
+    goto END;
+  }
+  if (bin.size == 0) {
+    ret = exg_error(env, "Indices must be a binary of ints (non-empty))");
+    goto END;
+  }
+  if (allow_groups != 0 && allow_groups != 1) {
+    ret = exg_error(env, "allow_groups must be 0 or 1");
+    goto END;
+  }
+  handle = *resource;
+  int index_count = (int)(bin.size / sizeof(int));
+  printf("index_count: %d\n", index_count);
+  for (bst_ulong i = 0; i < index_count; i++) {
+    if (((int *)bin.data)[i] < 0) {
+      ret = exg_error(env, "Indices must be non-negative");
+      goto END;
+    }
+    printf("%d\n", ((int *)bin.data)[i]);
+  }
+  result = XGDMatrixSliceDMatrixEx(handle, (int *)bin.data, index_count, &out,
+                                   allow_groups);
+  if (0 == result) {
+    ret = make_DMatrix_resource(env, out);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}

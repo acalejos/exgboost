@@ -43,4 +43,6 @@ ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
                                    const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
+                                    const ERL_NIF_TERM argv[]);
 #endif
