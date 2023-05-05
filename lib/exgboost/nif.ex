@@ -251,4 +251,29 @@ defmodule Exgboost.NIF do
 
   @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
   def booster_create(_handles), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_boosted_rounds(booster_reference()) :: integer()
+  def booster_boosted_rounds(_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_set_param(booster_reference(), atom(), String.t()) ::
+          :ok | {:error, String.t()}
+  def booster_set_param(_handle, _param, _value), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_get_num_feature(booster_reference()) :: pos_integer()
+  def booster_get_num_feature(_handle), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_update_one_iter(booster_reference(), integer(), dmatrix_reference()) ::
+          :ok | {:error, String.t()}
+  def booster_update_one_iter(_booster_handle, _iteration, _dmatrix_handle),
+    do: :erlang.nif_error(:not_implemented)
+
+  @doc """
+  Update the model, by directly specify gradient and second order gradient, this can be used to replace UpdateOneIter, to support customized loss function
+
+  Grad and hess must be binaries of Nx.Tensor float32
+  """
+  @spec booster_boost_one_iter(booster_reference(), dmatrix_reference(), binary(), binary()) ::
+          :ok | {:error, String.t()}
+  def booster_boost_one_iter(_booster_handle, _dmatrix_handle, _grad, _hess),
+    do: :erlang.nif_error(:not_implemented)
 end

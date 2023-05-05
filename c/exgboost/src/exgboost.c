@@ -48,5 +48,10 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
     {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},
-    {"booster_create", 1, EXGBoosterCreate}};
+    {"booster_create", 1, EXGBoosterCreate},
+    {"booster_boosted_rounds", 1, EXGBoosterBoostedRounds},
+    {"booster_set_param", 3, EXGBoosterSetParam},
+    {"booster_get_num_feature", 1, EXGBoosterGetNumFeature},
+    {"booster_update_one_iter", 3, EXGBoosterUpdateOneIter},
+    {"booster_boost_one_iter", 4, EXGBoosterBoostOneIter}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)
