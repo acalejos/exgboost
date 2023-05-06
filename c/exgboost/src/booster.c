@@ -141,7 +141,7 @@ ERL_NIF_TERM EXGBoosterSetParam(ErlNifEnv *env, int argc,
     goto END;
   }
   booster = *resource;
-  if (!enif_get_atom(env, argv[1], name, sizeof(name), ERL_NIF_LATIN1)) {
+  if (!exg_get_string(env, argv[1], &name)) {
     ret = exg_error(env, "Invalid booster parameter name");
     goto END;
   }
@@ -582,5 +582,64 @@ ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
+                                          const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  DMatrixHandle dmatrix;
+  DMatrixHandle **dmatrix_resource = NULL;
+  char **config = NULL;
+  bst_ulong *out_shape = NULL;
+  bst_ulong out_dim = 0;
+  float *out_result = NULL;
+  bst_ulong out_len = 1;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+  if (3 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE,
+                         (void *)&(dmatrix_resource))) {
+    ret = exg_error(env, "Invalid DMatrix");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[2], &config)) {
+    ret = exg_error(env, "Config must be a JSON-encoded string");
+    goto END;
+  }
+  booster = *booster_resource;
+  dmatrix = *dmatrix_resource;
+  result = XGBoosterPredictFromDMatrix(booster, dmatrix, config, &out_shape,
+                                       &out_dim, &out_result);
+  if (result == 0) {
+    ERL_NIF_TERM shape_arr[out_dim];
+    for (bst_ulong j = 0; j < out_dim; ++j) {
+      shape_arr[j] = enif_make_int(env, out_shape[j]);
+      out_len *= out_shape[j];
+    }
+    ERL_NIF_TERM shape = enif_make_list_from_array(env, shape_arr, out_dim);
+    ERL_NIF_TERM result_arr[out_len];
+    for (bst_ulong i = 0; i < out_len; ++i) {
+      result_arr[i] = enif_make_double(env, out_result[i]);
+    }
+    ret = exg_ok(env, enif_make_tuple2(
+                          env, shape,
+                          enif_make_list_from_array(env, result_arr, out_len)));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (config != NULL) {
+    enif_free(config);
+  }
   return ret;
 }

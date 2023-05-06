@@ -25,7 +25,6 @@ defmodule Exgboost.NIF do
   @type exgboost_return_type(return_type) :: {:ok, return_type} | {:error, String.t()}
 
   def on_load do
-    IO.puts(:code.priv_dir(:exgboost))
     path = :filename.join([:code.priv_dir(:exgboost), "libexgboost"])
     :erlang.load_nif(path, 0)
   end
@@ -272,16 +271,16 @@ defmodule Exgboost.NIF do
   @spec booster_boosted_rounds(booster_reference()) :: integer()
   def booster_boosted_rounds(_handle), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_set_param(booster_reference(), atom(), String.t()) ::
+  @spec booster_set_param(booster_reference(), String.t(), String.t()) ::
           :ok | {:error, String.t()}
   def booster_set_param(_handle, _param, _value), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_get_num_feature(booster_reference()) :: pos_integer()
   def booster_get_num_feature(_handle), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_update_one_iter(booster_reference(), integer(), dmatrix_reference()) ::
+  @spec booster_update_one_iter(booster_reference(), dmatrix_reference(), integer()) ::
           :ok | {:error, String.t()}
-  def booster_update_one_iter(_booster_handle, _iteration, _dmatrix_handle),
+  def booster_update_one_iter(_booster_handle, _dmatrix_handle, _iteration),
     do: :erlang.nif_error(:not_implemented)
 
   @doc """
@@ -324,5 +323,10 @@ defmodule Exgboost.NIF do
   @spec booster_feature_score(booster_reference(), String.t()) ::
           exgboost_return_type(tuple())
   def booster_feature_score(_booster_resource, _config),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_predict_from_dmatrix(booster_reference(), dmatrix_reference(), String.t()) ::
+          tuple()
+  def booster_predict_from_dmatrix(_boster, _dmatrix, _config),
     do: :erlang.nif_error(:not_implemented)
 end

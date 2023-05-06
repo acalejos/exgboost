@@ -63,5 +63,6 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_set_str_feature_info", 3, EXGBoosterSetStrFeatureInfo},
     {"booster_get_str_feature_info", 2, EXGBoosterGetStrFeatureInfo},
     {"booster_feature_score", 2, EXGBoosterFeatureScore},
-    {"booster_slice", 4, EXGBoosterSlice}};
+    {"booster_slice", 4, EXGBoosterSlice},
+    {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

@@ -84,22 +84,28 @@ defmodule Exgboost.DMatrix do
              "label_upper_bound",
              "feature_weights"
            ],
-      do: {:ok, Exgboost.NIF.dmatrix_get_float_info(dmatrix.ref, feature)}
+      do: Exgboost.NIF.dmatrix_get_float_info(dmatrix.ref, feature)
 
   def fetch(dmatrix, "group"),
-    do: {:ok, Exgboost.NIF.dmatrix_get_uint_info(dmatrix.ref, "group_ptr")}
+    do: Exgboost.NIF.dmatrix_get_uint_info(dmatrix.ref, "group_ptr")
 
   def fetch(dmatrix, "rows"),
-    do: {:ok, Exgboost.NIF.dmatrix_num_row(dmatrix.ref)}
+    do: Exgboost.NIF.dmatrix_num_row(dmatrix.ref)
 
   def fetch(dmatrix, "cols"),
-    do: {:ok, Exgboost.NIF.dmatrix_num_col(dmatrix.ref)}
+    do: Exgboost.NIF.dmatrix_num_col(dmatrix.ref)
 
   def fetch(dmatrix, "non_missing"),
-    do: {:ok, Exgboost.NIF.dmatrix_num_non_missing(dmatrix.ref)}
+    do: Exgboost.NIF.dmatrix_num_non_missing(dmatrix.ref)
 
   def fetch(dmatrix, "data"),
-    do: {:ok, Exgboost.NIF.dmatrix_get_data_as_csr(dmatrix.ref, Jason.encode!(%{}))}
+    do: Exgboost.NIF.dmatrix_get_data_as_csr(dmatrix.ref, Jason.encode!(%{}))
+
+  def fetch(dmatrix, "feature_names"),
+    do: Exgboost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_name")
+
+  def fetch(dmatrix, "feature_types"),
+    do: Exgboost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_type")
 
   def fetch(_dmatrix, _other), do: :error
 
@@ -154,18 +160,14 @@ defmodule Exgboost.DMatrix do
     import Inspect.Algebra
 
     def inspect(dmatrix, _opts) do
-      {indptr, indices, data} = dmatrix["data"] |> Exgboost.Internal.unwrap!()
-      num_rows = dmatrix["rows"] |> Exgboost.Internal.unwrap!()
-      num_cols = dmatrix["cols"] |> Exgboost.Internal.unwrap!()
-      non_missing = dmatrix["non_missing"] |> Exgboost.Internal.unwrap!()
-      group = dmatrix["group"] |> Exgboost.Internal.unwrap!()
+      {indptr, indices, data} = dmatrix["data"]
 
       concat([
         "#DMatrix<",
         line(),
-        "  {#{num_rows}x#{num_cols}x#{non_missing}}",
+        "  {#{dmatrix["rows"]}x#{dmatrix["cols"]}x#{dmatrix["non_missing"]}}",
         line(),
-        if(group != nil, do: "  group: #{inspect(group)}"),
+        if(dmatrix["group"] != nil, do: "  group: #{inspect(dmatrix["group"])}"),
         line(),
         "  indptr: #{inspect(Nx.tensor(indptr))}",
         line(),
