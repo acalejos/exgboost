@@ -380,7 +380,7 @@ defmodule Exgboost do
         Keyword.fetch!(opts, :output_margin) ->
           1
 
-        Keyword.fetch!(opts, :pred_contrib) ->
+        Keyword.fetch!(opts, :pred_contribs) ->
           if approx_contribs, do: 3, else: 2
 
         Keyword.fetch!(opts, :pred_interactions) ->
@@ -406,6 +406,9 @@ defmodule Exgboost do
     {shape, preds} =
       Exgboost.NIF.booster_predict_from_dmatrix(booster.ref, data.ref, Jason.encode!(config))
       |> unwrap!()
+
+    IO.puts("shape: #{inspect(shape)}")
+    IO.puts("preds: #{inspect(preds)}")
 
     Nx.tensor(preds) |> Nx.reshape(shape)
   end

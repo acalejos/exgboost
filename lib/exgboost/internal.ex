@@ -13,10 +13,10 @@ defmodule Exgboost.Internal do
 
   def validate_features!(%Booster{} = booster, %DMatrix{} = dmatrix) do
     unless dmatrix["rows"] == 0 do
-      booster_names = booster["feature_names"] |> Exgboost.Internal.unwrap!()
-      booster_types = booster["feature_types"] |> Exgboost.Internal.unwrap!()
-      dmatrix_names = dmatrix["feature_names"] |> Exgboost.Internal.unwrap!()
-      dmatrix_types = dmatrix["feature_types"] |> Exgboost.Internal.unwrap!()
+      booster_names = booster["feature_names"]
+      booster_types = booster["feature_types"]
+      dmatrix_names = dmatrix["feature_names"]
+      dmatrix_types = dmatrix["feature_types"]
 
       if dmatrix_names == nil and booster_names != nil do
         raise ArgumentError,

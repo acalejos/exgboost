@@ -626,7 +626,7 @@ ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
       shape_arr[j] = enif_make_int(env, out_shape[j]);
       out_len *= out_shape[j];
     }
-    ERL_NIF_TERM shape = enif_make_list_from_array(env, shape_arr, out_dim);
+    ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_arr, out_dim);
     ERL_NIF_TERM result_arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {
       result_arr[i] = enif_make_double(env, out_result[i]);

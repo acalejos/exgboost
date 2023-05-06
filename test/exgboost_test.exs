@@ -50,4 +50,18 @@ defmodule ExgboostTest do
     booster = Exgboost.train(dtrain, num_boost_rounds: num_boost_round, params: params)
     assert booster["boosted_rounds"] == num_boost_round
   end
+
+  test "predict", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    dtrain = Exgboost.dmatrix(x, y)
+    num_boost_round = 10
+    params = %{tree_method: "hist"}
+    booster = Exgboost.train(dtrain, num_boost_rounds: num_boost_round, params: params)
+    dtest = Exgboost.dmatrix(x)
+    preds = Exgboost.predict(booster, dtest)
+    assert preds.shape == y.shape
+  end
 end
