@@ -137,7 +137,7 @@ defmodule Exgboost do
 
   def booster(dmats, opts) when is_list(dmats) do
     refs = Enum.map(dmats, & &1.ref)
-    booster_ref = Exgboost.NIF.booster_create(refs) |> unwrap!() |> IO.inspect()
+    booster_ref = Exgboost.NIF.booster_create(refs) |> unwrap!()
     set_params(%Booster{ref: booster_ref}, opts)
   end
 
