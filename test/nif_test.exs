@@ -1,5 +1,5 @@
 defmodule NifTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   import Exgboost.Internal
   # doctest Exgboost.NIF
 

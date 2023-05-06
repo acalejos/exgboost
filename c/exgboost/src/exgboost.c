@@ -33,7 +33,7 @@ static ErlNifFunc nif_funcs[] = {
     {"xgboost_build_info", 0, EXGBuildInfo},
     {"set_global_config", 1, EXGBSetGlobalConfig},
     {"get_global_config", 0, EXGBGetGlobalConfig},
-    {"dmatrix_create_from_file", 3, EXGDMatrixCreateFromFile},
+    {"dmatrix_create_from_file", 2, EXGDMatrixCreateFromFile},
     {"dmatrix_create_from_mat", 4, EXGDMatrixCreateFromMat},
     {"dmatrix_create_from_sparse", 6, EXGDMatrixCreateFromSparse},
     {"dmatrix_create_from_dense", 2, EXGDMatrixCreateFromDense},

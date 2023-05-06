@@ -19,13 +19,11 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   char *fname = NULL;
   char *format = NULL;
-  char *uri = NULL;
-  const char uri_param[] = "?format=";
   int silent = 0;
   int result = -1;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
-  if (argc != 3) {
+  if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
@@ -37,24 +35,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Silent must be an integer");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &format)) {
-    ret = exg_error(env, "File Format must be a string");
-    goto END;
-  }
-  if ((0 != strcmp(format, "csv")) && (0 != strcmp(format, "libsvm"))) {
-    ret = exg_error(env, "File format must be either 'csv' or 'libsvm'");
-    goto END;
-  }
-  // strlen is safe because exg_get_string always null terminates on success
-  // +1 for the null terminator
-  size_t uri_len = strlen(fname) + strlen(format) + strlen(uri_param) + 1;
-  uri = (char *)malloc(uri_len * sizeof(char));
-  result = snprintf(uri, uri_len, "%s%s%s", fname, uri_param, format);
-  if ((size_t)result != uri_len - 1) {
-    ret = exg_error(env, "Error creating filename URI");
-    goto END;
-  }
-  result = XGDMatrixCreateFromFile(uri, 1, &handle);
+  result = XGDMatrixCreateFromFile(fname, 1, &handle);
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
@@ -68,10 +49,6 @@ END:
   if (format != NULL) {
     enif_free(format);
     format = NULL;
-  }
-  if (uri != NULL) {
-    free(uri);
-    uri = NULL;
   }
   return ret;
 }

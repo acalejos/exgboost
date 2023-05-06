@@ -86,18 +86,21 @@ defmodule Exgboost.NIF do
   """
   def get_global_config, do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_create_from_file(String.t(), Integer, String.t()) ::
+  @spec dmatrix_create_from_file(String.t(), Integer) ::
           exgboost_return_type(reference)
   @doc """
   Create a DMatrix from a filename
 
-  This function will break on an improper file type and parse and should thus be avoided.
-  This is here for completeness sake but should not be used.
+  **WARNING** This function will break on an improper file type and parse and thus the user
+  should take EXTREME caution when using this, and avoid calling directly. Instead
+  use the `Exgboost.dmatrix` function.
+
+  This is set to be fixed with the 2.0.0 release of XGBoost.
 
   Refer to https://github.com/dmlc/xgboost/issues/9059
 
   """
-  def dmatrix_create_from_file(_file_path, _silent, _file_format),
+  def dmatrix_create_from_file(_file_uri, _silent),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::

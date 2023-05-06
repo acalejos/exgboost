@@ -6,13 +6,89 @@ defmodule Exgboost do
   def xgboost_build_info, do: Exgboost.NIF.xgboost_build_info() |> unwrap! |> Jason.decode!()
 
   def xgboost_version, do: Exgboost.NIF.xgboost_version() |> unwrap!
-  def dmatrix(value, opts \\ [])
+  def dmatrix(x, opts \\ [])
 
-  def dmatrix(input, opts) when is_list(input) do
-    dmatrix(Nx.tensor(input), opts)
+  @doc """
+  Create a DMatrix from a file.
+
+  Refer to https://xgboost.readthedocs.io/en/latest/tutorials/external_memory.html#text-file-inputs
+  for proper formatting of the file and the options.
+
+  This function will URI encode the filepath according to the URI scheme defined in
+  XGBoost's documentation.
+  """
+  def dmatrix(filepath, opts) when is_binary(filepath) and is_list(opts) do
+    opts =
+      Keyword.validate!(opts,
+        label_column: nil,
+        cacheprefix: nil,
+        format: :dense,
+        ext: :auto,
+        silent: 1
+      )
+
+    if not (File.exists?(filepath) and File.regular?(filepath)) do
+      raise ArgumentError, "File must exist and be a regular file"
+    end
+
+    {file_format, opts} = Keyword.pop!(opts, :ext)
+    {silent, opts} = Keyword.pop!(opts, :silent)
+    {format, opts} = Keyword.pop!(opts, :format)
+    {label_column, opts} = Keyword.pop!(opts, :label_column)
+    {cacheprefix, opts} = Keyword.pop!(opts, :cacheprefix)
+
+    ext =
+      case file_format do
+        :libsvm -> "libsvm"
+        :csv -> "csv"
+        :auto -> "auto"
+        _ -> raise ArgumentError, "Invalid file format"
+      end
+
+    uri = "#{filepath}?format=#{ext}"
+
+    if file_format != :csv and not is_nil(label_column) do
+      if silent == 1 do
+        IO.warn("label_column only be specified for CSV files -- ignoring...")
+      else
+        raise ArgumentError, "label_column only be specified for CSV files"
+      end
+    end
+
+    if not is_nil(cacheprefix) and not File.exists?(cacheprefix) do
+      if silent == 1 do
+        IO.warn("cacheprefix file not found -- ignoring...")
+      else
+        raise ArgumentError, "cacheprefix file not found"
+      end
+    end
+
+    uri =
+      if not is_nil(label_column) and file_format == :csv do
+        uri <> "&label_column=#{label_column}"
+      else
+        uri
+      end
+
+    uri =
+      if not is_nil(cacheprefix) and File.exists?(cacheprefix) and File.regular?(cacheprefix) do
+        uri <> "#cacheprefix=#{cacheprefix}"
+      else
+        uri
+      end
+
+    dmat =
+      Exgboost.NIF.dmatrix_create_from_file(
+        uri,
+        silent
+      )
+      |> unwrap!()
+
+    set_params(%DMatrix{ref: dmat, format: format}, opts)
   end
 
-  def dmatrix(%Nx.Tensor{} = tensor, opts) do
+  # TODO: Pop opts used here and defer other args validation to set_params
+  def dmatrix(%Nx.Tensor{} = tensor, opts) when is_list(opts) do
     opts =
       Keyword.validate!(opts, [
         :label,
@@ -43,6 +119,24 @@ defmodule Exgboost do
       |> unwrap!()
 
     set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
+  end
+
+  def dmatrix(%Nx.Tensor{} = x, %Nx.Tensor{} = y) do
+    dmatrix(x, y, [])
+  end
+
+  def dmatrix(%Nx.Tensor{shape: {x_rows, _}}, %Nx.Tensor{shape: {y_rows}}, _opts)
+      when x_rows != y_rows do
+    raise ArgumentError, "x and y must have the same number of rows, got #{x_rows} and #{y_rows}"
+  end
+
+  def dmatrix(%Nx.Tensor{shape: {rows, _}} = x, %Nx.Tensor{shape: {rows}} = y, opts) do
+    if Keyword.has_key?(opts, :label) do
+      raise ArgumentError, "label must not be specified as an opt if y is provided"
+    end
+
+    opts = Keyword.put_new(opts, :label, y)
+    dmatrix(x, opts)
   end
 
   def dmatrix(
@@ -143,6 +237,20 @@ defmodule Exgboost do
 
   def booster(%DMatrix{} = dmat, opts) do
     booster([dmat], opts)
+  end
+
+  def dmatrix_slice(%DMatrix{} = dmat, r_index, opts \\ []) do
+    opts = Keyword.validate!(opts, allow_groups: false)
+    allow_groups = Keyword.fetch!(opts, :allow_groups)
+    Exgboost.NIF.dmatrix_slice(dmat.ref, r_index, allow_groups)
+  end
+
+  def booster_slice(%Booster{} = boostr, begin_layer, end_layer, step) do
+    Exgboost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step)
+  end
+
+  def booster_slice(%Booster{} = boostr, {begin_layer, end_layer, step}) do
+    Exgboost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step)
   end
 
   def train(%DMatrix{} = dmat, opts \\ []) do

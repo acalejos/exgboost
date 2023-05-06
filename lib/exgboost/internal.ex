@@ -96,7 +96,7 @@ defmodule Exgboost.Internal do
   end
 
   def update(%Booster{} = booster, %DMatrix{} = dmatrix, iteration) when is_integer(iteration) do
-    Exgboost.NIF.booster_update_one_iter(booster.ref, iteration, dmatrix.ref) |> unwrap!()
+    Exgboost.NIF.booster_update_one_iter(booster.ref, dmatrix.ref, iteration) |> unwrap!()
   end
 
   def update(%Booster{} = booster, %DMatrix{} = dmatrix, objective)
@@ -130,11 +130,17 @@ defmodule Exgboost.Internal do
 
   def _train(%Booster{} = booster, %DMatrix{} = dmat, opts \\ []) do
     opts = Keyword.validate!(opts, [:obj, num_boost_rounds: 10])
+    objective = Keyword.get(opts, :obj)
     start_iteration = 0
     num_boost_rounds = Keyword.fetch!(opts, :num_boost_rounds)
 
     for i <- start_iteration..(num_boost_rounds - 1) do
-      Exgboost.NIF.booster_update_one_iter(booster.ref, dmat.ref, i)
+      # Exgboost.NIF.booster_update_one_iter(booster.ref, dmat.ref, i)
+      if objective do
+        update(booster, dmat, objective)
+      else
+        update(booster, dmat, i)
+      end
     end
 
     booster
