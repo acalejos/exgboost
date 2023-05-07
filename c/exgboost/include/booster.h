@@ -33,5 +33,9 @@ ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
                                           const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]);
 
 #endif

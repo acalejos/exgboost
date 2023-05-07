@@ -33,6 +33,7 @@ static ErlNifFunc nif_funcs[] = {
     {"xgboost_build_info", 0, EXGBuildInfo},
     {"set_global_config", 1, EXGBSetGlobalConfig},
     {"get_global_config", 0, EXGBGetGlobalConfig},
+    {"proxy_dmatrix_create", 0, EXGProxyDMatrixCreate},
     {"dmatrix_create_from_file", 2, EXGDMatrixCreateFromFile},
     {"dmatrix_create_from_mat", 4, EXGDMatrixCreateFromMat},
     {"dmatrix_create_from_sparse", 6, EXGDMatrixCreateFromSparse},
@@ -64,5 +65,7 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_get_str_feature_info", 2, EXGBoosterGetStrFeatureInfo},
     {"booster_feature_score", 2, EXGBoosterFeatureScore},
     {"booster_slice", 4, EXGBoosterSlice},
-    {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix}};
+    {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix},
+    {"booster_predict_from_dense", 4, EXGBoosterPredictFromDense},
+    {"booster_predict_from_csr", 7, EXGBoosterPredictFromCSR}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

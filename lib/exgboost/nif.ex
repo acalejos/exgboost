@@ -332,4 +332,25 @@ defmodule Exgboost.NIF do
           tuple()
   def booster_predict_from_dmatrix(_boster, _dmatrix, _config),
     do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_predict_from_dense(booster_reference(), String.t(), String.t(), reference() | nil) ::
+          tuple()
+  def booster_predict_from_dense(_boster, _values, _config, _proxy),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_predict_from_csr(
+          booster_reference(),
+          String.t(),
+          String.t(),
+          String.t(),
+          integer(),
+          String.t(),
+          reference() | nil
+        ) ::
+          tuple()
+  def booster_predict_from_csr(_boster, _indptr, _indices, _values, _ncols, _config, _proxy),
+    do: :erlang.nif_error(:not_implemented)
+
+  @spec proxy_dmatrix_create() :: dmatrix_reference()
+  def proxy_dmatrix_create, do: :erlang.nif_error(:not_implemented)
 end

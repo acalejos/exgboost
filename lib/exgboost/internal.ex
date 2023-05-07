@@ -35,14 +35,19 @@ defmodule Exgboost.Internal do
         my_missing = MapSet.difference(dmatrix_name_set, booster_name_set)
         msg = "feature_names mismatch: #{inspect(booster_names)} #{inspect(dmatrix_names)}"
 
-        if MapSet.size(dmatrix_missing) != 0 do
-          ^msg = msg <> "\nexpected #{inspect(dmatrix_missing)} in input data"
-        end
+        msg =
+          if MapSet.size(dmatrix_missing) != 0 do
+            msg <> "\nexpected #{inspect(dmatrix_missing)} in input data"
+          else
+            msg
+          end
 
-        if MapSet.size(my_missing) != 0 do
-          ^msg =
+        msg =
+          if MapSet.size(my_missing) != 0 do
             msg <> "\ntraining data did not have the following fields: #{inspect(my_missing)}"
-        end
+          else
+            msg
+          end
 
         raise ArgumentError, msg
       end
@@ -144,6 +149,32 @@ defmodule Exgboost.Internal do
     end
 
     booster
+  end
+
+  def set_dmatrix_params(dmat, opts) do
+    opts =
+      Keyword.validate!(opts, [
+        :label,
+        :weight,
+        :base_margin,
+        :group,
+        :label_upper_bound,
+        :label_lower_bound,
+        :feature_weights
+      ])
+
+    {meta_opts, str_opts} = DMatrix.get_args_groups(opts, [:meta, :str])
+
+    Enum.each(meta_opts, fn {key, value} ->
+      data_interface = array_interface(value) |> Jason.encode!()
+      Exgboost.NIF.dmatrix_set_info_from_interface(dmat.ref, Atom.to_string(key), data_interface)
+    end)
+
+    Enum.each(str_opts, fn {key, value} ->
+      Exgboost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
+    end)
+
+    dmat
   end
 
   def unwrap!({:ok, val}), do: val

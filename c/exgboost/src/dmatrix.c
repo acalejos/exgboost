@@ -864,3 +864,22 @@ ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
+
+ERL_NIF_TERM EXGProxyDMatrixCreate(ErlNifEnv *env, int argc,
+                                   const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (argc != 0) {
+    ret = exg_error(env, "EXGProxyDMatrixCreate doesn't take arguments");
+    goto END;
+  }
+  result = XGProxyDMatrixCreate(&handle);
+  if (0 == result) {
+    ret = make_DMatrix_resource(env, handle);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  return ret;
+}

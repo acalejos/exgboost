@@ -61,7 +61,11 @@ defmodule ExgboostTest do
     params = %{tree_method: "hist"}
     booster = Exgboost.train(dtrain, num_boost_rounds: num_boost_round, params: params)
     dtest = Exgboost.dmatrix(x)
-    preds = Exgboost.predict(booster, dtest)
-    assert preds.shape == y.shape
+    dmat_preds = Exgboost.predict(booster, dtest)
+    inplace_preds_no_proxy = Exgboost.inplace_predict(booster, x)
+    # TODO: Test inplace_predict with proxy
+    #inplace_preds_with_proxy = Exgboost.inplace_predict(booster, x, base_margin: true)
+    assert dmat_preds.shape == y.shape
+    assert inplace_preds_no_proxy.shape == y.shape
   end
 end

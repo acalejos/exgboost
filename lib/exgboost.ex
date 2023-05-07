@@ -1,4 +1,5 @@
 defmodule Exgboost do
+  alias Exgboost.ProxyDmatrix
   alias Exgboost.Booster
   alias Exgboost.DMatrix
   import Exgboost.Internal
@@ -125,26 +126,9 @@ defmodule Exgboost do
     dmatrix(x, y, [])
   end
 
-  def dmatrix(%Nx.Tensor{shape: {x_rows, _}}, %Nx.Tensor{shape: {y_rows}}, _opts)
-      when x_rows != y_rows do
-    raise ArgumentError, "x and y must have the same number of rows, got #{x_rows} and #{y_rows}"
-  end
-
-  def dmatrix(%Nx.Tensor{shape: {rows, _}} = x, %Nx.Tensor{shape: {rows}} = y, opts) do
-    if Keyword.has_key?(opts, :label) do
-      raise ArgumentError, "label must not be specified as an opt if y is provided"
-    end
-
-    opts = Keyword.put_new(opts, :label, y)
-    dmatrix(x, opts)
-  end
-
   def dmatrix(
-        %Nx.Tensor{} = indptr,
-        %Nx.Tensor{} = indices,
-        %Nx.Tensor{} = data,
-        n,
-        opts \\ []
+        {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = data, n},
+        opts
       )
       when is_integer(n) and n > 0 do
     opts =
@@ -187,32 +171,33 @@ defmodule Exgboost do
     set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
   end
 
-  def set_params(value, opts \\ [])
+  def dmatrix(%Nx.Tensor{shape: {x_rows, _}}, %Nx.Tensor{shape: {y_rows}}, _opts)
+      when x_rows != y_rows do
+    raise ArgumentError, "x and y must have the same number of rows, got #{x_rows} and #{y_rows}"
+  end
+
+  def dmatrix(%Nx.Tensor{shape: {rows, _}} = x, %Nx.Tensor{shape: {rows}} = y, opts) do
+    if Keyword.has_key?(opts, :label) do
+      raise ArgumentError, "label must not be specified as an opt if y is provided"
+    end
+
+    opts = Keyword.put_new(opts, :label, y)
+    dmatrix(x, opts)
+  end
+
+  def proxy_dmatrix() do
+    p_ref = Exgboost.NIF.proxy_dmatrix_create()
+    %ProxyDmatrix{ref: p_ref}
+  end
+
+  def set_params(_dmatrix, _opts \\ [])
+
+  def set_params(%ProxyDmatrix{} = dmat, opts) do
+    Exgboost.Internal.set_dmatrix_params(dmat, opts)
+  end
 
   def set_params(%DMatrix{} = dmat, opts) do
-    opts =
-      Keyword.validate!(opts, [
-        :label,
-        :weight,
-        :base_margin,
-        :group,
-        :label_upper_bound,
-        :label_lower_bound,
-        :feature_weights
-      ])
-
-    {meta_opts, str_opts} = DMatrix.get_args_groups(opts, [:meta, :str])
-
-    Enum.each(meta_opts, fn {key, value} ->
-      data_interface = array_interface(value) |> Jason.encode!()
-      Exgboost.NIF.dmatrix_set_info_from_interface(dmat.ref, Atom.to_string(key), data_interface)
-    end)
-
-    Enum.each(str_opts, fn {key, value} ->
-      Exgboost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
-    end)
-
-    dmat
+    Exgboost.Internal.set_dmatrix_params(dmat, opts)
   end
 
   def set_params(%Booster{} = booster, opts) do
@@ -407,9 +392,91 @@ defmodule Exgboost do
       Exgboost.NIF.booster_predict_from_dmatrix(booster.ref, data.ref, Jason.encode!(config))
       |> unwrap!()
 
-    IO.puts("shape: #{inspect(shape)}")
-    IO.puts("preds: #{inspect(preds)}")
-
     Nx.tensor(preds) |> Nx.reshape(shape)
+  end
+
+  def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
+    opts =
+      Keyword.validate!(opts,
+        iteration_range: {0, 0},
+        predict_type: "value",
+        # TODO: Missing should default to Nx.Constants.nan but we need to serialize
+        missing: 0,
+        validate_features: true,
+        base_margin: nil,
+        strict_shape: false
+      )
+
+    base_margin = Keyword.fetch!(opts, :base_margin)
+    {iteration_range_left, iteration_range_right} = Keyword.fetch!(opts, :iteration_range)
+
+    params = %{
+      type: if(Keyword.fetch!(opts, :predict_type) == "margin", do: 1, else: 0),
+      training: false,
+      iteration_begin: iteration_range_left,
+      iteration_end: iteration_range_right,
+      missing: Keyword.fetch!(opts, :missing),
+      strict_shape: Keyword.fetch!(opts, :strict_shape),
+      cache_id: 0
+    }
+
+    # TODO: DMatrix proxy generation
+    proxy =
+      if not is_nil(base_margin) do
+        prox = proxy_dmatrix()
+        if is_nil(prox), do: raise("Failed to create proxy DMatrix")
+        prox = set_params(prox, base_margin: base_margin)
+        prox.ref
+      else
+        nil
+      end
+
+    # if validate_features do
+    # if not hasattr(data, "shape") do
+    #     raise TypeError(
+    #         "`shape` attribute is required when `validate_features` is True."
+    #     )
+    # end
+    # if len(data.shape) != 1 and self.num_features() != data.shape[1]:
+    #     raise ValueError(
+    #         f"Feature shape mismatch, expected: {self.num_features()}, "
+    #         f"got {data.shape[1]}"
+    #     )
+    # end
+
+    case data do
+      %Nx.Tensor{} ->
+        data_interface = Exgboost.Internal.array_interface(data) |> Jason.encode!()
+
+        {shape, preds} =
+          Exgboost.NIF.booster_predict_from_dense(
+            boostr.ref,
+            data_interface,
+            Jason.encode!(params),
+            proxy
+          )
+          |> unwrap!()
+
+        Nx.tensor(preds) |> Nx.reshape(shape)
+
+      {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
+        indptr_interface = Exgboost.Internal.array_interface(indptr) |> Jason.encode!()
+        indices_interface = Exgboost.Internal.array_interface(indices) |> Jason.encode!()
+        values_interface = Exgboost.Internal.array_interface(values) |> Jason.encode!()
+
+        {shape, preds} =
+          Exgboost.NIF.booster_predict_from_csr(
+            boostr.ref,
+            indptr_interface,
+            indices_interface,
+            values_interface,
+            ncol,
+            Jason.encode!(params),
+            proxy
+          )
+          |> unwrap!()
+
+        Nx.tensor(preds) |> Nx.reshape(shape)
+    end
   end
 end

@@ -206,3 +206,8 @@ defmodule Exgboost.DMatrix do
     |> List.to_tuple()
   end
 end
+
+defmodule Exgboost.ProxyDmatrix do
+  @enforce_keys [:ref]
+  defstruct [:ref]
+end

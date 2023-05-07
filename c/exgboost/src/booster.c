@@ -585,17 +585,37 @@ END:
   return ret;
 }
 
+static ERL_NIF_TERM collect_prediction_results(ErlNifEnv *env,
+                                               bst_ulong *out_shape,
+                                               bst_ulong out_dim,
+                                               float *out_result) {
+  bst_ulong out_len = 1;
+  ERL_NIF_TERM shape_arr[out_dim];
+  for (bst_ulong j = 0; j < out_dim; ++j) {
+    shape_arr[j] = enif_make_int(env, out_shape[j]);
+    out_len *= out_shape[j];
+  }
+  ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_arr, out_dim);
+  ERL_NIF_TERM result_arr[out_len];
+  for (bst_ulong i = 0; i < out_len; ++i) {
+    result_arr[i] = enif_make_double(env, out_result[i]);
+  }
+  return exg_ok(env, enif_make_tuple2(
+                         env, shape,
+                         enif_make_list_from_array(env, result_arr, out_len)));
+}
+
 ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
                                           const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle dmatrix;
   DMatrixHandle **dmatrix_resource = NULL;
-  char **config = NULL;
+  char *config = NULL;
   bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
   float *out_result = NULL;
-  bst_ulong out_len = 1;
+
   ERL_NIF_TERM ret = -1;
   int result = -1;
   if (3 != argc) {
@@ -621,25 +641,142 @@ ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
   result = XGBoosterPredictFromDMatrix(booster, dmatrix, config, &out_shape,
                                        &out_dim, &out_result);
   if (result == 0) {
-    ERL_NIF_TERM shape_arr[out_dim];
-    for (bst_ulong j = 0; j < out_dim; ++j) {
-      shape_arr[j] = enif_make_int(env, out_shape[j]);
-      out_len *= out_shape[j];
-    }
-    ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_arr, out_dim);
-    ERL_NIF_TERM result_arr[out_len];
-    for (bst_ulong i = 0; i < out_len; ++i) {
-      result_arr[i] = enif_make_double(env, out_result[i]);
-    }
-    ret = exg_ok(env, enif_make_tuple2(
-                          env, shape,
-                          enif_make_list_from_array(env, result_arr, out_len)));
+    ret = collect_prediction_results(env, out_shape, out_dim, out_result);
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
 END:
   if (config != NULL) {
     enif_free(config);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  DMatrixHandle proxy;
+  DMatrixHandle **proxy_resource = NULL;
+  char *values = NULL;
+  char *config = NULL;
+  bst_ulong *out_shape = NULL;
+  bst_ulong out_dim = 0;
+  float *out_result = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (4 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &values)) {
+    ret = exg_error(env, "Value must be a JSON-encoded string");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[2], &config)) {
+    ret = exg_error(env, "Config must be a JSON-encoded string");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[3], DMatrix_RESOURCE_TYPE,
+                         (void *)&(proxy_resource))) {
+    proxy = NULL;
+  } else {
+    proxy = *proxy_resource;
+  }
+  booster = *booster_resource;
+  result = XGBoosterPredictFromDense(booster, values, config, proxy, &out_shape,
+                                     &out_dim, &out_result);
+  if (result == 0) {
+    ret = collect_prediction_results(env, out_shape, out_dim, out_result);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (config != NULL) {
+    enif_free(config);
+  }
+  if (values != NULL) {
+    enif_free(values);
+  }
+  return ret;
+}
+ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  DMatrixHandle proxy;
+  DMatrixHandle **proxy_resource = NULL;
+  char *indptr = NULL;
+  char *indices = NULL;
+  char *data = NULL;
+  char *config = NULL;
+  bst_ulong ncols = 0;
+  bst_ulong *out_shape = NULL;
+  bst_ulong out_dim = 0;
+  float *out_result = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (7 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &indptr)) {
+    ret = exg_error(env, "Indptr must be a JSON-encoded string");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[2], &indices)) {
+    ret = exg_error(env, "Indices must be a JSON-encoded string");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[3], &data)) {
+    ret = exg_error(env, "Data must be a JSON-encoded string");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[4], &ncols)) {
+    ret = exg_error(env, "Ncols must be an integer");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[5], &config)) {
+    ret = exg_error(env, "Config must be a JSON-encoded string");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
+                         (void *)&(proxy_resource))) {
+    proxy = NULL;
+  } else {
+    proxy = *proxy_resource;
+  }
+  booster = *booster_resource;
+  result =
+      XGBoosterPredictFromCSR(booster, indptr, indices, data, ncols, config,
+                              proxy, &out_shape, &out_dim, &out_result);
+  if (result == 0) {
+    ret = collect_prediction_results(env, out_shape, out_dim, out_result);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (config != NULL) {
+    enif_free(config);
+  }
+  if (indptr != NULL) {
+    enif_free(indptr);
+  }
+  if (indices != NULL) {
+    enif_free(indices);
+  }
+  if (data != NULL) {
+    enif_free(data);
   }
   return ret;
 }
