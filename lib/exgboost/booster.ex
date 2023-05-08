@@ -1,6 +1,6 @@
 defmodule Exgboost.Booster do
   @enforce_keys [:ref]
-  defstruct [:ref, params: %{}]
+  defstruct [:ref]
 
   @behaviour Access
   @impl Access

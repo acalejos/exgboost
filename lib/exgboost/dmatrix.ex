@@ -89,10 +89,10 @@ defmodule Exgboost.DMatrix do
   def fetch(dmatrix, "group"),
     do: Exgboost.NIF.dmatrix_get_uint_info(dmatrix.ref, "group_ptr")
 
-  def fetch(dmatrix, "rows"),
+  def fetch(dmatrix, "num_rows"),
     do: Exgboost.NIF.dmatrix_num_row(dmatrix.ref)
 
-  def fetch(dmatrix, "cols"),
+  def fetch(dmatrix, "num_cols"),
     do: Exgboost.NIF.dmatrix_num_col(dmatrix.ref)
 
   def fetch(dmatrix, "non_missing"),

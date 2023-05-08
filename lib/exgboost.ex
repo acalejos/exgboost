@@ -7,6 +7,15 @@ defmodule Exgboost do
   def xgboost_build_info, do: Exgboost.NIF.xgboost_build_info() |> unwrap! |> Jason.decode!()
 
   def xgboost_version, do: Exgboost.NIF.xgboost_version() |> unwrap!
+
+  def set_config(%{} = config) do
+    Exgboost.NIF.set_global_config(Jason.encode!(config)) |> unwrap!()
+  end
+
+  def get_config do
+    Exgboost.NIF.get_global_config() |> unwrap! |> Jason.decode!()
+  end
+
   def dmatrix(x, opts \\ [])
 
   @doc """
@@ -171,12 +180,14 @@ defmodule Exgboost do
     set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
   end
 
-  def dmatrix(%Nx.Tensor{shape: {x_rows, ...}}, %Nx.Tensor{shape: {y_rows}}, _opts)
-      when x_rows != y_rows do
-    raise ArgumentError, "x and y must have the same number of rows, got #{x_rows} and #{y_rows}"
+  def dmatrix(%Nx.Tensor{shape: x_shape}, %Nx.Tensor{shape: {y_shape}}, _opts)
+      when is_tuple(x_shape) and elem(x_shape, 0) != elem(y_shape, 0) do
+    raise ArgumentError,
+          "x and y must have the same number of rows, got #{elem(x_shape, 0)} and #{elem(y_shape, 0)}"
   end
 
-  def dmatrix(%Nx.Tensor{shape: {rows, _}} = x, %Nx.Tensor{shape: {rows}} = y, opts) do
+  def dmatrix(%Nx.Tensor{shape: x_shape} = x, %Nx.Tensor{shape: y_shape} = y, opts)
+      when is_tuple(x_shape) and elem(x_shape, 0) == elem(y_shape, 0) do
     if Keyword.has_key?(opts, :label) do
       raise ArgumentError, "label must not be specified as an opt if y is provided"
     end
