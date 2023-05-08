@@ -267,18 +267,19 @@ defmodule Exgboost.NIF do
   @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
   def booster_create(_handles), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_slice(booster_reference(), integer(), integer(), integer()) :: booster_reference()
+  @spec booster_slice(booster_reference(), integer(), integer(), integer()) ::
+          exgboost_return_type(booster_reference())
   def booster_slice(_handle, _begin_layer, _end_layer, _step),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_boosted_rounds(booster_reference()) :: integer()
+  @spec booster_boosted_rounds(booster_reference()) :: exgboost_return_type(integer())
   def booster_boosted_rounds(_handle), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_set_param(booster_reference(), String.t(), String.t()) ::
           :ok | {:error, String.t()}
   def booster_set_param(_handle, _param, _value), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_get_num_feature(booster_reference()) :: pos_integer()
+  @spec booster_get_num_feature(booster_reference()) :: exgboost_return_type(pos_integer())
   def booster_get_num_feature(_handle), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_update_one_iter(booster_reference(), dmatrix_reference(), integer()) ::
@@ -302,11 +303,10 @@ defmodule Exgboost.NIF do
   def booster_eval_one_iter(_booster_handle, _iteration, _dmatrix_handles, _eval_names),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_get_attr_names(booster_reference()) :: [String.t()]
+  @spec booster_get_attr_names(booster_reference()) :: exgboost_return_type([String.t()])
   def booster_get_attr_names(_booster_handle), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_get_attr(booster_reference(), String.t()) ::
-          :ok | {:error, String.t()}
+  @spec booster_get_attr(booster_reference(), String.t()) :: exgboost_return_type(String.t())
   def booster_get_attr(_booster_handle, _key), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_set_attr(booster_reference(), String.t(), String.t()) ::

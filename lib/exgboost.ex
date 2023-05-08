@@ -1,266 +1,123 @@
 defmodule Exgboost do
-  alias Exgboost.ProxyDmatrix
+  @moduledoc """
+  Elixir bindings for the XGBoost library.
+
+  Xtreme Gradient Boosting (XGBoost) is an optimized distributed gradient
+  boosting library designed to be highly efficient, flexible and portable.
+  It implements machine learning algorithms under the [Gradient Boosting](https://en.wikipedia.org/wiki/Gradient_boosting)
+  framework. XGBoost provides a parallel tree boosting (also known as GBDT, GBM)
+  that solve many data science problems in a fast and accurate way. The same code
+  runs on major distributed environment (Hadoop, SGE, MPI) and can solve problems beyond
+  billions of examples.
+
+  ## Installation
+
+  In order to use `Exgboost`, you will need Elixir installed. Then create an Elixir project via the `mix` build tool:
+
+  ```
+  $ mix new my_app
+  ```
+
+  Then you can add `Exgboost` as dependency in your `mix.exs`:
+
+  ```elixir
+  def deps do
+  [
+    {:exgboost, "~> 0.1.0"}
+  ]
+  end
+  ```
+  Then run `mix deps.get` to install it.
+
+  And run `mix compile` to compile the library.
+
+  ## Dependencies
+
+  `Exgboost` depends on the [Nx](https://hexdocs.pm/nx/Nx.html) library for tensor creation and manipulation.
+
+  ## Basic Usage
+
+  iex> key = Nx.Random.key(42)
+  iex> {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
+  iex> {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
+  iex> model = Exgboost.train(X,y)
+  iex> predictions = Exgboost.predict(model, X)
+
+  ### Training
+
+  ```elixir
+  ```
+
+  ### Prediction
+
+  ```elixir
+  ```
+
+  """
   alias Exgboost.Booster
+  alias Exgboost.Internal
   alias Exgboost.DMatrix
-  import Exgboost.Internal
-
-  def xgboost_build_info, do: Exgboost.NIF.xgboost_build_info() |> unwrap! |> Jason.decode!()
-
-  def xgboost_version, do: Exgboost.NIF.xgboost_version() |> unwrap!
-
-  def set_config(%{} = config) do
-    Exgboost.NIF.set_global_config(Jason.encode!(config)) |> unwrap!()
-  end
-
-  def get_config do
-    Exgboost.NIF.get_global_config() |> unwrap! |> Jason.decode!()
-  end
-
-  def dmatrix(x, opts \\ [])
+  alias Exgboost.ProxyDMatrix
 
   @doc """
-  Create a DMatrix from a file.
+  Check the build information of the xgboost library.
 
-  Refer to https://xgboost.readthedocs.io/en/latest/tutorials/external_memory.html#text-file-inputs
-  for proper formatting of the file and the options.
+  Returns a map containing information about the build.
 
-  This function will URI encode the filepath according to the URI scheme defined in
-  XGBoost's documentation.
+  Example:
+    iex> build = Exgboost.xgboost_build_info()
+    iex> is_map(build)
+    true
   """
-  def dmatrix(filepath, opts) when is_binary(filepath) and is_list(opts) do
-    opts =
-      Keyword.validate!(opts,
-        label_column: nil,
-        cacheprefix: nil,
-        format: :dense,
-        ext: :auto,
-        silent: 1
-      )
+  @spec xgboost_build_info() :: map()
+  def xgboost_build_info,
+    do: Exgboost.NIF.xgboost_build_info() |> Internal.unwrap!() |> Jason.decode!()
 
-    if not (File.exists?(filepath) and File.regular?(filepath)) do
-      raise ArgumentError, "File must exist and be a regular file"
-    end
+  @doc """
+  Check the version of the xgboost library.
 
-    {file_format, opts} = Keyword.pop!(opts, :ext)
-    {silent, opts} = Keyword.pop!(opts, :silent)
-    {format, opts} = Keyword.pop!(opts, :format)
-    {label_column, opts} = Keyword.pop!(opts, :label_column)
-    {cacheprefix, opts} = Keyword.pop!(opts, :cacheprefix)
+  Returns a 3-tuple in the form of `{major, minor, patch}`.
 
-    ext =
-      case file_format do
-        :libsvm -> "libsvm"
-        :csv -> "csv"
-        :auto -> "auto"
-        _ -> raise ArgumentError, "Invalid file format"
-      end
+  Example:
 
-    uri = "#{filepath}?format=#{ext}"
+      iex> v = Exgboost.xgboost_version()
+      iex> is_tuple(v)
 
-    if file_format != :csv and not is_nil(label_column) do
-      if silent == 1 do
-        IO.warn("label_column only be specified for CSV files -- ignoring...")
-      else
-        raise ArgumentError, "label_column only be specified for CSV files"
-      end
-    end
+  """
+  @spec xgboost_version() :: {integer(), integer(), integer()} | {:error, String.t()}
+  def xgboost_version, do: Exgboost.NIF.xgboost_version() |> Internal.unwrap!()
 
-    if not is_nil(cacheprefix) and not File.exists?(cacheprefix) do
-      if silent == 1 do
-        IO.warn("cacheprefix file not found -- ignoring...")
-      else
-        raise ArgumentError, "cacheprefix file not found"
-      end
-    end
+  @doc """
+  Set global configuration.
 
-    uri =
-      if not is_nil(label_column) and file_format == :csv do
-        uri <> "&label_column=#{label_column}"
-      else
-        uri
-      end
+  Global configuration consists of a collection of parameters that can be
+  applied in the global scope. See [Global Configuration](https://xgboost.readthedocs.io/en/latest/parameter.html#global-config)
+  for the full list of parameters supported in the global configuration.
 
-    uri =
-      if not is_nil(cacheprefix) and File.exists?(cacheprefix) and File.regular?(cacheprefix) do
-        uri <> "#cacheprefix=#{cacheprefix}"
-      else
-        uri
-      end
-
-    dmat =
-      Exgboost.NIF.dmatrix_create_from_file(
-        uri,
-        silent
-      )
-      |> unwrap!()
-
-    set_params(%DMatrix{ref: dmat, format: format}, opts)
+  """
+  @spec set_config(map()) :: :ok | {:error, String.t()}
+  def set_config(%{} = config) do
+    Exgboost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
   end
 
-  # TODO: Pop opts used here and defer other args validation to set_params
-  def dmatrix(%Nx.Tensor{} = tensor, opts) when is_list(opts) do
-    opts =
-      Keyword.validate!(opts, [
-        :label,
-        :weight,
-        :base_margin,
-        :group,
-        :label_upper_bound,
-        :label_lower_bound,
-        :feature_weights,
-        :feature_name,
-        :feature_type,
-        format: :dense,
-        missing: -1.0,
-        nthread: 0
-      ])
+  @doc """
+  Get current values of the global configuration.
 
-    {config_opts, format_opts, meta_opts, str_opts} =
-      DMatrix.get_args_groups(opts, [:config, :format, :meta, :str])
-
-    config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
-    format = Keyword.fetch!(format_opts, :format)
-
-    dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(array_interface(tensor)),
-        Jason.encode!(config)
-      )
-      |> unwrap!()
-
-    set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
+  Global configuration consists of a collection of parameters that can be
+  applied in the global scope. See [Global Configuration](https://xgboost.readthedocs.io/en/latest/parameter.html#global-config)
+  for the full list of parameters supported in the global configuration.
+  """
+  @spec get_config() :: map()
+  def get_config do
+    Exgboost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
   end
 
-  def dmatrix(%Nx.Tensor{} = x, %Nx.Tensor{} = y) do
-    dmatrix(x, y, [])
+  @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: Exgboost.Booster.t()
+  def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
+    {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
+    dmat = Exgboost.DMatrix.from_tensor(x, y, [format: :dense] ++ dmat_opts)
+    Internal.train(dmat, opts)
   end
-
-  def dmatrix(
-        {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = data, n},
-        opts
-      )
-      when is_integer(n) and n > 0 do
-    opts =
-      Keyword.validate!(opts, [
-        :label,
-        :weight,
-        :base_margin,
-        :group,
-        :label_upper_bound,
-        :label_lower_bound,
-        :feature_weights,
-        :feature_name,
-        :feature_type,
-        format: :csr,
-        missing: -1.0,
-        nthread: 0
-      ])
-
-    {config_opts, format_opts, meta_opts, str_opts} =
-      DMatrix.get_args_groups(opts, [:config, :format, :meta, :str])
-
-    config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
-    format = Keyword.fetch!(format_opts, :format)
-
-    if format not in [:csr, :csc] do
-      raise ArgumentError, "Sparse format must be :csr or :csc"
-    end
-
-    dmat =
-      Exgboost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(array_interface(indptr)),
-        Jason.encode!(array_interface(indices)),
-        Jason.encode!(array_interface(data)),
-        n,
-        Jason.encode!(config),
-        Atom.to_string(format)
-      )
-      |> unwrap!()
-
-    set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
-  end
-
-  def dmatrix(%Nx.Tensor{shape: x_shape}, %Nx.Tensor{shape: {y_shape}}, _opts)
-      when is_tuple(x_shape) and elem(x_shape, 0) != elem(y_shape, 0) do
-    raise ArgumentError,
-          "x and y must have the same number of rows, got #{elem(x_shape, 0)} and #{elem(y_shape, 0)}"
-  end
-
-  def dmatrix(%Nx.Tensor{shape: x_shape} = x, %Nx.Tensor{shape: y_shape} = y, opts)
-      when is_tuple(x_shape) and elem(x_shape, 0) == elem(y_shape, 0) do
-    if Keyword.has_key?(opts, :label) do
-      raise ArgumentError, "label must not be specified as an opt if y is provided"
-    end
-
-    opts = Keyword.put_new(opts, :label, y)
-    dmatrix(x, opts)
-  end
-
-  def proxy_dmatrix() do
-    p_ref = Exgboost.NIF.proxy_dmatrix_create()
-    %ProxyDmatrix{ref: p_ref}
-  end
-
-  def set_params(_dmatrix, _opts \\ [])
-
-  def set_params(%ProxyDmatrix{} = dmat, opts) do
-    Exgboost.Internal.set_dmatrix_params(dmat, opts)
-  end
-
-  def set_params(%DMatrix{} = dmat, opts) do
-    Exgboost.Internal.set_dmatrix_params(dmat, opts)
-  end
-
-  def set_params(%Booster{} = booster, opts) do
-    # opts = Keyword.validate!(opts, [:params, :cache])
-    # TODO: List of params here: https://xgboost.readthedocs.io/en/latest/parameter.html
-    # Eventually we should validate, but there's so many, for now we will let XGBoost fail
-    # on invalid params
-    for {key, value} <- opts do
-      Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), value)
-    end
-
-    booster
-  end
-
-  def booster(dmats, opts \\ [])
-
-  def booster(dmats, opts) when is_list(dmats) do
-    refs = Enum.map(dmats, & &1.ref)
-    booster_ref = Exgboost.NIF.booster_create(refs) |> unwrap!()
-    set_params(%Booster{ref: booster_ref}, opts)
-  end
-
-  def booster(%DMatrix{} = dmat, opts) do
-    booster([dmat], opts)
-  end
-
-  def dmatrix_slice(%DMatrix{} = dmat, r_index, opts \\ []) do
-    opts = Keyword.validate!(opts, allow_groups: false)
-    allow_groups = Keyword.fetch!(opts, :allow_groups)
-    Exgboost.NIF.dmatrix_slice(dmat.ref, r_index, allow_groups)
-  end
-
-  def booster_slice(%Booster{} = boostr, begin_layer, end_layer, step) do
-    Exgboost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step)
-  end
-
-  def booster_slice(%Booster{} = boostr, {begin_layer, end_layer, step}) do
-    Exgboost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step)
-  end
-
-  def train(%DMatrix{} = dmat, opts \\ []) do
-    opts = Keyword.validate!(opts, [:obj, num_boost_rounds: 10, params: %{}])
-
-    {booster_opts, opts} = Keyword.pop!(opts, :params)
-    # TODO: Find exhaustive list of params to use String.to_existing_atom()
-    booster_opts = Keyword.new(booster_opts, fn {key, value} -> {key, value} end)
-
-    bst = Exgboost.booster(dmat, booster_opts)
-    Exgboost.Internal._train(bst, dmat, opts)
-  end
-
-  # TODO: Inplace Prediction
 
   @doc """
   Predict with a booster.
@@ -341,69 +198,10 @@ defmodule Exgboost do
   prediction : Nx.tensor
 
   """
-  def predict(%Booster{} = booster, %DMatrix{} = data, opts \\ []) do
-    opts =
-      Keyword.validate!(opts,
-        output_margin: false,
-        pred_leaf: false,
-        pred_contribs: false,
-        approx_contribs: false,
-        pred_interactions: false,
-        validate_features: true,
-        training: false,
-        iteration_range: {0, 0},
-        strict_shape: false
-      )
-
-    if Keyword.fetch!(opts, :validate_features) do
-      Exgboost.Internal.validate_features!(booster, data)
-    end
-
-    approx_contribs = Keyword.fetch!(opts, :approx_contribs)
-
-    type_count =
-      Keyword.take(opts, [:output_margin, :pred_leaf, :pred_contribs, :pred_interactions])
-      |> Keyword.values()
-      |> Enum.count(& &1)
-
-    if type_count > 1 do
-      raise ArgumentError,
-            "Only one of :output_margin, :pred_leaf, :pred_contribs, :pred_interactions can be set to true"
-    end
-
-    type =
-      cond do
-        Keyword.fetch!(opts, :output_margin) ->
-          1
-
-        Keyword.fetch!(opts, :pred_contribs) ->
-          if approx_contribs, do: 3, else: 2
-
-        Keyword.fetch!(opts, :pred_interactions) ->
-          if approx_contribs, do: 5, else: 4
-
-        Keyword.fetch!(opts, :pred_leaf) ->
-          6
-
-        true ->
-          0
-      end
-
-    {left_range, right_range} = Keyword.fetch!(opts, :iteration_range)
-
-    config = %{
-      type: type,
-      training: Keyword.fetch!(opts, :training),
-      iteration_begin: left_range,
-      iteration_end: right_range,
-      strict_shape: Keyword.fetch!(opts, :strict_shape)
-    }
-
-    {shape, preds} =
-      Exgboost.NIF.booster_predict_from_dmatrix(booster.ref, data.ref, Jason.encode!(config))
-      |> unwrap!()
-
-    Nx.tensor(preds) |> Nx.reshape(shape)
+  def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
+    {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
+    dmat = Exgboost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
+    Internal.predict(bst, dmat, opts)
   end
 
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
@@ -432,8 +230,8 @@ defmodule Exgboost do
 
     proxy =
       if not is_nil(base_margin) do
-        prox = proxy_dmatrix()
-        prox = set_params(prox, base_margin: base_margin)
+        prox = ProxyDMatrix.proxy_dmatrix()
+        prox = DMatrix.set_params(prox, base_margin: base_margin)
         prox.ref
       else
         nil
@@ -454,7 +252,7 @@ defmodule Exgboost do
 
     case data do
       %Nx.Tensor{} ->
-        data_interface = Exgboost.Internal.array_interface(data) |> Jason.encode!()
+        data_interface = Internal.array_interface(data) |> Jason.encode!()
 
         {shape, preds} =
           Exgboost.NIF.booster_predict_from_dense(
@@ -463,14 +261,14 @@ defmodule Exgboost do
             Jason.encode!(params),
             proxy
           )
-          |> unwrap!()
+          |> Internal.unwrap!()
 
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = Exgboost.Internal.array_interface(indptr) |> Jason.encode!()
-        indices_interface = Exgboost.Internal.array_interface(indices) |> Jason.encode!()
-        values_interface = Exgboost.Internal.array_interface(values) |> Jason.encode!()
+        indptr_interface = Internal.array_interface(indptr) |> Jason.encode!()
+        indices_interface = Internal.array_interface(indices) |> Jason.encode!()
+        values_interface = Internal.array_interface(values) |> Jason.encode!()
 
         {shape, preds} =
           Exgboost.NIF.booster_predict_from_csr(
@@ -482,7 +280,7 @@ defmodule Exgboost do
             Jason.encode!(params),
             proxy
           )
-          |> unwrap!()
+          |> Internal.unwrap!()
 
         Nx.tensor(preds) |> Nx.reshape(shape)
     end

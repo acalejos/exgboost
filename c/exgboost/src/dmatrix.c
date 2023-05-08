@@ -846,13 +846,11 @@ ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
   }
   handle = *resource;
   int index_count = (int)(bin.size / sizeof(int));
-  printf("index_count: %d\n", index_count);
   for (bst_ulong i = 0; i < index_count; i++) {
     if (((int *)bin.data)[i] < 0) {
       ret = exg_error(env, "Indices must be non-negative");
       goto END;
     }
-    printf("%d\n", ((int *)bin.data)[i]);
   }
   result = XGDMatrixSliceDMatrixEx(handle, (int *)bin.data, index_count, &out,
                                    allow_groups);
