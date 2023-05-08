@@ -177,6 +177,29 @@ defmodule Exgboost.Internal do
     dmat
   end
 
+  @doc """
+  Need to implement this because XGBoost expects NaN to be encoded as "NaN" without being
+  a string, so if we pass string NaN to XGBoost, it will fail.
+
+  This allows the user to use Nx.Constants.nan() and have it work as expected.
+  """
+  defimpl Jason.Encoder, for: Nx.Tensor do
+    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FC0::16-native>>}}, _opts),
+      do: "NaN"
+
+    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7E00::16-native>>}}, _opts),
+      do: "NaN"
+
+    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FC00000::32-native>>}}, _opts),
+      do: "NaN"
+
+    def encode(
+          %Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FF8000000000000::64-native>>}},
+          _opts
+        ),
+        do: "NaN"
+  end
+
   def unwrap!({:ok, val}), do: val
   def unwrap!({:error, reason}), do: raise(reason)
   def unwrap!(:ok), do: :ok

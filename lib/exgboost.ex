@@ -171,7 +171,7 @@ defmodule Exgboost do
     set_params(%DMatrix{ref: dmat, format: format}, Keyword.merge(meta_opts, str_opts))
   end
 
-  def dmatrix(%Nx.Tensor{shape: {x_rows, _}}, %Nx.Tensor{shape: {y_rows}}, _opts)
+  def dmatrix(%Nx.Tensor{shape: {x_rows, ...}}, %Nx.Tensor{shape: {y_rows}}, _opts)
       when x_rows != y_rows do
     raise ArgumentError, "x and y must have the same number of rows, got #{x_rows} and #{y_rows}"
   end
@@ -400,8 +400,7 @@ defmodule Exgboost do
       Keyword.validate!(opts,
         iteration_range: {0, 0},
         predict_type: "value",
-        # TODO: Missing should default to Nx.Constants.nan but we need to serialize
-        missing: 0,
+        missing: Nx.Constants.nan(),
         validate_features: true,
         base_margin: nil,
         strict_shape: false
@@ -420,11 +419,9 @@ defmodule Exgboost do
       cache_id: 0
     }
 
-    # TODO: DMatrix proxy generation
     proxy =
       if not is_nil(base_margin) do
         prox = proxy_dmatrix()
-        if is_nil(prox), do: raise("Failed to create proxy DMatrix")
         prox = set_params(prox, base_margin: base_margin)
         prox.ref
       else
