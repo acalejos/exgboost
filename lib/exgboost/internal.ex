@@ -140,7 +140,6 @@ defmodule Exgboost.Internal do
     num_boost_rounds = Keyword.fetch!(opts, :num_boost_rounds)
 
     for i <- start_iteration..(num_boost_rounds - 1) do
-      # Exgboost.NIF.booster_update_one_iter(booster.ref, dmat.ref, i)
       if objective do
         update(booster, dmat, objective)
       else
