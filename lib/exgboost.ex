@@ -41,7 +41,7 @@ defmodule Exgboost do
   iex> {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
   iex> {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
   iex> model = Exgboost.train(X,y)
-  iex> predictions = Exgboost.predict(model, X)
+  iex> Exgboost.predict(model, X)
 
   ### Training
 
@@ -54,10 +54,12 @@ defmodule Exgboost do
   ```
 
   """
+  alias Exgboost.ArrayInterface
   alias Exgboost.Booster
   alias Exgboost.Internal
   alias Exgboost.DMatrix
   alias Exgboost.ProxyDMatrix
+  alias Exgboost.Training
 
   @doc """
   Check the build information of the xgboost library.
@@ -116,46 +118,36 @@ defmodule Exgboost do
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
     dmat = Exgboost.DMatrix.from_tensor(x, y, [format: :dense] ++ dmat_opts)
-    Internal.train(dmat, opts)
+    Training.train(dmat, opts)
   end
 
   @doc """
-  Predict with a booster.
-  Predict with a Booster and DMatrix containing data.
+  Predict with a booster model against a tensor
+
   The full model will be used unless `iteration_range` is specified,
-  meaning user have to either slice the model or use the ``best_iteration``
+  meaning user have to either slice the model or use the `best_iteration`
   attribute to get prediction from best model returned from early stopping.
 
-  Parameters
-  ----------
-  booster:
-      Booster instance.
-  data :
-      The dmatrix storing the input.
+  ## Options
 
-  output_margin :
-      Whether to output the raw untransformed margin value.
+  * `:output_margin` - Whether to output the raw untransformed margin value.
 
-  pred_leaf :
-      When this option is on, the output will be a matrix of (nsample,
+  * `:pred_leaf ` - When this option is on, the output will be a matrix of (nsample,
       ntrees) with each record indicating the predicted leaf index of
       each sample in each tree.  Note that the leaf index of a tree is
       unique per tree, so you may find leaf 1 in both tree 1 and tree 0.
 
-  pred_contribs :
-      When this is True the output will be a matrix of size (nsample,
+  * `:pred_contribs` - When this is True the output will be a matrix of size (nsample,
       nfeats + 1) with each record indicating the feature contributions
       (SHAP values) for that prediction. The sum of all feature
       contributions is equal to the raw untransformed margin value of the
       prediction. Note the final column is the bias term.
 
-  approx_contribs :
-      Approximate the contributions of each feature.  Used when ``pred_contribs`` or
+  * `:approx_contribs` - Approximate the contributions of each feature.  Used when ``pred_contribs`` or
       ``pred_interactions`` is set to True.  Changing the default of this parameter
       (False) is not recommended.
 
-  pred_interactions :
-      When this is True the output will be a matrix of size (nsample,
+  * `:pred_interactions` - When this is True the output will be a matrix of size (nsample,
       nfeats + 1, nfeats + 1) indicating the SHAP interaction values for
       each pair of features. The sum of each row (or column) of the
       interaction values equals the corresponding SHAP value (from
@@ -163,45 +155,32 @@ defmodule Exgboost do
       untransformed margin value of the prediction. Note the last row and
       column correspond to the bias term.
 
-  validate_features :
-      When this is True, validate that the Booster's and data's
+  * `:validate_features` - When this is True, validate that the Booster's and data's
       feature_names are identical.  Otherwise, it is assumed that the
       feature_names are the same.
 
-  training :
-      Whether the prediction value is used for training.  This can effect `dart`
+  * `:training` - Whether the prediction value is used for training.  This can effect `dart`
       booster, which performs dropouts during training iterations but use all trees
       for inference. If you want to obtain result with dropouts, set this parameter
       to `True`.  Also, the parameter is set to true when obtaining prediction for
       custom objective function.
 
-      .. versionadded:: 1.0.0
-
-  iteration_range :
-      Specifies which layer of trees are used in prediction.  For example, if a
+  * `:iteration_range` - Specifies which layer of trees are used in prediction.  For example, if a
       random forest is trained with 100 rounds.  Specifying `iteration_range=(10,
       20)`, then only the forests built during [10, 20) (half open set) rounds are
       used in this prediction.
 
-      .. versionadded:: 1.4.0
-
-  strict_shape :
-      When set to True, output shape is invariant to whether classification is used.
+  * `:strict_shape` - When set to True, output shape is invariant to whether classification is used.
       For both value and margin prediction, the output shape is (n_samples,
       n_groups), n_groups == 1 when multi-class is not used.  Default to False, in
       which case the output shape can be (n_samples, ) if multi-class is not used.
 
-      .. versionadded:: 1.4.0
-
-  Returns
-  -------
-  prediction : Nx.tensor
-
+  Returns an Nx.Tensor containing the predictions.
   """
   def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
     dmat = Exgboost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
-    Internal.predict(bst, dmat, opts)
+    Model.predict(bst, dmat, opts)
   end
 
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
@@ -252,7 +231,7 @@ defmodule Exgboost do
 
     case data do
       %Nx.Tensor{} ->
-        data_interface = Internal.array_interface(data) |> Jason.encode!()
+        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
 
         {shape, preds} =
           Exgboost.NIF.booster_predict_from_dense(
@@ -266,9 +245,9 @@ defmodule Exgboost do
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = Internal.array_interface(indptr) |> Jason.encode!()
-        indices_interface = Internal.array_interface(indices) |> Jason.encode!()
-        values_interface = Internal.array_interface(values) |> Jason.encode!()
+        indptr_interface = ArrayInterface.array_interface(indptr) |> Jason.encode!()
+        indices_interface = ArrayInterface.array_interface(indices) |> Jason.encode!()
+        values_interface = ArrayInterface.array_interface(values) |> Jason.encode!()
 
         {shape, preds} =
           Exgboost.NIF.booster_predict_from_csr(

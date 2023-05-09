@@ -60,6 +60,7 @@ defmodule Exgboost.DMatrix do
 
   """
   alias __MODULE__
+  alias Exgboost.ArrayInterface
   alias Exgboost.Internal
 
   @enforce_keys [
@@ -129,7 +130,7 @@ defmodule Exgboost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = Exgboost.Internal.array_interface(value) |> Jason.encode!()
+      data_interface = ArrayInterface.array_interface(value) |> Jason.encode!()
 
       Exgboost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
@@ -274,7 +275,7 @@ defmodule Exgboost.DMatrix do
 
     dmat =
       Exgboost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(Internal.array_interface(tensor)),
+        Jason.encode!(ArrayInterface.array_interface(tensor)),
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -333,9 +334,9 @@ defmodule Exgboost.DMatrix do
 
     dmat =
       Exgboost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(Internal.array_interface(indptr)),
-        Jason.encode!(Internal.array_interface(indices)),
-        Jason.encode!(Internal.array_interface(data)),
+        Jason.encode!(ArrayInterface.array_interface(indptr)),
+        Jason.encode!(ArrayInterface.array_interface(indices)),
+        Jason.encode!(ArrayInterface.array_interface(data)),
         n,
         Jason.encode!(config),
         Atom.to_string(format)

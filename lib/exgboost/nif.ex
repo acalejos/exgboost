@@ -1,9 +1,5 @@
 defmodule Exgboost.NIF do
-  @moduledoc """
-  NIF bindings for XGBoost C API. Not to be exposed to users.
-
-  All binding return {:ok, result} or {:error, "error message"}.
-  """
+  @moduledoc false
 
   @on_load :on_load
 
@@ -299,7 +295,7 @@ defmodule Exgboost.NIF do
 
   @spec booster_eval_one_iter(booster_reference(), pos_integer(), [dmatrix_reference()], [
           String.t()
-        ]) :: String.t()
+        ]) :: exgboost_return_type(String.t())
   def booster_eval_one_iter(_booster_handle, _iteration, _dmatrix_handles, _eval_names),
     do: :erlang.nif_error(:not_implemented)
 
