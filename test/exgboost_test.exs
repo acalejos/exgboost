@@ -50,4 +50,25 @@ defmodule ExgboostTest do
     assert dmat_preds.shape == y.shape
     assert inplace_preds_no_proxy.shape == y.shape
   end
+
+  test "train with learning rates", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+    params = %{tree_method: "hist"}
+    lrs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    lrs_fun = fn i -> i / 10 end
+
+    booster =
+      Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params, learning_rates: lrs)
+
+    booster_fun =
+      Exgboost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        params: params,
+        learning_rates: lrs_fun
+      )
+  end
 end

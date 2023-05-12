@@ -11,7 +11,7 @@ defmodule Exgboost.Booster do
   def booster([%DMatrix{} | _] = dmats, opts) when is_list(dmats) do
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = Exgboost.NIF.booster_create(refs) |> Internal.unwrap!()
-    Model.set_params(%Booster{ref: booster_ref}, opts)
+    Booster.set_params(%Booster{ref: booster_ref}, opts)
   end
 
   def booster(%DMatrix{} = dmat, opts) do
@@ -115,9 +115,7 @@ defmodule Exgboost.Booster do
 
     Nx.tensor(preds) |> Nx.reshape(shape)
   end
-end
 
-defimpl Models, for: Booster do
   def set_params(booster, params \\ []) do
     # TODO: List of params here: https://xgboost.readthedocs.io/en/latest/parameter.html
     # Eventually we should validate, but there's so many, for now we will let XGBoost fail
@@ -147,6 +145,8 @@ defimpl Models, for: Booster do
 
   def get_num_features(booster),
     do: Exgboost.NIF.booster_get_num_feature(booster.ref) |> Internal.unwrap!()
+
+  def get_best_iteration(booster), do: get_attr(booster, "best_iteration")
 
   def get_attrs(booster),
     do: Exgboost.NIF.booster_get_attr_names(booster.ref) |> Internal.unwrap!()
@@ -179,7 +179,7 @@ defimpl Models, for: Booster do
     opts = Keyword.validate!(opts, name: "eval", iteration: 0)
     {name, opts} = Keyword.pop!(opts, :name)
     Internal.validate_features!(booster, data)
-    eval_set(booster, [{data, name}], opts)
+    eval_set(booster, [{data, name}], opts[:iteration], opts)
   end
 
   @doc """
@@ -192,15 +192,15 @@ defimpl Models, for: Booster do
 
   Returns Evaluation result string.
   """
-  def eval_set(%Booster{} = booster, evals, opts \\ []) when is_list(evals) do
-    opts = Keyword.validate!(opts, iteration: 0, feval: nil, output_margin: true)
+  def eval_set(%Booster{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
+    opts = Keyword.validate!(opts, feval: nil, output_margin: true)
     feval = opts[:feval]
     output_margin = opts[:output_margin]
     Enum.each(evals, &Internal.validate_features!(booster, &1))
     {dmats_refs, evnames} = Enum.unzip(evals)
 
     msg =
-      Exgboost.NIF.booster_eval_one_iter(booster.ref, opts[:iteration], dmats_refs, evnames)
+      Exgboost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
       |> Internal.unwrap!()
 
     res = msg
@@ -210,7 +210,7 @@ defimpl Models, for: Booster do
         Enum.each(evals, fn {dmat, evname} ->
           feval_ret =
             feval.(
-              Internal.predict(booster, dmat, training: false, output_margin: output_margin),
+              Booster.predict(booster, dmat, training: false, output_margin: output_margin),
               dmat
             )
 
@@ -241,7 +241,7 @@ defimpl Models, for: Booster do
   def update(%Booster{} = booster, %DMatrix{} = dmatrix, iteration, objective)
       when is_integer(iteration) do
     if is_function(objective, 2) do
-      pred = Internal.predict(booster, dmatrix, output_margin: true, training: true)
+      pred = Booster.predict(booster, dmatrix, output_margin: true, training: true)
       {grad, hess} = objective.(pred, dmatrix)
       boost(booster, dmatrix, grad, hess)
     else

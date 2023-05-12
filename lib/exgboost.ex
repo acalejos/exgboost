@@ -114,6 +114,28 @@ defmodule Exgboost do
     Exgboost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
   end
 
+  @doc """
+  Train a new booster model given a data tensor and a label tensor
+
+  ## Options
+  * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
+  * `:num_boost_rounds` - Number of boosting iterations.
+  * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
+  * `:early_stopping_rounds` - Activates early stopping. Validation error needs to decrease at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`. If there's more than one, will use the last. If early stopping occurs, the model will have two additional fields:
+        ``bst.best_score``, ``bst.best_iteration``.  If these values are `nil` then no early stopping occurred.
+  * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an
+      integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
+      is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
+  * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
+  * `:callbacks` - List of callback functions that are applied at end of each iteration. It is possible to use predefined callbacks by using `Exgboost.Callback` module.
+      Callbacks should be in the form of a keyword list where the only valid keys are `:before_training`, `:after_training`, `:before_iteration`, and `:after_iteration`.
+      The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
+      as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
+      If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
+
+  ## Example
+
+  """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: Exgboost.Booster.t()
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
@@ -180,7 +202,7 @@ defmodule Exgboost do
   def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
     dmat = Exgboost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
-    Model.predict(bst, dmat, opts)
+    Booster.predict(bst, dmat, opts)
   end
 
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
