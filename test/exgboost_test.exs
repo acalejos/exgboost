@@ -71,4 +71,20 @@ defmodule ExgboostTest do
         learning_rates: lrs_fun
       )
   end
+
+  test "train with early stopping", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+    params = %{tree_method: "hist"}
+
+    booster =
+      Exgboost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        params: params,
+        early_stopping_rounds: 3
+      )
+  end
 end

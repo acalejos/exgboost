@@ -127,7 +127,7 @@ defmodule Exgboost do
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
-  * `:callbacks` - List of callback functions that are applied at end of each iteration. It is possible to use predefined callbacks by using `Exgboost.Callback` module.
+  * `:callbacks` - List of Exgboost.Training.Callback that are called during a given event. It is possible to use predefined callbacks by using `Exgboost.Callback` module.
       Callbacks should be in the form of a keyword list where the only valid keys are `:before_training`, `:after_training`, `:before_iteration`, and `:after_iteration`.
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
