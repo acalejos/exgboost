@@ -86,5 +86,33 @@ defmodule ExgboostTest do
         params: params,
         early_stopping_rounds: 3
       )
+
+    assert not is_nil(booster.best_iteration)
+    assert not is_nil(booster.score)
+  end
+
+  test "eval with multiple metrics", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+    params = %{tree_method: "hist"}
+
+    booster =
+      Exgboost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        params: params
+      )
+
+    dmat = Exgboost.DMatrix.from_tensor(x, y, format: :dense)
+    [{metric_name, metric_value}] = Exgboost.Booster.eval(booster, dmat)
+
+    assert metric_name == "rmse"
+
+    booster = Exgboost.Booster.set_params(booster, eval_metric: "logloss")
+
+    metric_results = Exgboost.Booster.eval(booster, dmat)
+    assert length(metric_results) == 2
   end
 end

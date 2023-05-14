@@ -116,7 +116,7 @@ defmodule Exgboost.Booster do
     Nx.tensor(preds) |> Nx.reshape(shape)
   end
 
-  def set_params(booster, params \\ []) do
+  def set_params(%Booster{} = booster, params \\ []) do
     # TODO: List of params here: https://xgboost.readthedocs.io/en/latest/parameter.html
     # Eventually we should validate, but there's so many, for now we will let XGBoost fail
     # on invalid params
@@ -127,6 +127,12 @@ defmodule Exgboost.Booster do
     booster
   end
 
+  @doc """
+  Set attributes for booster.
+
+  Key value pairs are passed as options. You can set an existing key to :nil to
+  delete the attribute
+  """
   def set_attr(booster, attrs \\ []) do
     Enum.each(attrs, fn {key, value} ->
       Exgboost.NIF.booster_set_attr(booster.ref, Atom.to_string(key), value)
@@ -176,10 +182,10 @@ defmodule Exgboost.Booster do
     Returns the evaluation result string.
   """
   def eval(%Booster{} = booster, %DMatrix{} = data, opts \\ []) do
-    opts = Keyword.validate!(opts, name: "eval", iteration: 0)
-    {name, opts} = Keyword.pop!(opts, :name)
+    {name, opts} = Keyword.pop(opts, :name, "eval")
+    {iteration, opts} = Keyword.pop(opts, :iteration, 0)
     Internal.validate_features!(booster, data)
-    eval_set(booster, [{data, name}], opts[:iteration], opts)
+    eval_set(booster, [{data, name}], iteration, opts)
   end
 
   @doc """
@@ -196,8 +202,9 @@ defmodule Exgboost.Booster do
     opts = Keyword.validate!(opts, feval: nil, output_margin: true)
     feval = opts[:feval]
     output_margin = opts[:output_margin]
-    Enum.each(evals, &Internal.validate_features!(booster, &1))
+    Enum.each(evals, &Internal.validate_features!(booster, elem(&1, 0)))
     {dmats_refs, evnames} = Enum.unzip(evals)
+    dmats_refs = Enum.map(dmats_refs, & &1.ref)
 
     msg =
       Exgboost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
@@ -227,7 +234,11 @@ defmodule Exgboost.Booster do
         res
       end
 
-    res
+    Regex.scan(~r/eval-(\w+):(-?\d+\.?\d+)/, to_string(res), capture: :all_but_first)
+    |> Enum.map(fn [name | [value]] ->
+      {fval, _rem} = Float.parse(value)
+      {name, fval}
+    end)
   end
 
   @doc """

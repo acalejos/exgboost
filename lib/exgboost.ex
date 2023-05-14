@@ -121,7 +121,9 @@ defmodule Exgboost do
   * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
-  * `:early_stopping_rounds` - Activates early stopping. Validation error needs to decrease at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`. If there's more than one, will use the last. If early stopping occurs, the model will have two additional fields:
+  * `:early_stopping_rounds` - Activates early stopping. Validation error needs to decrease at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
+          If there's more than one, will use the last. If there’s more than one metric in the eval_metric parameter given in params, the last metric will be used for early stopping.
+          If early stopping occurs, the model will have two additional fields:
         ``bst.best_score``, ``bst.best_iteration``.  If these values are `nil` then no early stopping occurred.
   * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`

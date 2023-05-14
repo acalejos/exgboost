@@ -9,8 +9,6 @@ defmodule Exgboost.Training do
     # TODO: Find exhaustive list of params to use String.to_existing_atom()
     booster_opts = Keyword.new(booster_opts, fn {key, value} -> {key, value} end)
 
-    bst = Exgboost.Booster.booster(dmat, booster_opts)
-
     opts =
       Keyword.validate!(opts,
         obj: nil,
@@ -31,6 +29,14 @@ defmodule Exgboost.Training do
 
     objective = Keyword.fetch!(opts, :obj)
     evals = Keyword.fetch!(opts, :evals)
+
+    evals_dmats =
+      Enum.map(evals, fn {%Nx.Tensor{} = x, %Nx.Tensor{} = y, _name} ->
+        DMatrix.from_tensor(x, y)
+      end)
+
+    bst = Booster.booster([dmat | evals_dmats], booster_opts)
+
     callbacks = Keyword.fetch!(opts, :callbacks)
 
     callbacks =
@@ -50,21 +56,25 @@ defmodule Exgboost.Training do
 
     callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
-        [
-          %Callback{
-            event: :after_iteration,
-            fun: &early_stop/1,
-            name: :early_stop,
-            init_state: %{
-              patience: opts[:early_stopping_rounds],
-              best: nil,
-              since_last_improvement: 0,
-              mode: :min,
-              target: :validation_error
+        unless opts[:evals] == [] do
+          [
+            %Callback{
+              event: :after_iteration,
+              fun: &early_stop/1,
+              name: :early_stop,
+              init_state: %{
+                patience: opts[:early_stopping_rounds],
+                best: nil,
+                since_last_improvement: 0,
+                mode: :min,
+                target: :validation_error
+              }
             }
-          }
-          | callbacks
-        ]
+            | callbacks
+          ]
+        else
+          raise ArgumentError, "early_stopping_rounds requires at least one evaluation set"
+        end
       else
         callbacks
       end

@@ -376,6 +376,7 @@ ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc,
   char *value = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
+  unsigned atom_len = 0;
   if (3 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -390,7 +391,21 @@ ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Key must be a string");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &value)) {
+  if (enif_get_atom_length(env, argv[2], &atom_len, ERL_NIF_LATIN1)) {
+    if (atom_len == 0) {
+      ret = exg_error(env, "Value must be a string or :nil");
+      goto END;
+    }
+    char buf[atom_len + 1];
+    if (!enif_get_atom(env, argv[2], buf, atom_len + 1, ERL_NIF_LATIN1)) {
+      ret = exg_error(env, "Value must be a string or :nil");
+      goto END;
+    }
+    if (strcmp(buf, "nil") != 0) {
+      ret = exg_error(env, "Value must be a string or :nil");
+      goto END;
+    }
+  } else if (!exg_get_string(env, argv[2], &value)) {
     ret = exg_error(env, "Value must be a string");
     goto END;
   }
