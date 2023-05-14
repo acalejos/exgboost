@@ -5,9 +5,8 @@ defmodule Exgboost.Training do
   alias Exgboost.Training.{State, Callback}
 
   def train(%DMatrix{} = dmat, opts \\ []) do
-    {booster_opts, opts} = Keyword.pop(opts, :params, %{})
+    {booster_params, opts} = Keyword.pop(opts, :params, [])
     # TODO: Find exhaustive list of params to use String.to_existing_atom()
-    booster_opts = Keyword.new(booster_opts, fn {key, value} -> {key, value} end)
 
     opts =
       Keyword.validate!(opts,
@@ -35,7 +34,7 @@ defmodule Exgboost.Training do
         DMatrix.from_tensor(x, y)
       end)
 
-    bst = Booster.booster([dmat | evals_dmats], booster_opts)
+    bst = Booster.booster([dmat | evals_dmats], booster_params)
 
     callbacks = Keyword.fetch!(opts, :callbacks)
 
@@ -44,7 +43,7 @@ defmodule Exgboost.Training do
         [
           %Callback{
             event: :before_iteration,
-            fun: &lr_scheduler/1,
+            fun: &Callback.lr_scheduler/1,
             name: :lr_scheduler,
             init_state: %{learning_rates: learning_rates}
           }
@@ -60,7 +59,7 @@ defmodule Exgboost.Training do
           [
             %Callback{
               event: :after_iteration,
-              fun: &early_stop/1,
+              fun: &Callback.early_stop/1,
               name: :early_stop,
               init_state: %{
                 patience: opts[:early_stopping_rounds],
@@ -167,92 +166,6 @@ defmodule Exgboost.Training do
       :cont ->
         {_status, final_state} = run_callbacks(env[:after_training], state)
         final_state.booster
-    end
-  end
-
-  defp lr_scheduler(
-         %State{
-           booster: bst,
-           meta_vars: %{lr_scheduler: %{learning_rates: learning_rates}},
-           iteration: i
-         } = state
-       ) do
-    lr = if is_list(learning_rates), do: Enum.at(learning_rates, i), else: learning_rates.(i)
-    boostr = Booster.set_params(bst, learning_rate: lr)
-    {:cont, %{state | booster: boostr}}
-  end
-
-  # TODO: Ideally this would be generalized like it is in Axon to allow generic monitoring of metrics,
-  # but for now we'll just do early stopping
-  defp early_stop(
-         %State{
-           booster: bst,
-           meta_vars:
-             %{
-               early_stop: %{
-                 best: best,
-                 patience: patience,
-                 target: target,
-                 mode: mode,
-                 since_last_improvement: since_last_improvement
-               }
-             } = meta_vars,
-           metrics: metrics
-         } = state
-       ) do
-    unless Map.has_key?(metrics, target) do
-      raise ArgumentError,
-            "target metric #{inspect(target)} not found in metrics #{inspect(metrics)}"
-    end
-
-    prev_criteria_value =
-      case best do
-        nil -> metrics[target]
-        value -> value
-      end
-
-    cur_criteria_value = metrics[target]
-
-    improved? =
-      case mode do
-        :min ->
-          prev_criteria_value == nil or
-            cur_criteria_value < prev_criteria_value
-
-        :max ->
-          prev_criteria_value == nil or
-            cur_criteria_value > prev_criteria_value
-      end
-
-    over_patience? = since_last_improvement >= patience
-
-    cond do
-      improved? ->
-        updated_meta_vars =
-          meta_vars
-          |> put_in([:early_stop, :best], cur_criteria_value)
-          |> put_in([:early_stop, :since_last_improvement], 0)
-
-        bst =
-          bst
-          |> struct(best_iteration: state.iteration, best_score: cur_criteria_value)
-          |> Booster.set_attr(best_iteration: state.iteration, best_score: cur_criteria_value)
-
-        {:cont, %{state | meta_vars: updated_meta_vars, booster: bst}}
-
-      not improved? and not over_patience? ->
-        updated_meta_vars =
-          meta_vars
-          |> put_in([:early_stop, :since_last_improvement], since_last_improvement + 1)
-
-        {:cont, %{state | meta_vars: updated_meta_vars}}
-
-      true ->
-        updated_meta_vars =
-          meta_vars
-          |> put_in([:early_stop, :since_last_improvement], since_last_improvement + 1)
-
-        {:halt, %{state | meta_vars: updated_meta_vars}}
     end
   end
 

@@ -118,11 +118,12 @@ defmodule Exgboost do
   Train a new booster model given a data tensor and a label tensor
 
   ## Options
+
   * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
-  * `:early_stopping_rounds` - Activates early stopping. Validation error needs to decrease at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
-          If there's more than one, will use the last. If there’s more than one metric in the eval_metric parameter given in params, the last metric will be used for early stopping.
+  * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
+          If there's more than one, will use the last. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
           If early stopping occurs, the model will have two additional fields:
         ``bst.best_score``, ``bst.best_iteration``.  If these values are `nil` then no early stopping occurred.
   * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an
@@ -134,6 +135,8 @@ defmodule Exgboost do
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
+  * `params` - A keyword list to use as model parameters. See [Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of parameters supported in the model.  Note that
+      some params can appear more than once, such as `eval_metric` for setting multiple evaluation metrics.
 
   ## Example
 
