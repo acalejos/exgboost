@@ -106,13 +106,14 @@ defmodule ExgboostTest do
       )
 
     dmat = Exgboost.DMatrix.from_tensor(x, y, format: :dense)
-    [{metric_name, metric_value}] = Exgboost.Booster.eval(booster, dmat)
+    [{ev_name, metric_name, metric_value}] = Exgboost.Booster.eval(booster, dmat)
 
     assert metric_name == "rmse"
 
     booster = Exgboost.Booster.set_params(booster, eval_metric: "logloss")
 
     metric_results = Exgboost.Booster.eval(booster, dmat)
+    IO.inspect(metric_results)
     assert length(metric_results) == 2
   end
 end

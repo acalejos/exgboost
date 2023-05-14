@@ -196,7 +196,7 @@ defmodule Exgboost.Booster do
   * `iteration` - Current iteration.
   * `feval` - Custom evaluation function.
 
-  Returns Evaluation result string.
+  Returns the resulting metrics as a list of 2-tuples in the form of {eval_metric, value}.
   """
   def eval_set(%Booster{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
     opts = Keyword.validate!(opts, feval: nil, output_margin: true)
@@ -210,35 +210,33 @@ defmodule Exgboost.Booster do
       Exgboost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
       |> Internal.unwrap!()
 
-    res = msg
-
     res =
-      if feval do
-        Enum.each(evals, fn {dmat, evname} ->
-          feval_ret =
-            feval.(
-              Booster.predict(booster, dmat, training: false, output_margin: output_margin),
-              dmat
-            )
+      Regex.scan(~r/[[:blank:]](\w+)-(\w+):(-?\d+\.?\d+)/, to_string(msg), capture: :all_but_first)
+      |> Enum.map(fn [ev_name | [metric_name | [value]]] ->
+        {fval, _rem} = Float.parse(value)
+        {ev_name, metric_name, fval}
+      end)
 
-          if is_list(feval_ret) do
-            Enum.each(feval_ret, fn {name, value} ->
-              res <> "\t#{evname}-#{name}:#{value}"
-            end)
-          else
-            {name, value} = feval_ret
-            res <> "\t#{evname}-#{name}:#{value}"
-          end
-        end)
-      else
-        res
-      end
+    if feval do
+      Enum.each(evals, fn {dmat, evname} ->
+        feval_ret =
+          feval.(
+            Booster.predict(booster, dmat, training: false, output_margin: output_margin),
+            dmat
+          )
 
-    Regex.scan(~r/eval-(\w+):(-?\d+\.?\d+)/, to_string(res), capture: :all_but_first)
-    |> Enum.map(fn [name | [value]] ->
-      {fval, _rem} = Float.parse(value)
-      {name, fval}
-    end)
+        if is_list(feval_ret) do
+          Enum.each(feval_ret, fn {name, value} ->
+            [{evname, name, value} | res]
+          end)
+        else
+          {name, value} = feval_ret
+          [{evname, name, value} | res]
+        end
+      end)
+    else
+      res
+    end
   end
 
   @doc """
