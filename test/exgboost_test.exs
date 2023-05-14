@@ -113,7 +113,7 @@ defmodule ExgboostTest do
     booster = Exgboost.Booster.set_params(booster, eval_metric: "logloss")
 
     metric_results = Exgboost.Booster.eval(booster, dmat)
-    IO.inspect(metric_results)
+
     assert length(metric_results) == 2
   end
 end
