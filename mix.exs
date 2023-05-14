@@ -1,6 +1,8 @@
 defmodule Exgboost.MixProject do
   use Mix.Project
 
+  @source_url "https://github.com/acalejos/exgboost"
+
   def project do
     [
       app: :exgboost,
@@ -8,7 +10,13 @@ defmodule Exgboost.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
-      deps: deps()
+      deps: deps(),
+      docs: docs(),
+      package: package(),
+      name: "Exgboost",
+      description:
+        "Elixir bindings for the XGBoost library. `Exgboost` provides an implementation of XGBoost that works with
+      [Nx](https://hexdocs.pm/nx/Nx.html) tensors."
     ]
   end
 
@@ -24,7 +32,22 @@ defmodule Exgboost.MixProject do
     [
       {:elixir_make, "~> 0.4", runtime: false},
       {:nx, "~> 0.5"},
-      {:jason, "~> 1.3"}
+      {:jason, "~> 1.3"},
+      {:ex_doc, "~> 0.29.0", only: :docs}
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Andres Alejos"],
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => @source_url}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Exgboost"
     ]
   end
 end

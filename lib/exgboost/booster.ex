@@ -1,4 +1,5 @@
 defmodule Exgboost.Booster do
+  @moduledoc false
   alias __MODULE__
   alias Exgboost.DMatrix
   alias Exgboost.Internal
@@ -121,7 +122,13 @@ defmodule Exgboost.Booster do
     # Eventually we should validate, but there's so many, for now we will let XGBoost fail
     # on invalid params
     for {key, value} <- params do
-      Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), value)
+      if is_list(value) do
+        Enum.each(value, fn v ->
+          Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), v)
+        end)
+      else
+        Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), value)
+      end
     end
 
     booster

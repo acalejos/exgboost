@@ -1,5 +1,6 @@
 defmodule Exgboost.DMatrix do
-  @moduledoc """
+  @moduledoc false
+  @doc """
   Parameters
   ----------
   data :
@@ -59,6 +60,7 @@ defmodule Exgboost.DMatrix do
       serialization format is required.
 
   """
+
   alias __MODULE__
   alias Exgboost.ArrayInterface
   alias Exgboost.Internal
@@ -348,6 +350,7 @@ defmodule Exgboost.DMatrix do
 end
 
 defmodule Exgboost.ProxyDMatrix do
+  @moduledoc false
   alias __MODULE__
   @enforce_keys [:ref]
   defstruct [:ref]

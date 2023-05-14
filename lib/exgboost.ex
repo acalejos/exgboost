@@ -1,6 +1,7 @@
 defmodule Exgboost do
   @moduledoc """
-  Elixir bindings for the XGBoost library.
+  Elixir bindings for the XGBoost library. `Exgboost` provides an implementation of XGBoost that works with
+  [Nx](https://hexdocs.pm/nx/Nx.html) tensors.
 
   Xtreme Gradient Boosting (XGBoost) is an optimized distributed gradient
   boosting library designed to be highly efficient, flexible and portable.
@@ -12,14 +13,6 @@ defmodule Exgboost do
 
   ## Installation
 
-  In order to use `Exgboost`, you will need Elixir installed. Then create an Elixir project via the `mix` build tool:
-
-  ```
-  $ mix new my_app
-  ```
-
-  Then you can add `Exgboost` as dependency in your `mix.exs`:
-
   ```elixir
   def deps do
   [
@@ -27,28 +20,70 @@ defmodule Exgboost do
   ]
   end
   ```
-  Then run `mix deps.get` to install it.
-
-  And run `mix compile` to compile the library.
-
-  ## Dependencies
-
-  `Exgboost` depends on the [Nx](https://hexdocs.pm/nx/Nx.html) library for tensor creation and manipulation.
 
   ## Basic Usage
 
-  iex> key = Nx.Random.key(42)
-  iex> {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
-  iex> {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
-  iex> model = Exgboost.train(X,y)
-  iex> Exgboost.predict(model, X)
-
-  ### Training
-
   ```elixir
+  key = Nx.Random.key(42)
+  {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
+  {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
+  model = Exgboost.train(X,y)
+  Exgboost.predict(model, X)
   ```
 
-  ### Prediction
+  ## Training
+
+  Exgboost is designed to feel familiar to the users of the Python XGBoost library. `Exgboost.train/2` is the
+  primary entry point for training a model. It accepts a Nx tensor for the features and a Nx tensor for the labels.
+  `Exgboost.train/2` returns a trained`Booster` struct that can be used for prediction. `Exgboost.train/2` also
+  accepts a keyword list of options that can be used to configure the training process. See the
+  [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
+
+  `Exgbost.train/2` uses the `Exgboost.Training.train/1` function to perform the actual training. `Exgboost.Training.train/1`
+  and can be used directly if you wish to work directly with the `DMatrix` and `Booster` structs.
+
+  One of the main features of `Exgboost.train/2` is the ability for the end user to provide a custom training function
+  that will be used to train the model. This is done by passing a function to the `:obj` option. The function must
+  accept a `DMatrix` and a `Booster` and return a `Booster`. The function will be called at each iteration of the
+  training process. This allows the user to implement custom training logic. For example, the user could implement
+  a custom loss function or a custom metric function. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/tutorials/custom_metric_obj.html)
+  for more information on custom loss functions and custom metric functions.
+
+  Another feature of `Exgboost.train/2` is the ability to provide a validation set for early stopping. This is done
+  by passing a list of 3-tuples to the `:evals` option. Each 3-tuple should contain a Nx tensor for the features, a Nx tensor
+  for the labels, and a string label for the validation set name. The validation set will be used to calculate the validation
+  error at each iteration of the training process. If the validation error does not improve for `:early_stopping_rounds` iterations
+  then the training process will stop. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html)
+  for a more detailed explanation of early stopping.
+
+  Early stopping is achieved through the use of callbacks. `Exgboost.train/2` accepts a list of callbacks that will be called
+  at each iteration of the training process. The callbacks can be used to implement custom logic. For example, the user could
+  implement a callback that will print the validation error at each iteration of the training process or to provide a custom
+  setup function for training. See the `Exgboost.Training.Callback` module for more information on callbacks.
+
+  Please notes that callbacks are called in the order that they are provided. If you provide multiple callbacks that modify
+  the same parameter then the last callback will trump the previous callbacks. For example, if you provide a callback that
+  sets the `:early_stopping_rounds` parameter to 10 and then provide a callback that sets the `:early_stopping_rounds` parameter
+  to 20 then the `:early_stopping_rounds` parameter will be set to 20.
+
+  You are also able to pass parameters to be applied to the Booster model using the `:params` option. These parameters will
+  be applied to the Booster model before training begins. This allows you to set parameters that are not available as options
+  to `Exgboost.train/2`. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for a full
+  list of parameters.
+
+
+  ```elixir
+  Exgboot.train(X,
+                y,
+                obj: &Exgboost.Training.train/1,
+                evals: [{X_test, y_test, "test"}],
+                learning_rates: fn i -> i/10 end,
+                num_boost_round: 10,
+                early_stopping_rounds: 3,
+                params: [max_depth: 3, eval_metric: ["rmse","logloss"]])
+  ```
+
+  ## Prediction
 
   ```elixir
   ```
@@ -65,11 +100,6 @@ defmodule Exgboost do
   Check the build information of the xgboost library.
 
   Returns a map containing information about the build.
-
-  Example:
-    iex> build = Exgboost.xgboost_build_info()
-    iex> is_map(build)
-    true
   """
   @spec xgboost_build_info() :: map()
   def xgboost_build_info,
@@ -79,12 +109,6 @@ defmodule Exgboost do
   Check the version of the xgboost library.
 
   Returns a 3-tuple in the form of `{major, minor, patch}`.
-
-  Example:
-
-      iex> v = Exgboost.xgboost_version()
-      iex> is_tuple(v)
-
   """
   @spec xgboost_version() :: {integer(), integer(), integer()} | {:error, String.t()}
   def xgboost_version, do: Exgboost.NIF.xgboost_version() |> Internal.unwrap!()
@@ -123,7 +147,7 @@ defmodule Exgboost do
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
   * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
-          If there's more than one, will use the last. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
+          If there's more than one, will use the last eval set. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
           If early stopping occurs, the model will have two additional fields:
         ``bst.best_score``, ``bst.best_iteration``.  If these values are `nil` then no early stopping occurred.
   * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an

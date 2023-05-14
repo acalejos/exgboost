@@ -1,4 +1,5 @@
 defmodule Exgboost.Training.State do
+  @moduledoc false
   @enforce_keys [:booster]
   defstruct [
     :booster,

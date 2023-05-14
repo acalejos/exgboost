@@ -36,6 +36,13 @@ defmodule Exgboost.Training do
 
     bst = Booster.booster([dmat | evals_dmats], booster_params)
 
+    verbose_eval =
+      case Keyword.fetch!(opts, :verbose_eval) do
+        true -> 1
+        false -> 0
+        value -> value
+      end
+
     callbacks = Keyword.fetch!(opts, :callbacks)
 
     callbacks =
@@ -54,8 +61,40 @@ defmodule Exgboost.Training do
       end
 
     callbacks =
+      unless opts[:evals] == [] do
+        [
+          %Callback{
+            event: :after_iteration,
+            fun: &Callback.eval_metrics/1,
+            name: :eval_metrics,
+            init_state: %{evals: evals, filter: fn _, _ -> true end}
+          }
+          | callbacks
+        ]
+      else
+        callbacks
+      end
+
+    callbacks =
+      unless verbose_eval == 0 do
+        [
+          %Callback{
+            event: :after_iteration,
+            fun: &Callback.monitor_metrics/1,
+            name: :monitor_metrics,
+            init_state: %{period: verbose_eval, filter: fn _, _ -> true end}
+          }
+          | callbacks
+        ]
+      else
+        callbacks
+      end
+
+    callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
         unless opts[:evals] == [] do
+          [{target_eval, _metric, _value} | _tail] = Enum.reverse(opts[:evals])
+
           [
             %Callback{
               event: :after_iteration,
@@ -66,7 +105,9 @@ defmodule Exgboost.Training do
                 best: nil,
                 since_last_improvement: 0,
                 mode: :min,
-                target: :validation_error
+                target_eval: target_eval,
+                # TODO: Get this from the Booster
+                target_metric: "rmse"
               }
             }
             | callbacks
@@ -111,13 +152,6 @@ defmodule Exgboost.Training do
           name -> put_in(acc[:init_state][name], callback.init_state)
         end
       end)
-
-    verbose_eval =
-      case Keyword.fetch!(opts, :verbose_eval) do
-        true -> 1
-        false -> 0
-        value -> value
-      end
 
     start_iteration = 0
     num_boost_rounds = Keyword.fetch!(opts, :num_boost_rounds)

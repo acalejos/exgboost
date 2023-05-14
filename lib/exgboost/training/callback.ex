@@ -21,7 +21,28 @@ defmodule Exgboost.Training.Callback do
   * `{:cont, state}` - continue training with the given state
   * `{:halt, state}` - stop training with the given state
 
+  The following callbacks are provided in the `Exgboost.Training.Callback` module:
+  * `lr_scheduler` - sets the learning rate for each iteration
+  * `early_stop` - performs early stopping
+  * `eval_metrics` - evaluates metrics on the training and evaluation sets
+  * `eval_monitor` - prints evaluation metrics
+
+  Callbacks can be added to the training process by passing them to `Exgboost.Training.train/2`.
+
+  ## Example
+
+  ```elixir
+  # Callback to perform setup before training
+  setup_fn = fn state ->
+    updated_state = put_in(state, [:meta_vars,:early_stop], %{best: 1, since_last_improvement: 0, mode: :max, patience: 5})
+    {:cont, updated_state}
+  end
+
+  setup_callback = Callback.new(:before_training, setup_fn)
+  ```
+
   """
+  alias Exgboost.Training.State
   @enforce_keys [:event, :fun]
   defstruct [:event, :fun, :name, :init_state]
 
@@ -43,7 +64,7 @@ defmodule Exgboost.Training.Callback do
   is passed to the callback.
   """
   def lr_scheduler(
-        %Exgboost.Training.State{
+        %State{
           booster: bst,
           meta_vars: %{lr_scheduler: %{learning_rates: learning_rates}},
           iteration: i
@@ -71,14 +92,15 @@ defmodule Exgboost.Training.Callback do
   * `best` is the best value of the metric seen so far.
   """
   def early_stop(
-        %Exgboost.Training.State{
+        %State{
           booster: bst,
           meta_vars:
             %{
               early_stop: %{
                 best: best,
                 patience: patience,
-                target: target,
+                target_metric: target_metric,
+                target_eval: target_eval,
                 mode: mode,
                 since_last_improvement: since_last_improvement
               }
@@ -86,18 +108,23 @@ defmodule Exgboost.Training.Callback do
           metrics: metrics
         } = state
       ) do
-    unless Map.has_key?(metrics, target) do
+    unless Map.has_key?(metrics, target_eval) do
       raise ArgumentError,
-            "target metric #{inspect(target)} not found in metrics #{inspect(metrics)}"
+            "target eval_set #{inspect(target_eval)} not found in metrics #{inspect(metrics)}"
+    end
+
+    unless Map.has_key?(metrics[target_eval], target_metric) do
+      raise ArgumentError,
+            "target metric #{inspect(target_metric)} not found in metrics #{inspect(metrics)}"
     end
 
     prev_criteria_value =
       case best do
-        nil -> metrics[target]
+        nil -> metrics[target_eval][target_metric]
         value -> value
       end
 
-    cur_criteria_value = metrics[target]
+    cur_criteria_value = metrics[target_eval][target_metric]
 
     improved? =
       case mode do
@@ -143,5 +170,42 @@ defmodule Exgboost.Training.Callback do
 
         {:halt, %{state | meta_vars: updated_meta_vars}}
     end
+  end
+
+  def eval_metrics(
+        %State{
+          booster: bst,
+          iteration: iter,
+          meta_vars: %{eval_metrics: %{evals: evals, filter: filter}}
+        } = state
+      ) do
+    metrics =
+      Exgboost.Booster.eval_set(bst, evals, iter)
+      |> Enum.reduce(%{}, fn {evname, mname, value}, acc ->
+        Map.update(acc, evname, %{mname => value}, fn existing ->
+          Map.put(existing, mname, value)
+        end)
+      end)
+      |> Map.filter(filter)
+
+    {:cont, %{state | metrics: metrics}}
+    {:cont, %{state | metrics: metrics}}
+  end
+
+  def monitor_metrics(
+        %State{
+          iteration: iteration,
+          meta_vars: %{
+            metrics: metrics,
+            monitor_metrics: %{period: period, filter: filter}
+          }
+        } = state
+      ) do
+    if period != 0 and rem(iteration, period) == 0 do
+      metrics = Map.filter(metrics, filter)
+      IO.puts("Iteration #{iteration}: #{inspect(metrics)}")
+    end
+
+    {:cont, state}
   end
 end

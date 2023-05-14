@@ -1,5 +1,4 @@
 defmodule Exgboost.ArrayInterface do
-  alias __MODULE__
   @moduledoc false
   @typedoc """
   The XGBoost C API uses and is moving towards mainly supporting the use of
@@ -13,6 +12,8 @@ defmodule Exgboost.ArrayInterface do
   See https://numpy.org/doc/stable/reference/arrays.interface.html for more information on
   the ArrayInterface protocol.
   """
+  alias __MODULE__
+
   @type t :: %ArrayInterface{
           typestr: String.t(),
           shape: tuple(),
