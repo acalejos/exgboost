@@ -40,6 +40,7 @@ ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
       goto END;
     }
   }
+
   result = XGBoosterCreate(dmats, dmats_len, &booster);
   if (result == 0) {
     ret = make_Booster_resource(env, booster);
@@ -47,8 +48,6 @@ ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
-ERROR:
-  enif_free(dmats);
 END:
   return ret;
 }

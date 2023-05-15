@@ -1,6 +1,7 @@
 defmodule NifTest do
   use ExUnit.Case, async: true
   import Exgboost.Internal
+  import Exgboost.ArrayInterface, only: [array_interface: 1]
   # doctest Exgboost.NIF
 
   test "exgboost_version" do
@@ -326,7 +327,7 @@ defmodule NifTest do
 
     # We do this because the C API uses non fixed-width types so we need to know the size they're expecting from int
     c_int_size = Exgboost.NIF.get_int_size() |> unwrap!()
-    tensor_size = (c_int_size * 8) |> IO.inspect()
+    tensor_size = c_int_size * 8
 
     dmatrix =
       Exgboost.NIF.dmatrix_slice(
@@ -354,7 +355,9 @@ defmodule NifTest do
 
   test "booster_create" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    mat2 = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface2 = array_interface(mat2) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -362,8 +365,13 @@ defmodule NifTest do
       Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
+    dmat2 =
+      Exgboost.NIF.dmatrix_create_from_dense(array_interface2, config)
+      |> unwrap!()
+
     assert Exgboost.NIF.booster_create([dmat]) |> unwrap!() != :error
     assert Exgboost.NIF.booster_create([]) |> unwrap!() != :error
+    assert Exgboost.NIF.booster_create([dmat, dmat2]) |> unwrap!() != :error
   end
 
   test "booster_get_num_feature" do

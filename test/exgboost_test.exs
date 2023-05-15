@@ -61,15 +61,13 @@ defmodule ExgboostTest do
     lrs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
     lrs_fun = fn i -> i / 10 end
 
-    booster =
-      Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params, learning_rates: lrs)
+    Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params, learning_rates: lrs)
 
-    booster_fun =
-      Exgboost.train(x, y,
-        num_boost_rounds: num_boost_round,
-        params: params,
-        learning_rates: lrs_fun
-      )
+    Exgboost.train(x, y,
+      num_boost_rounds: num_boost_round,
+      params: params,
+      learning_rates: lrs_fun
+    )
   end
 
   test "train with early stopping", context do
@@ -77,18 +75,18 @@ defmodule ExgboostTest do
     ncols = :rand.uniform(10)
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
-    num_boost_round = 10
-    params = %{tree_method: "hist"}
+    params = %{tree_method: "hist", eval_metric: ["rmse", "logloss"]}
 
     booster =
       Exgboost.train(x, y,
-        num_boost_rounds: num_boost_round,
+        num_boost_rounds: 10,
         params: params,
-        early_stopping_rounds: 3
+        early_stopping_rounds: 1,
+        evals: [{x, y, "validation"}]
       )
 
     assert not is_nil(booster.best_iteration)
-    assert not is_nil(booster.score)
+    assert not is_nil(booster.best_score)
   end
 
   test "eval with multiple metrics", context do
@@ -106,11 +104,11 @@ defmodule ExgboostTest do
       )
 
     dmat = Exgboost.DMatrix.from_tensor(x, y, format: :dense)
-    [{ev_name, metric_name, metric_value}] = Exgboost.Booster.eval(booster, dmat)
+    [{_ev_name, metric_name, _metric_value}] = Exgboost.Booster.eval(booster, dmat)
 
     assert metric_name == "rmse"
 
-    booster = Exgboost.Booster.set_params(booster, eval_metric: "logloss")
+    Exgboost.Booster.set_params(booster, eval_metric: "logloss")
 
     metric_results = Exgboost.Booster.eval(booster, dmat)
 

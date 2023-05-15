@@ -118,11 +118,7 @@ defmodule Exgboost.Training.Callback do
             "target metric #{inspect(target_metric)} not found in metrics #{inspect(metrics)}"
     end
 
-    prev_criteria_value =
-      case best do
-        nil -> metrics[target_eval][target_metric]
-        value -> value
-      end
+    prev_criteria_value = best
 
     cur_criteria_value = metrics[target_eval][target_metric]
 
@@ -168,7 +164,8 @@ defmodule Exgboost.Training.Callback do
           meta_vars
           |> put_in([:early_stop, :since_last_improvement], since_last_improvement + 1)
 
-        {:halt, %{state | meta_vars: updated_meta_vars}}
+        bst = struct(bst, best_iteration: state.iteration, best_score: cur_criteria_value)
+        {:halt, %{state | meta_vars: updated_meta_vars, booster: bst}}
     end
   end
 
@@ -195,8 +192,8 @@ defmodule Exgboost.Training.Callback do
   def monitor_metrics(
         %State{
           iteration: iteration,
+          metrics: metrics,
           meta_vars: %{
-            metrics: metrics,
             monitor_metrics: %{period: period, filter: filter}
           }
         } = state

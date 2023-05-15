@@ -30,11 +30,15 @@ defmodule Exgboost.Training do
     evals = Keyword.fetch!(opts, :evals)
 
     evals_dmats =
-      Enum.map(evals, fn {%Nx.Tensor{} = x, %Nx.Tensor{} = y, _name} ->
-        DMatrix.from_tensor(x, y)
+      Enum.map(evals, fn {%Nx.Tensor{} = x, %Nx.Tensor{} = y, name} ->
+        {DMatrix.from_tensor(x, y, format: :dense), name}
       end)
 
-    bst = Booster.booster([dmat | evals_dmats], booster_params)
+    bst =
+      Booster.booster(
+        [dmat | Enum.map(evals_dmats, fn {dmat, _name} -> dmat end)],
+        booster_params
+      )
 
     verbose_eval =
       case Keyword.fetch!(opts, :verbose_eval) do
@@ -61,13 +65,13 @@ defmodule Exgboost.Training do
       end
 
     callbacks =
-      unless opts[:evals] == [] do
+      unless evals_dmats == [] do
         [
           %Callback{
             event: :after_iteration,
             fun: &Callback.eval_metrics/1,
             name: :eval_metrics,
-            init_state: %{evals: evals, filter: fn _, _ -> true end}
+            init_state: %{evals: evals_dmats, filter: fn {_, _} -> true end}
           }
           | callbacks
         ]
@@ -76,13 +80,13 @@ defmodule Exgboost.Training do
       end
 
     callbacks =
-      unless verbose_eval == 0 do
+      unless verbose_eval == 0 or evals_dmats == [] do
         [
           %Callback{
             event: :after_iteration,
             fun: &Callback.monitor_metrics/1,
             name: :monitor_metrics,
-            init_state: %{period: verbose_eval, filter: fn _, _ -> true end}
+            init_state: %{period: verbose_eval, filter: fn {_, _} -> true end}
           }
           | callbacks
         ]
@@ -92,8 +96,8 @@ defmodule Exgboost.Training do
 
     callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
-        unless opts[:evals] == [] do
-          [{target_eval, _metric, _value} | _tail] = Enum.reverse(opts[:evals])
+        unless evals_dmats == [] do
+          [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
           [
             %Callback{
@@ -173,7 +177,6 @@ defmodule Exgboost.Training do
             start_iteration..(num_boost_rounds - 1),
             {:cont, state},
             fn iter, {_, iter_state} ->
-              # IO.puts("iter state: #{inspect(iter_state)}")
               case run_callbacks(env[:before_iteration], iter_state) do
                 {:halt, state} ->
                   {:halt, {:halted, state}}
@@ -191,6 +194,9 @@ defmodule Exgboost.Training do
               end
             end
           )
+
+        _ ->
+          raise "invalid return value from before_training callback"
       end
 
     case status do
@@ -206,9 +212,6 @@ defmodule Exgboost.Training do
   defp run_callbacks(callbacks, state) do
     callbacks
     |> Enum.reduce_while({:cont, state}, fn callback, {_, state} ->
-      # IO.puts("callback: #{inspect(callback)}")
-      # IO.puts("callback state: #{inspect(state)}")
-
       case callback.(state) do
         {:cont, %State{} = state} ->
           {:cont, {:cont, state}}
