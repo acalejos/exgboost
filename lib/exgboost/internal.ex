@@ -3,6 +3,29 @@ defmodule Exgboost.Internal do
   alias Exgboost.Booster
   alias Exgboost.DMatrix
 
+  def dmatrix_feature_opts,
+    do:
+      dmatrix_str_feature_opts() ++
+        dmatrix_meta_feature_opts() ++
+        dmatrix_config_feature_opts() ++ dmatrix_format_feature_opts()
+
+  def dmatrix_str_feature_opts, do: [:feature_name, :feature_type]
+
+  def dmatrix_format_feature_opts(), do: [:format]
+
+  def dmatrix_meta_feature_opts,
+    do: [
+      :label,
+      :weight,
+      :base_margin,
+      :group,
+      :label_upper_bound,
+      :label_lower_bound,
+      :feature_weights
+    ]
+
+  def dmatrix_config_feature_opts, do: [:nthread, :missing]
+
   def validate_type!(%Nx.Tensor{} = tensor, type) do
     unless Nx.type(tensor) == type do
       raise ArgumentError,
@@ -12,11 +35,11 @@ defmodule Exgboost.Internal do
   end
 
   def validate_features!(%Booster{} = booster, %DMatrix{} = dmatrix) do
-    unless dmatrix["rows"] == 0 do
-      booster_names = booster["feature_names"]
-      booster_types = booster["feature_types"]
-      dmatrix_names = dmatrix["feature_names"]
-      dmatrix_types = dmatrix["feature_types"]
+    unless DMatrix.get_num_rows(dmatrix) == 0 do
+      booster_names = Booster.get_feature_names(booster)
+      booster_types = Booster.get_feature_types(booster)
+      dmatrix_names = DMatrix.get_feature_names(dmatrix)
+      dmatrix_types = DMatrix.get_feature_types(dmatrix)
 
       if dmatrix_names == nil and booster_names != nil do
         raise ArgumentError,
@@ -74,114 +97,19 @@ defmodule Exgboost.Internal do
     end
   end
 
-  def array_interface(%Nx.Tensor{} = tensor) do
-    type_char =
-      case Nx.type(tensor) do
-        {:s, width} ->
-          "<i#{div(width, 8)}"
+  def set_params(_dmatrix, _opts \\ [])
 
-        # TODO: Use V typestr to handle other data types
-        {:bf, _width} ->
-          raise ArgumentError,
-                "Invalid tensor type -- #{inspect(Nx.type(tensor))} not supported by Exgboost"
-
-        {tensor_type, type_width} ->
-          "<#{Atom.to_string(tensor_type)}#{div(type_width, 8)}"
-      end
-
-    tensor_addr = Exgboost.NIF.get_binary_address(Nx.to_binary(tensor)) |> unwrap!()
-
-    %Exgboost.ArrayInterface{
-      typestr: type_char,
-      shape: Nx.shape(tensor),
-      address: tensor_addr,
-      readonly: true,
-      tensor: tensor
-    }
+  def set_params(%DMatrix{} = dmat, opts) do
+    Exgboost.DMatrix.set_params(dmat, opts)
   end
 
-  def update(%Booster{} = booster, %DMatrix{} = dmatrix, iteration) when is_integer(iteration) do
-    Exgboost.NIF.booster_update_one_iter(booster.ref, dmatrix.ref, iteration) |> unwrap!()
+  def set_params(%Booster{} = booster, opts) do
+    Exgboost.Booster.set_params(booster, opts)
   end
 
-  def update(%Booster{} = booster, %DMatrix{} = dmatrix, objective)
-      when is_function(objective, 2) do
-    pred = Exgboost.predict(booster, dmatrix, output_margin: true, training: true)
-    {grad, hess} = objective.(pred, dmatrix)
-    boost(booster, dmatrix, grad, hess)
-  end
-
-  def boost(
-        %Booster{} = booster,
-        %DMatrix{} = dmatrix,
-        %Nx.Tensor{} = grad,
-        %Nx.Tensor{} = hess
-      ) do
-    validate_type!(grad, {:f, 32})
-    validate_type!(hess, {:f, 32})
-
-    if Nx.shape(grad) != Nx.shape(hess) do
-      raise ArgumentError,
-            "grad and hess must have the same shape, got #{inspect(Nx.shape(grad))} and #{inspect(Nx.shape(hess))}"
-    end
-
-    Exgboost.NIF.booster_boost_one_iter(
-      booster.ref,
-      dmatrix.ref,
-      Nx.to_binary(grad),
-      Nx.to_binary(hess)
-    )
-  end
-
-  def _train(%Booster{} = booster, %DMatrix{} = dmat, opts \\ []) do
-    opts = Keyword.validate!(opts, [:obj, num_boost_rounds: 10])
-    objective = Keyword.get(opts, :obj)
-    start_iteration = 0
-    num_boost_rounds = Keyword.fetch!(opts, :num_boost_rounds)
-
-    for i <- start_iteration..(num_boost_rounds - 1) do
-      if objective do
-        update(booster, dmat, objective)
-      else
-        update(booster, dmat, i)
-      end
-    end
-
-    booster
-  end
-
-  def set_dmatrix_params(dmat, opts) do
-    opts =
-      Keyword.validate!(opts, [
-        :label,
-        :weight,
-        :base_margin,
-        :group,
-        :label_upper_bound,
-        :label_lower_bound,
-        :feature_weights
-      ])
-
-    {meta_opts, str_opts} = DMatrix.get_args_groups(opts, [:meta, :str])
-
-    Enum.each(meta_opts, fn {key, value} ->
-      data_interface = array_interface(value) |> Jason.encode!()
-      Exgboost.NIF.dmatrix_set_info_from_interface(dmat.ref, Atom.to_string(key), data_interface)
-    end)
-
-    Enum.each(str_opts, fn {key, value} ->
-      Exgboost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
-    end)
-
-    dmat
-  end
-
-  @doc """
-  Need to implement this because XGBoost expects NaN to be encoded as "NaN" without being
-  a string, so if we pass string NaN to XGBoost, it will fail.
-
-  This allows the user to use Nx.Constants.nan() and have it work as expected.
-  """
+  # Need to implement this because XGBoost expects NaN to be encoded as "NaN" without being
+  # a string, so if we pass string NaN to XGBoost, it will fail.
+  # This allows the user to use Nx.Constants.nan() and have it work as expected.
   defimpl Jason.Encoder, for: Nx.Tensor do
     def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FC0::16-native>>}}, _opts),
       do: "NaN"

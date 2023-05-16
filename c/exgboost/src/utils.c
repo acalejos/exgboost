@@ -114,7 +114,7 @@ int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term,
                            (void *)&(resource))) {
       return 0;
     }
-    *dmats[i] = *resource;
+    memcpy(&((*dmats)[i]), resource, sizeof(DMatrixHandle));
     term = tail;
     i++;
   }
