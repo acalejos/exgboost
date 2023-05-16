@@ -144,6 +144,7 @@ defmodule Exgboost do
   ## Options
 
   * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
+  
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
   * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
