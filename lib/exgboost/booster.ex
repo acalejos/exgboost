@@ -182,6 +182,7 @@ defmodule Exgboost.Booster do
   Evaluate the model on mat.
 
   ## Options
+
     * `name` - The name of the dataset.
 
     * `iteration` - The current iteration number.
