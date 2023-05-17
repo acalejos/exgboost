@@ -28,7 +28,6 @@ else
 	CMAKE_FLAGS += -DUSE_CUDA=OFF -DBUILD_WITH_CUDA_CUB=OFF
 endif
 
-#C_SRCS = $(EXGBOOST_DIR)/src/exgboost.c $(EXGBOOST_DIR)/include/exgboost.h
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
 
 LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR)/lib -lxgboost
@@ -45,7 +44,7 @@ else
 	# in ./lib regardless of the absolute location. This way priv can be safely
 	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
 	# and single quotes to escape shell variable
-	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
+	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib/lib'
 	POST_INSTALL = $(NOOP)
 endif
 

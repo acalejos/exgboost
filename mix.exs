@@ -37,7 +37,16 @@ defmodule Exgboost.MixProject do
     [
       maintainers: ["Andres Alejos"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/acalejos/exgboost"}
+      links: %{"GitHub" => "https://github.com/acalejos/exgboost"},
+      files: [
+        "lib",
+        "mix.exs",
+        "c",
+        "Makefile",
+        "README.md",
+        "LICENSE",
+        ".formatter.exs"
+      ]
     ]
   end
 
