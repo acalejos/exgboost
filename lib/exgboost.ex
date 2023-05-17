@@ -21,6 +21,23 @@ defmodule Exgboost do
   end
   ```
 
+  ## API Data Structures
+
+  Exgboost's top-level `Exgboost` API works directly and only with `Nx` tensors. However, under the hood,
+  it leverages the structs defined in the `Exgboost.Booster` and `Exgboost.DMatrix` modules. These structs
+  are wrappers around the structs defined in the XGBoost library.
+  The two main structs used are [DMatrix](https://xgboost.readthedocs.io/en/latest/c.html#dmatrix)
+  to represent the data matrix that will be used
+  to train the model, and [Booster](https://xgboost.readthedocs.io/en/latest/c.html#booster)
+  which represents the model.
+
+  The top-level `Exgboost` API does not expose the structs directly. Instead, the
+  structs are exposed through the `Exgboost.Booster` and `Exgboost.DMatrix` modules. Power users
+  might wish to use these modules directly. For example, if you wish to use the `Booster` struct
+  directly then you can use the `Exgboost.Booster.booster/2` function to create a `Booster` struct
+  from a `DMatrix` and a keyword list of options. See the `Exgboost.Booster` and `Exgboost.DMatrix`
+  modules source for more implementation details.
+
   ## Basic Usage
 
   ```elixir
@@ -85,9 +102,15 @@ defmodule Exgboost do
 
   ## Prediction
 
-  ```elixir
-  ```
+  `Exgboost.predict/2` is the primary entry point for making predictions with a trained model.
+  It accepts a `Booster` struct (which is the output of `Exgboost.train/2`).
+  `Exgboost.predict/2` returns a Nx tensor containing the predictions.
+  `Exgboost.predict/2` also accepts a keyword list of options that can be used to configure the prediction process.
 
+
+  ```elixir
+  preds = Exgboost.train(X, y) |> Exgboost.predict(X)
+  ```
   """
   alias Exgboost.ArrayInterface
   alias Exgboost.Booster
@@ -148,9 +171,9 @@ defmodule Exgboost do
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
   * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
-          If there's more than one, will use the last eval set. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
-          If early stopping occurs, the model will have two additional fields:
-        ``bst.best_score``, ``bst.best_iteration``.  If these values are `nil` then no early stopping occurred.
+      If there's more than one, will use the last eval set. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
+      If early stopping occurs, the model will have two additional fields:
+     `bst.best_score`, `bst.best_iteration`.  If these values are `nil` then no early stopping occurred.
   * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
@@ -162,9 +185,6 @@ defmodule Exgboost do
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
   * `params` - A keyword list to use as model parameters. See [Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of parameters supported in the model.  Note that
       some params can appear more than once, such as `eval_metric` for setting multiple evaluation metrics.
-
-  ## Example
-
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: Exgboost.Booster.t()
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
@@ -189,17 +209,17 @@ defmodule Exgboost do
       each sample in each tree.  Note that the leaf index of a tree is
       unique per tree, so you may find leaf 1 in both tree 1 and tree 0.
 
-  * `:pred_contribs` - When this is True the output will be a matrix of size (nsample,
+  * `:pred_contribs` - When this is `true` the output will be a matrix of size (nsample,
       nfeats + 1) with each record indicating the feature contributions
       (SHAP values) for that prediction. The sum of all feature
       contributions is equal to the raw untransformed margin value of the
       prediction. Note the final column is the bias term.
 
-  * `:approx_contribs` - Approximate the contributions of each feature.  Used when ``pred_contribs`` or
-      ``pred_interactions`` is set to True.  Changing the default of this parameter
+  * `:approx_contribs` - Approximate the contributions of each feature.  Used when `pred_contribs` or
+      `pred_interactions` is set to `true`.  Changing the default of this parameter
       (False) is not recommended.
 
-  * `:pred_interactions` - When this is True the output will be a matrix of size (nsample,
+  * `:pred_interactions` - When this is `true` the output will be a matrix of size (nsample,
       nfeats + 1, nfeats + 1) indicating the SHAP interaction values for
       each pair of features. The sum of each row (or column) of the
       interaction values equals the corresponding SHAP value (from
@@ -207,14 +227,14 @@ defmodule Exgboost do
       untransformed margin value of the prediction. Note the last row and
       column correspond to the bias term.
 
-  * `:validate_features` - When this is True, validate that the Booster's and data's
+  * `:validate_features` - When this is `true`, validate that the Booster's and data's
       feature_names are identical.  Otherwise, it is assumed that the
       feature_names are the same.
 
   * `:training` - Whether the prediction value is used for training.  This can effect `dart`
       booster, which performs dropouts during training iterations but use all trees
       for inference. If you want to obtain result with dropouts, set this parameter
-      to `True`.  Also, the parameter is set to true when obtaining prediction for
+      to `true`.  Also, the parameter is set to `true` when obtaining prediction for
       custom objective function.
 
   * `:iteration_range` - Specifies which layer of trees are used in prediction.  For example, if a
@@ -222,7 +242,7 @@ defmodule Exgboost do
       20)`, then only the forests built during [10, 20) (half open set) rounds are
       used in this prediction.
 
-  * `:strict_shape` - When set to True, output shape is invariant to whether classification is used.
+  * `:strict_shape` - When set to `true`, output shape is invariant to whether classification is used.
       For both value and margin prediction, the output shape is (n_samples,
       n_groups), n_groups == 1 when multi-class is not used.  Default to False, in
       which case the output shape can be (n_samples, ) if multi-class is not used.
@@ -235,6 +255,29 @@ defmodule Exgboost do
     Booster.predict(bst, dmat, opts)
   end
 
+  @doc """
+  Run prediction in-place, Unlike `Exgboost.predict/2`, inplace prediction does not cache the prediction result.
+
+  ## Options
+
+  * `:base_margin` -  Base margin used for boosting from existing model.
+
+  * `:missing` - Value used for missing values. If None, defaults to `Nx.Constant.nan()`.
+
+  * `:predict_type` -
+    * `value`  - Output model prediction values.
+    * `margin`  - Output the raw untransformed margin value.
+
+  * `:output_margin` - Whether to output the raw untransformed margin value.
+
+  * `:validate_features` - See `Exgboost.predict/2` for details.
+
+  * `:iteration_range` - See `Exgboost.predict/2` for details.
+
+  * `:strict_shape` - See `Exgboost.predict/2` for details.
+
+  Returns an Nx.Tensor containing the predictions.
+  """
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
     opts =
       Keyword.validate!(opts,
@@ -268,18 +311,23 @@ defmodule Exgboost do
         nil
       end
 
-    # if validate_features do
-    # if not hasattr(data, "shape") do
-    #     raise TypeError(
-    #         "`shape` attribute is required when `validate_features` is True."
-    #     )
-    # end
-    # if len(data.shape) != 1 and self.num_features() != data.shape[1]:
-    #     raise ValueError(
-    #         f"Feature shape mismatch, expected: {self.num_features()}, "
-    #         f"got {data.shape[1]}"
-    #     )
-    # end
+    if Keyword.fetch!(opts, :validate_features) do
+      case Nx.shape(data) do
+        {_rows} ->
+          nil
+
+        {_rows, cols} ->
+          if cols != Booster.get_num_features(boostr),
+            do:
+              raise(
+                ArgumentError,
+                "Feature shape mismatch, expected: #{Booster.get_num_features(boostr)}, got #{cols}"
+              )
+
+        _ ->
+          raise ArgumentError, "Data must be a 1D or 2D tensor"
+      end
+    end
 
     case data do
       %Nx.Tensor{} ->

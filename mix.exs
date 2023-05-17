@@ -1,8 +1,6 @@
 defmodule Exgboost.MixProject do
   use Mix.Project
 
-  @source_url "https://github.com/acalejos/exgboost"
-
   def project do
     [
       app: :exgboost,
@@ -20,14 +18,12 @@ defmodule Exgboost.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:elixir_make, "~> 0.4", runtime: false},
@@ -41,7 +37,7 @@ defmodule Exgboost.MixProject do
     [
       maintainers: ["Andres Alejos"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => @source_url}
+      links: %{"GitHub" => "https://github.com/acalejos/exgboost"}
     ]
   end
 
@@ -51,6 +47,3 @@ defmodule Exgboost.MixProject do
     ]
   end
 end
-
-# For CUDA toolkit >= 11.4, `BUILD_WITH_CUDA_CUB` is required.
-# cmake .. -DUSE_CUDA=ON -DBUILD_WITH_CUDA_CUB=ON

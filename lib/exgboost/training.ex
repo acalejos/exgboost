@@ -99,6 +99,10 @@ defmodule Exgboost.Training do
         unless evals_dmats == [] do
           [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
+          # TODO: Is this the best way to get the metrics stored in the booster?
+          [{_ev_name, metric_name, _metric_value} | _tail] =
+            Booster.eval(bst, target_eval) |> Enum.reverse()
+
           [
             %Callback{
               event: :after_iteration,
@@ -110,8 +114,7 @@ defmodule Exgboost.Training do
                 since_last_improvement: 0,
                 mode: :min,
                 target_eval: target_eval,
-                # TODO: Get this from the Booster
-                target_metric: "rmse"
+                target_metric: metric_name
               }
             }
             | callbacks

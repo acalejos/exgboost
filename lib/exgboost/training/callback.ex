@@ -46,10 +46,26 @@ defmodule Exgboost.Training.Callback do
   @enforce_keys [:event, :fun]
   defstruct [:event, :fun, :name, :init_state]
 
+  @doc """
+  Factory for a new callback without an initial state. See `Exgboost.Callback.new/4` for more details.
+  """
+  @spec new(
+          event :: :before_training | :after_training | :before_iteration | :after_iteration,
+          fun :: (State.t() -> {:cont, State.t()} | {:halt, State.t()})
+        ) :: Callback.t()
   def new(event, fun) do
     new(event, fun, nil, %{})
   end
 
+  @doc """
+  Factory for a new callback with an initial state.
+  """
+  @spec new(
+          event :: :before_training | :after_training | :before_iteration | :after_iteration,
+          fun :: (State.t() -> {:cont, State.t()} | {:halt, State.t()}),
+          name :: atom(),
+          init_state :: map()
+        ) :: Callback.t()
   def new(event, fun, name, %{} = init_state)
       when event in [:before_training, :after_training, :before_iteration, :after_iteration] and
              is_atom(name) do
@@ -79,7 +95,7 @@ defmodule Exgboost.Training.Callback do
   # but for now we'll just do early stopping
 
   @doc """
-  A callback that performs early stopping.
+  A callback function that performs early stopping.
 
   Requires that the following exist in the `state` that is passed to the callback:
 
@@ -169,6 +185,15 @@ defmodule Exgboost.Training.Callback do
     end
   end
 
+  @doc """
+  A callback function that evaluates metrics on the training and evaluation sets.
+
+  Requires that the following exist in the `state.meta_vars` that is passed to the callback:
+   * eval_metrics:
+      * evals: a list of evaluation sets to evaluate metrics on
+      * filter: a function that takes a metric name and value and returns
+      true if the metric should be included in the results
+  """
   def eval_metrics(
         %State{
           booster: bst,
@@ -189,6 +214,15 @@ defmodule Exgboost.Training.Callback do
     {:cont, %{state | metrics: metrics}}
   end
 
+  @doc """
+  A callback function that prints evaluation metrics according to a period.
+
+  Requires that the following exist in the `state.meta_vars` that is passed to the callback:
+   * monitor_metrics:
+      * period: print metrics every `period` iterations
+      * filter: a function that takes a metric name and value and returns
+      true if the metric should be included in the results
+  """
   def monitor_metrics(
         %State{
           iteration: iteration,
