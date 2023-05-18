@@ -35,6 +35,15 @@ defmodule ExgboostTest do
     assert Booster.get_boosted_rounds(booster) == num_boost_round
   end
 
+  test "booster params" do
+    x = Nx.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    y = Nx.tensor([0, 1, 2])
+    num_boost_round = 10
+    params = [tree_method: "hist", objective: "multi:softprob", num_class: 3]
+    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params)
+    assert Booster.get_boosted_rounds(booster) == num_boost_round
+  end
+
   test "predict", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)

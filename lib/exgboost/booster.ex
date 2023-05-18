@@ -127,7 +127,7 @@ defmodule Exgboost.Booster do
           Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), v)
         end)
       else
-        Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), value)
+        Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
       end
     end
 

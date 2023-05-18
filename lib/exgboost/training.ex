@@ -97,11 +97,11 @@ defmodule Exgboost.Training do
     callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
         unless evals_dmats == [] do
-          [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
+          [{dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
           # TODO: Is this the best way to get the metrics stored in the booster?
           [{_ev_name, metric_name, _metric_value} | _tail] =
-            Booster.eval(bst, target_eval) |> Enum.reverse()
+            Booster.eval(bst, dmat) |> Enum.reverse()
 
           [
             %Callback{
