@@ -1,0 +1,71 @@
+# Iris Classification with Gradient Boosting
+
+```elixir
+Mix.install([
+  {:exgboost, "~> 0.1"},
+  {:nx, "~> 0.5"},
+  {:scidata, "~> 0.1"},
+  {:scholar, "~> 0.1"}
+])
+```
+
+## Data
+
+We'll be working with the Iris flower dataset. The Iris dataset consists of features corresponding to measurements of 3 different species of the Iris flower. Overall we have 150 examples, each with 4 featurse and a numeric label mapping to 1 of the 3 species. We can download this dataset using [Scidata](https://github.com/elixir-nx/scidata):
+
+```elixir
+{x, y} = Scidata.Iris.download()
+:ok
+```
+
+Scidata doesn't provide train-test splits for Iris. Instead, we'll need to shuffle the original dataset and split manually. We'll save 20% of the dataset for testing:
+
+```elixir
+data = Enum.zip(x, y) |> Enum.shuffle()
+{train, test} = Enum.split(data, ceil(length(data) * 0.8))
+:ok
+```
+
+Exgboost requires inputs to be [Nx](https://github.com/elixir-nx/nx) tensors. The conversion for this example is rather easy as we can just wrap both features and labels in a call to `Nx.tensor/1`:
+
+```elixir
+{x_train, y_train} = Enum.unzip(train)
+{x_test, y_test} = Enum.unzip(test)
+
+x_train = Nx.tensor(x_train)
+y_train = Nx.tensor(y_train)
+
+x_test = Nx.tensor(x_test)
+y_test = Nx.tensor(y_test)
+
+x_train
+```
+
+```elixir
+y_train
+```
+
+We now have both train and test sets consisting of features and labels. Time to train a booster!
+
+## Training
+
+The simplest way to train a booster is using the top-level `Exgboost.train/2` function. This function expects input features and labels, as well as some optional training configuration parameters.
+
+This example is a multi-class classification problem with 3 output classes. We need to configure Exgboost to train this booster as a multi-class classifier by specifying a different training objective. We also need to specify the number of output classes:
+
+```elixir
+booster = Exgboost.train(x_train, y_train, params: [num_class: "3", objective: "multi:softprob"])
+```
+
+And that's it! Now we can test our booster.
+
+## Testing
+
+To get predictions from a trained booster, we can just call `Exgboost.predict/2`. You'll notice for this problem that the booster outputs a tensor of shape `{30, 3}` where the 2nd dimension represents output probabilities for each class. We can obtain a discrete prediction for use in our accuracy measurement by computing the `argmax` along the last dimension:
+
+```elixir
+preds = Exgboost.predict(booster, x_test) |> Nx.argmax(axis: -1)
+Scholar.Metrics.accuracy(y_test, preds)
+```
+
+And that's it! We've successfully trained a booster on the Iris dataset with `Exgboost`.
