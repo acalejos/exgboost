@@ -1,12 +1,12 @@
 defmodule Exgboost.Parameter do
   alias __MODULE__
   @enforce_keys [:validation]
-  defstruct [:reqs, :validation, :default, :alter]
+  defstruct [:validation, :default, :alter, reqs: []]
 
   def parameters do
     %{
       verbosity: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           case x do
             :silent ->
               0
@@ -27,7 +27,7 @@ defmodule Exgboost.Parameter do
         end
       },
       use_rmm: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x in [true, false],
             do: x,
             else: raise(ArgumentError, "Parameter `use_rmm` must be in [:true, :false]")
@@ -35,7 +35,7 @@ defmodule Exgboost.Parameter do
         default: false
       },
       booster: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x in [:gbtree, :gblinear, :dart],
             do: to_string(x),
             else:
@@ -44,7 +44,7 @@ defmodule Exgboost.Parameter do
         default: :gbtree
       },
       validate_parameters: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x in [true, false],
             do: x,
             else:
@@ -56,7 +56,7 @@ defmodule Exgboost.Parameter do
         default: true
       },
       nthread: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `nthread` must be >= 0")
@@ -64,7 +64,7 @@ defmodule Exgboost.Parameter do
         default: 0
       },
       disable_default_eval_metric: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x in [true, false, 1, 0],
             do: x,
             else:
@@ -76,7 +76,7 @@ defmodule Exgboost.Parameter do
         default: false
       },
       num_features: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `num_features` must be >= 0")
@@ -84,8 +84,13 @@ defmodule Exgboost.Parameter do
       },
       eta: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          if(booster)
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `eta` not available for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
 
           if x > 0,
             do: x,
@@ -95,7 +100,15 @@ defmodule Exgboost.Parameter do
         alter: :learning_rate
       },
       gamma: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `gamma` not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `gamma` must be >= 0")
@@ -104,7 +117,15 @@ defmodule Exgboost.Parameter do
         alter: :min_split_loss
       },
       max_depth: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `max_depth` not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0,
             do: x,
             else: raise(ArgumentError, "Parameter `max_depth` must be > 0")
@@ -112,7 +133,15 @@ defmodule Exgboost.Parameter do
         default: 6
       },
       min_child_weight: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `min_child` not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `min_child_weight` must be >= 0")
@@ -120,7 +149,15 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       max_delta_step: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `max_delta_step` not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `max_delta_step` must be >= 0")
@@ -128,7 +165,15 @@ defmodule Exgboost.Parameter do
         default: 0
       },
       subsample: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter `subsample` not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0 and x <= 1,
             do: x,
             else: raise(ArgumentError, "Parameter `subsample` must be in (0, 1]")
@@ -137,7 +182,15 @@ defmodule Exgboost.Parameter do
         alter: :subsample
       },
       colsample_bytree: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0 and x <= 1,
             do: x,
             else: raise(ArgumentError, "Parameter `colsample_bytree` must be in (0, 1]")
@@ -145,7 +198,15 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       colsample_bylevel: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0 and x <= 1,
             do: x,
             else: raise(ArgumentError, "Parameter `colsample_bytree` must be in (0, 1]")
@@ -153,7 +214,15 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       colsample_bynode: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0 and x <= 1,
             do: x,
             else: raise(ArgumentError, "Parameter `colsample_bytree` must be in (0, 1]")
@@ -161,7 +230,7 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       lambda: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `lambda` must be >= 0")
@@ -170,7 +239,7 @@ defmodule Exgboost.Parameter do
         alter: :reg_lambda
       },
       alpha: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `alpha` must be >= 0")
@@ -179,7 +248,15 @@ defmodule Exgboost.Parameter do
         alter: :reg_alpha
       },
       tree_method: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x in [:auto, :exact, :approx, :hist, :gpu_hist],
             do: to_string(x),
             else:
@@ -191,13 +268,23 @@ defmodule Exgboost.Parameter do
         default: :auto
       },
       scale_pos_weight: %Parameter{
-        validation: fn x -> x end,
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          else
+            x
+          end
+        end,
         default: 1
       },
       updater: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          if booster != :gblinear do
+        validation: fn x, reqs ->
+          if reqs[:booster] != :gblinear do
             case x do
               single when not is_list(single) ->
                 if single in [:grow_colmaker, :prune, :refresh, :grow_histmaker, :sync, :refresh] do
@@ -255,7 +342,15 @@ defmodule Exgboost.Parameter do
         default: :grow_colmaker
       },
       refresh_leaf: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x in [0, 1],
             do: x,
             else: raise(ArgumentError, "Parameter `refresh_leaf` must either 0 or 1")
@@ -263,7 +358,15 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       process_type: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x in [:default, :update],
             do: to_string(x),
             else:
@@ -275,9 +378,16 @@ defmodule Exgboost.Parameter do
         default: :default
       },
       grow_policy: %Parameter{
-        reqs: [:tree_method],
-        validation: fn x, tree_method ->
-          unless tree_method in [:hist, :approx, :gpu_hist] do
+        reqs: [:tree_method, :booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
+          unless reqs[:tree_method] in [:hist, :approx, :gpu_hist] do
             raise(
               ArgumentError,
               "Parameter `grow_policy` is only available for `tree_method: :hist` or `tree_method: :gpu_hist` or `tree_method: :approx`"
@@ -285,7 +395,7 @@ defmodule Exgboost.Parameter do
           end
 
           if x in [:depthwise, :lossguide],
-            do: to_string(x),
+            do: x,
             else:
               raise(
                 ArgumentError,
@@ -295,7 +405,15 @@ defmodule Exgboost.Parameter do
         default: :depthwise
       },
       max_leaves: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0,
             do: x,
             else: raise(ArgumentError, "Parameter `max_leaves` must be > 0")
@@ -303,7 +421,15 @@ defmodule Exgboost.Parameter do
         default: 0
       },
       max_bin: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0,
             do: x,
             else: raise(ArgumentError, "Parameter `max_bin` must be > 0")
@@ -311,7 +437,15 @@ defmodule Exgboost.Parameter do
         default: 256
       },
       predictor: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x in [:auto, :cpu_predictor, :gpu_predictor],
             do: x,
             else:
@@ -323,7 +457,15 @@ defmodule Exgboost.Parameter do
         default: :auto
       },
       num_parallel_tree: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x > 0,
             do: x,
             else: raise(ArgumentError, "Parameter `num_parallel_tree` must be > 0")
@@ -331,7 +473,15 @@ defmodule Exgboost.Parameter do
         default: 1
       },
       monotone_constraints: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if is_list(x),
             do: x,
             else:
@@ -343,7 +493,15 @@ defmodule Exgboost.Parameter do
         default: []
       },
       interaction_constraints: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if is_list(x),
             do: x,
             else:
@@ -355,7 +513,15 @@ defmodule Exgboost.Parameter do
         default: []
       },
       multi_strategy: %Parameter{
-        validation: fn x ->
+        reqs: [:booster],
+        validation: fn x, reqs ->
+          if reqs[:booster] == :gblinear do
+            raise(
+              ArgumentError,
+              "Parameter not supported for `booster`: #{inspect(reqs[:booster])}"
+            )
+          end
+
           if x in [:one_output_per_tree, :multi_output_tree],
             do: to_string(x),
             else:
@@ -368,11 +534,11 @@ defmodule Exgboost.Parameter do
       },
       sample_type: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :gbtree do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :dart do
             raise(
               ArgumentError,
-              "Parameter `sample_type` is only available for `booster: :gbtree`"
+              "Parameter `sample_type` is only available for `booster: :dart`"
             )
           end
 
@@ -388,11 +554,11 @@ defmodule Exgboost.Parameter do
       },
       normalize_type: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :gbtree do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :dart do
             raise(
               ArgumentError,
-              "Parameter `normalize_type` is only available for `booster: :gbtree`"
+              "Parameter `normalize_type` is only available for `booster: :dart`"
             )
           end
 
@@ -408,8 +574,8 @@ defmodule Exgboost.Parameter do
       },
       rate_drop: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :dart do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :dart do
             raise(
               ArgumentError,
               "Parameter `rate_drop` is only available for `booster: :dart`"
@@ -424,8 +590,8 @@ defmodule Exgboost.Parameter do
       },
       one_drop: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :dart do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :dart do
             raise(
               ArgumentError,
               "Parameter `one_drop` is only available for `booster: :dart`"
@@ -444,8 +610,8 @@ defmodule Exgboost.Parameter do
       },
       skip_drop: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :dart do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :dart do
             raise(
               ArgumentError,
               "Parameter `skip_drop` is only available for `booster: :dart`"
@@ -460,8 +626,8 @@ defmodule Exgboost.Parameter do
       },
       feature_selector: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :gblinear do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :gblinear do
             raise(
               ArgumentError,
               "Parameter `feature_selector` is only available for `booster: :gblinear`"
@@ -480,8 +646,8 @@ defmodule Exgboost.Parameter do
       },
       top_k: %Parameter{
         reqs: [:booster],
-        validation: fn x, booster ->
-          unless booster == :gblinear do
+        validation: fn x, reqs ->
+          unless reqs[:booster] == :gblinear do
             raise(
               ArgumentError,
               "Parameter `top_k` is only available for `booster: :gblinear`"
@@ -495,7 +661,7 @@ defmodule Exgboost.Parameter do
         default: 0
       },
       objective: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if(
             x in [
               :reg_squarederror,
@@ -529,15 +695,15 @@ defmodule Exgboost.Parameter do
         default: :reg_squarederror
       },
       base_score: %Parameter{
-        validation: fn x -> x end
+        validation: fn x, _reqs -> x end
       },
       eval_metric: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           x = if is_list(x), do: x, else: [x]
 
-          Enum.each(x, fn y ->
+          Enum.map(x, fn y ->
             cond do
-              String.contains?(y, "@") or String.ends_with?(y, "-") ->
+              String.contains?(to_string(y), "@") or String.ends_with?(to_string(y), "-") ->
                 y
 
               y in [
@@ -575,7 +741,7 @@ defmodule Exgboost.Parameter do
         default: []
       },
       seed: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x >= 0,
             do: x,
             else: raise(ArgumentError, "Parameter `seed` must be >= 0")
@@ -583,7 +749,7 @@ defmodule Exgboost.Parameter do
         default: 0
       },
       seed_per_iteration: %Parameter{
-        validation: fn x ->
+        validation: fn x, _reqs ->
           if x in [true, false],
             do: x,
             else:
@@ -593,8 +759,8 @@ defmodule Exgboost.Parameter do
       },
       tweedie_variance_power: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective == :reg_tweedie do
+        validation: fn x, reqs ->
+          unless reqs[:objective] == :reg_tweedie do
             raise(
               ArgumentError,
               "Parameter `tweedie_variance_power` is only available for `objective: :reg_tweedie`"
@@ -609,8 +775,8 @@ defmodule Exgboost.Parameter do
       },
       huber_slope: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective == :reg_pseudohubererror do
+        validation: fn x, reqs ->
+          unless reqs[:objective] == :reg_pseudohubererror do
             raise(
               ArgumentError,
               "Parameter `huber_slope` is only available for `objective: :reg_pseudohubererror`"
@@ -625,8 +791,8 @@ defmodule Exgboost.Parameter do
       },
       quantile_alpha: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective == :reg_quantileerror do
+        validation: fn x, reqs ->
+          unless reqs[:objective] == :reg_quantileerror do
             raise(
               ArgumentError,
               "Parameter `quantile_alpha` is only available for `objective: :reg_quantileerror`"
@@ -641,8 +807,8 @@ defmodule Exgboost.Parameter do
       },
       aft_loss_distribution: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective == :survival_aft do
+        validation: fn x, reqs ->
+          unless reqs[:objective] == :survival_aft do
             raise(
               ArgumentError,
               "Parameter `aft_loss_distribution` is only available for `objective: :survival_aft`"
@@ -661,8 +827,8 @@ defmodule Exgboost.Parameter do
       },
       lambdarank_pair_method: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective in [:rank_pairwise, :rank_ndcg, :rank_map] do
+        validation: fn x, reqs ->
+          unless reqs[:objective] in [:rank_pairwise, :rank_ndcg, :rank_map] do
             raise(
               ArgumentError,
               "Parameter `lambdarank_pair_method` is only available for `objective in in [:rank_pairwise, :rank_ndcg, :rank_map]`"
@@ -681,8 +847,8 @@ defmodule Exgboost.Parameter do
       },
       lambdarank_num_pair_per_sample: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective in [:rank_pairwise, :rank_ndcg, :rank_map] do
+        validation: fn x, reqs ->
+          unless reqs[:objective] in [:rank_pairwise, :rank_ndcg, :rank_map] do
             raise(
               ArgumentError,
               "Parameter `lambdarank_num_pair_per_sample` is only available for `objective in in [:rank_pairwise, :rank_ndcg, :rank_map]`"
@@ -697,8 +863,8 @@ defmodule Exgboost.Parameter do
       },
       lambdarank_unbiased: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective in [:rank_pairwise, :rank_ndcg, :rank_map] do
+        validation: fn x, reqs ->
+          unless reqs[:objective] in [:rank_pairwise, :rank_ndcg, :rank_map] do
             raise(
               ArgumentError,
               "Parameter `lambdarank_unbiased` is only available for `objective in in [:rank_pairwise, :rank_ndcg, :rank_map]`"
@@ -717,8 +883,8 @@ defmodule Exgboost.Parameter do
       },
       lambdarank_bias_norm: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective in [:rank_pairwise, :rank_ndcg, :rank_map] do
+        validation: fn x, reqs ->
+          unless reqs[:objective] in [:rank_pairwise, :rank_ndcg, :rank_map] do
             raise(
               ArgumentError,
               "Parameter `lambdarank_bias_norm` is only available for `objective in in [:rank_pairwise, :rank_ndcg, :rank_map]`"
@@ -737,8 +903,8 @@ defmodule Exgboost.Parameter do
       },
       ndcg_exp_gain: %Parameter{
         reqs: [:objective],
-        validation: fn x, objective ->
-          unless objective in [:rank_ndcg, :rank_map, :rank_pairwise] do
+        validation: fn x, reqs ->
+          unless reqs[:objective] in [:rank_ndcg, :rank_map, :rank_pairwise] do
             raise(
               ArgumentError,
               "Parameter `ndcg_exp_gain` is only available for `objective in in [:rank_ndcg, :rank_map, :rank_pairwise]`"
@@ -752,5 +918,22 @@ defmodule Exgboost.Parameter do
         default: true
       }
     }
+  end
+
+  @spec validate!(keyword()) :: keyword()
+  def validate!(params) when is_list(params) do
+    # Get some of the params that other params depend on
+    params = Keyword.put_new(params, :booster, parameters().booster.default)
+    params = Keyword.put_new(params, :objective, parameters().objective.default)
+    params = Keyword.put_new(params, :tree_method, parameters().tree_method.default)
+
+    Enum.map(params, fn {key, value} ->
+      if not Map.has_key?(parameters(), key) do
+        raise ArgumentError, "Unknown parameter `#{key}`"
+      end
+
+      reqs = Keyword.take(params, parameters()[key].reqs)
+      {key, parameters()[key].validation.(value, reqs)}
+    end)
   end
 end

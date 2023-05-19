@@ -5,8 +5,16 @@ defmodule Exgboost.Training do
   alias Exgboost.Training.{State, Callback}
 
   def train(%DMatrix{} = dmat, opts \\ []) do
-    {booster_params, opts} = Keyword.pop(opts, :params, [])
-    # TODO: Find exhaustive list of params to use String.to_existing_atom()
+    {opts, booster_params} =
+      Keyword.split(opts, [
+        :obj,
+        :num_boost_rounds,
+        :evals,
+        :verbose_eval,
+        :callbacks,
+        :learning_rates,
+        :early_stopping_rounds
+      ])
 
     opts =
       Keyword.validate!(opts,

@@ -30,8 +30,7 @@ defmodule ExgboostTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
     num_boost_round = 10
-    params = %{tree_method: "hist"}
-    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params)
+    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     assert Booster.get_boosted_rounds(booster) == num_boost_round
   end
 
@@ -40,7 +39,7 @@ defmodule ExgboostTest do
     y = Nx.tensor([0, 1, 2])
     num_boost_round = 10
     params = [tree_method: "hist", objective: "multi:softprob", num_class: 3]
-    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params)
+    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     assert Booster.get_boosted_rounds(booster) == num_boost_round
   end
 
@@ -50,8 +49,7 @@ defmodule ExgboostTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
     num_boost_round = 10
-    params = %{tree_method: "hist"}
-    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params)
+    booster = Exgboost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     dmat_preds = Exgboost.predict(booster, x)
     inplace_preds_no_proxy = Exgboost.inplace_predict(booster, x)
     # TODO: Test inplace_predict with proxy
@@ -66,15 +64,18 @@ defmodule ExgboostTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
     num_boost_round = 10
-    params = %{tree_method: "hist"}
     lrs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
     lrs_fun = fn i -> i / 10 end
 
-    Exgboost.train(x, y, num_boost_rounds: num_boost_round, params: params, learning_rates: lrs)
+    Exgboost.train(x, y,
+      num_boost_rounds: num_boost_round,
+      tree_method: :hist,
+      learning_rates: lrs
+    )
 
     Exgboost.train(x, y,
       num_boost_rounds: num_boost_round,
-      params: params,
+      tree_method: :hist,
       learning_rates: lrs_fun
     )
   end
@@ -84,14 +85,14 @@ defmodule ExgboostTest do
     ncols = :rand.uniform(10)
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
-    params = %{tree_method: "hist", eval_metric: ["rmse", "logloss"]}
 
     booster =
       Exgboost.train(x, y,
         num_boost_rounds: 10,
-        params: params,
         early_stopping_rounds: 1,
-        evals: [{x, y, "validation"}]
+        evals: [{x, y, "validation"}],
+        tree_method: :hist,
+        eval_metric: [:rmse, :logloss]
       )
 
     assert not is_nil(booster.best_iteration)
@@ -104,12 +105,12 @@ defmodule ExgboostTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
     num_boost_round = 10
-    params = %{tree_method: "hist"}
 
     booster =
       Exgboost.train(x, y,
         num_boost_rounds: num_boost_round,
-        params: params
+        tree_method: :hist,
+        eval_metric: :rmse
       )
 
     dmat = Exgboost.DMatrix.from_tensor(x, y, format: :dense)
@@ -117,7 +118,7 @@ defmodule ExgboostTest do
 
     assert metric_name == "rmse"
 
-    Exgboost.Booster.set_params(booster, eval_metric: "logloss")
+    Exgboost.Booster.set_params(booster, eval_metric: :logloss)
 
     metric_results = Exgboost.Booster.eval(booster, dmat)
 
