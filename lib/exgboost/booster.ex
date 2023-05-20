@@ -12,7 +12,7 @@ defmodule Exgboost.Booster do
   def booster([%DMatrix{} | _] = dmats, opts) when is_list(dmats) do
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = Exgboost.NIF.booster_create(refs) |> Internal.unwrap!()
-    opts = Exgboost.Parameter.validate!(opts)
+    opts = Exgboost.Parameters.validate!(opts)
     Booster.set_params(%Booster{ref: booster_ref}, opts)
   end
 

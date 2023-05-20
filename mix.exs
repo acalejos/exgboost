@@ -27,6 +27,7 @@ defmodule Exgboost.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.4", runtime: false},
+      {:nimble_options, "~> 0.3.0"},
       {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.29.0", only: :docs}
