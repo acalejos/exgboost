@@ -1,9 +1,9 @@
-defmodule Exgboost.Booster do
+defmodule EXGBoost.Booster do
   @moduledoc false
   alias __MODULE__
-  alias Exgboost.DMatrix
-  alias Exgboost.Internal
-  alias Exgboost.NIF
+  alias EXGBoost.DMatrix
+  alias EXGBoost.Internal
+  alias EXGBoost.NIF
   @enforce_keys [:ref]
   defstruct [:ref, :best_iteration, :best_score]
 
@@ -11,8 +11,8 @@ defmodule Exgboost.Booster do
 
   def booster([%DMatrix{} | _] = dmats, opts) when is_list(dmats) do
     refs = Enum.map(dmats, & &1.ref)
-    booster_ref = Exgboost.NIF.booster_create(refs) |> Internal.unwrap!()
-    opts = Exgboost.Parameters.validate!(opts)
+    booster_ref = EXGBoost.NIF.booster_create(refs) |> Internal.unwrap!()
+    opts = EXGBoost.Parameters.validate!(opts)
     Booster.set_params(%Booster{ref: booster_ref}, opts)
   end
 
@@ -25,7 +25,7 @@ defmodule Exgboost.Booster do
   trees that were fit during the boosting rounds m, (m+1), (m+2), …, (n-1).
   """
   def slice(boostr, begin_layer, end_layer, step) do
-    Exgboost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step) |> Internal.unwrap!()
+    EXGBoost.NIF.booster_slice(boostr.ref, begin_layer, end_layer, step) |> Internal.unwrap!()
   end
 
   @doc """
@@ -45,7 +45,7 @@ defmodule Exgboost.Booster do
             "grad and hess must have the same shape, got #{inspect(Nx.shape(grad))} and #{inspect(Nx.shape(hess))}"
     end
 
-    Exgboost.NIF.booster_boost_one_iter(
+    EXGBoost.NIF.booster_boost_one_iter(
       booster.ref,
       dmatrix.ref,
       Nx.to_binary(grad),
@@ -68,7 +68,7 @@ defmodule Exgboost.Booster do
       )
 
     if Keyword.fetch!(opts, :validate_features) do
-      Exgboost.Internal.validate_features!(booster, data)
+      EXGBoost.Internal.validate_features!(booster, data)
     end
 
     approx_contribs = Keyword.fetch!(opts, :approx_contribs)
@@ -112,7 +112,7 @@ defmodule Exgboost.Booster do
     }
 
     {shape, preds} =
-      Exgboost.NIF.booster_predict_from_dmatrix(booster.ref, data.ref, Jason.encode!(config))
+      EXGBoost.NIF.booster_predict_from_dmatrix(booster.ref, data.ref, Jason.encode!(config))
       |> Internal.unwrap!()
 
     Nx.tensor(preds) |> Nx.reshape(shape)
@@ -125,10 +125,10 @@ defmodule Exgboost.Booster do
     for {key, value} <- params do
       if is_list(value) do
         Enum.each(value, fn v ->
-          Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), v)
+          EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), v)
         end)
       else
-        Exgboost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
+        EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
       end
     end
 
@@ -143,7 +143,7 @@ defmodule Exgboost.Booster do
   """
   def set_attr(booster, attrs \\ []) do
     Enum.each(attrs, fn {key, value} ->
-      Exgboost.NIF.booster_set_attr(booster.ref, Atom.to_string(key), value)
+      EXGBoost.NIF.booster_set_attr(booster.ref, Atom.to_string(key), value)
     end)
 
     booster
@@ -151,29 +151,29 @@ defmodule Exgboost.Booster do
 
   def get_feature_names(booster),
     do:
-      Exgboost.NIF.booster_get_str_feature_info(booster.ref, "feature_name") |> Internal.unwrap!()
+      EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_name") |> Internal.unwrap!()
 
   def get_feature_types(booster),
     do:
-      Exgboost.NIF.booster_get_str_feature_info(booster.ref, "feature_type") |> Internal.unwrap!()
+      EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_type") |> Internal.unwrap!()
 
   def get_num_features(booster),
-    do: Exgboost.NIF.booster_get_num_feature(booster.ref) |> Internal.unwrap!()
+    do: EXGBoost.NIF.booster_get_num_feature(booster.ref) |> Internal.unwrap!()
 
   def get_best_iteration(booster), do: get_attr(booster, "best_iteration")
 
   def get_attrs(booster),
-    do: Exgboost.NIF.booster_get_attr_names(booster.ref) |> Internal.unwrap!()
+    do: EXGBoost.NIF.booster_get_attr_names(booster.ref) |> Internal.unwrap!()
 
   def get_boosted_rounds(booster) do
-    Exgboost.NIF.booster_boosted_rounds(booster.ref) |> Internal.unwrap!()
+    EXGBoost.NIF.booster_boosted_rounds(booster.ref) |> Internal.unwrap!()
   end
 
   def get_attr(booster, attr) do
     attrs = get_attrs(booster)
 
     if Enum.member?(attrs, attr) do
-      Exgboost.NIF.booster_get_attr(booster.ref, attr) |> Internal.unwrap!()
+      EXGBoost.NIF.booster_get_attr(booster.ref, attr) |> Internal.unwrap!()
     else
       :error
     end
@@ -216,7 +216,7 @@ defmodule Exgboost.Booster do
     dmats_refs = Enum.map(dmats_refs, & &1.ref)
 
     msg =
-      Exgboost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
+      EXGBoost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
       |> Internal.unwrap!()
 
     res =

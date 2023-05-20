@@ -1,4 +1,4 @@
-defmodule Exgboost.NIF do
+defmodule EXGBoost.NIF do
   @moduledoc false
 
   @on_load :on_load
@@ -36,7 +36,7 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.xgboost_version()
+      iex> EXGBoost.NIF.xgboost_version()
       {:ok, {2, 0, 0}}
   """
   def xgboost_version, do: :erlang.nif_error(:not_implemented)
@@ -49,7 +49,7 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-    iex> Exgboost.NIF.xgboost_build_info()
+    iex> EXGBoost.NIF.xgboost_build_info()
     {:ok,'{"BUILTIN_PREFETCH_PRESENT":true,"DEBUG":false,"GCC_VERSION":[9,3,0],"MM_PREFETCH_PRESENT":true,"USE_CUDA":false,"USE_FEDERATED":false,"USE_NCCL":false,"USE_OPENMP":true,"USE_RMM":false}'}
   """
   def xgboost_build_info, do: :erlang.nif_error(:not_implemented)
@@ -62,9 +62,9 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.set_global_config('{"use_rmm":false,"verbosity":1}')
+      iex> EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity":1}')
       :ok
-      iex> Exgboost.NIF.set_global_config('{"use_rmm":false,"verbosity": true}')
+      iex> EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity": true}')
       {:error, 'Invalid Parameter format for verbosity expect int but value=\'true\''}
   """
   def set_global_config(_config), do: :erlang.nif_error(:not_implemented)
@@ -77,7 +77,7 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.get_global_config()
+      iex> EXGBoost.NIF.get_global_config()
       {:ok, '{"use_rmm":false,"verbosity":1}'}
   """
   def get_global_config, do: :erlang.nif_error(:not_implemented)
@@ -89,7 +89,7 @@ defmodule Exgboost.NIF do
 
   **WARNING** This function will break on an improper file type and parse and thus the user
   should take EXTREME caution when using this, and avoid calling directly. Instead
-  use the `Exgboost.dmatrix` function.
+  use the `EXGBoost.dmatrix` function.
 
   This is set to be fixed with the 2.0.0 release of XGBoost.
 
@@ -108,9 +108,9 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1.0, 2.0, 3.0, 4.0])),1,4, -1.0)
+      iex> EXGBoost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1.0, 2.0, 3.0, 4.0])),1,4, -1.0)
       {:ok, #Reference<>}
-      iex> Exgboost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1, 2, 3, 4])),1,2, -1.0)
+      iex> EXGBoost.NIF.dmatrix_create_from_mat(Nx.to_binary(Nx.tensor([1, 2, 3, 4])),1,2, -1.0)
       {:error, 'Data size does not match nrow and ncol'}
   """
   def dmatrix_create_from_mat(_data, _nrow, _ncol, _missing),
@@ -131,10 +131,10 @@ defmodule Exgboost.NIF do
 
   ## Examples
 
-      iex> Exgboost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
+      iex> EXGBoost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
       {:ok, #Reference<>}
 
-      iex> Exgboost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
+      iex> EXGBoost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
       {:error #Reference<>}
   """
   def dmatrix_create_from_sparse(

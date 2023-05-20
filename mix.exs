@@ -1,4 +1,4 @@
-defmodule Exgboost.MixProject do
+defmodule EXGBoost.MixProject do
   use Mix.Project
 
   def project do
@@ -11,9 +11,9 @@ defmodule Exgboost.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
-      name: "Exgboost",
+      name: "EXGBoost",
       description:
-        "Elixir bindings for the XGBoost library. `Exgboost` provides an implementation of XGBoost that works with
+        "Elixir bindings for the XGBoost library. `EXGBoost` provides an implementation of XGBoost that works with
       [Nx](https://hexdocs.pm/nx/Nx.html) tensors."
     ]
   end
@@ -53,7 +53,7 @@ defmodule Exgboost.MixProject do
 
   defp docs do
     [
-      main: "Exgboost"
+      main: "EXGBoost"
     ]
   end
 end

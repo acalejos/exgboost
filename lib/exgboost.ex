@@ -1,6 +1,6 @@
-defmodule Exgboost do
+defmodule EXGBoost do
   @moduledoc """
-  Elixir bindings for the XGBoost library. `Exgboost` provides an implementation of XGBoost that works with
+  Elixir bindings for the XGBoost library. `EXGBoost` provides an implementation of XGBoost that works with
   [Nx](https://hexdocs.pm/nx/Nx.html) tensors.
 
   Xtreme Gradient Boosting (XGBoost) is an optimized distributed gradient
@@ -23,19 +23,19 @@ defmodule Exgboost do
 
   ## API Data Structures
 
-  Exgboost's top-level `Exgboost` API works directly and only with `Nx` tensors. However, under the hood,
-  it leverages the structs defined in the `Exgboost.Booster` and `Exgboost.DMatrix` modules. These structs
+  EXGBoost's top-level `EXGBoost` API works directly and only with `Nx` tensors. However, under the hood,
+  it leverages the structs defined in the `EXGBoost.Booster` and `EXGBoost.DMatrix` modules. These structs
   are wrappers around the structs defined in the XGBoost library.
   The two main structs used are [DMatrix](https://xgboost.readthedocs.io/en/latest/c.html#dmatrix)
   to represent the data matrix that will be used
   to train the model, and [Booster](https://xgboost.readthedocs.io/en/latest/c.html#booster)
   which represents the model.
 
-  The top-level `Exgboost` API does not expose the structs directly. Instead, the
-  structs are exposed through the `Exgboost.Booster` and `Exgboost.DMatrix` modules. Power users
+  The top-level `EXGBoost` API does not expose the structs directly. Instead, the
+  structs are exposed through the `EXGBoost.Booster` and `EXGBoost.DMatrix` modules. Power users
   might wish to use these modules directly. For example, if you wish to use the `Booster` struct
-  directly then you can use the `Exgboost.Booster.booster/2` function to create a `Booster` struct
-  from a `DMatrix` and a keyword list of options. See the `Exgboost.Booster` and `Exgboost.DMatrix`
+  directly then you can use the `EXGBoost.Booster.booster/2` function to create a `Booster` struct
+  from a `DMatrix` and a keyword list of options. See the `EXGBoost.Booster` and `EXGBoost.DMatrix`
   modules source for more implementation details.
 
   ## Basic Usage
@@ -44,39 +44,39 @@ defmodule Exgboost do
   key = Nx.Random.key(42)
   {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
   {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
-  model = Exgboost.train(X,y)
-  Exgboost.predict(model, X)
+  model = EXGBoost.train(X,y)
+  EXGBoost.predict(model, X)
   ```
 
   ## Training
 
-  Exgboost is designed to feel familiar to the users of the Python XGBoost library. `Exgboost.train/2` is the
+  EXGBoost is designed to feel familiar to the users of the Python XGBoost library. `EXGBoost.train/2` is the
   primary entry point for training a model. It accepts a Nx tensor for the features and a Nx tensor for the labels.
-  `Exgboost.train/2` returns a trained`Booster` struct that can be used for prediction. `Exgboost.train/2` also
+  `EXGBoost.train/2` returns a trained`Booster` struct that can be used for prediction. `EXGBoost.train/2` also
   accepts a keyword list of options that can be used to configure the training process. See the
   [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
-  `Exgbost.train/2` uses the `Exgboost.Training.train/1` function to perform the actual training. `Exgboost.Training.train/1`
+  `Exgbost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training. `EXGBoost.Training.train/1`
   and can be used directly if you wish to work directly with the `DMatrix` and `Booster` structs.
 
-  One of the main features of `Exgboost.train/2` is the ability for the end user to provide a custom training function
+  One of the main features of `EXGBoost.train/2` is the ability for the end user to provide a custom training function
   that will be used to train the model. This is done by passing a function to the `:obj` option. The function must
   accept a `DMatrix` and a `Booster` and return a `Booster`. The function will be called at each iteration of the
   training process. This allows the user to implement custom training logic. For example, the user could implement
   a custom loss function or a custom metric function. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/tutorials/custom_metric_obj.html)
   for more information on custom loss functions and custom metric functions.
 
-  Another feature of `Exgboost.train/2` is the ability to provide a validation set for early stopping. This is done
+  Another feature of `EXGBoost.train/2` is the ability to provide a validation set for early stopping. This is done
   by passing a list of 3-tuples to the `:evals` option. Each 3-tuple should contain a Nx tensor for the features, a Nx tensor
   for the labels, and a string label for the validation set name. The validation set will be used to calculate the validation
   error at each iteration of the training process. If the validation error does not improve for `:early_stopping_rounds` iterations
   then the training process will stop. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html)
   for a more detailed explanation of early stopping.
 
-  Early stopping is achieved through the use of callbacks. `Exgboost.train/2` accepts a list of callbacks that will be called
+  Early stopping is achieved through the use of callbacks. `EXGBoost.train/2` accepts a list of callbacks that will be called
   at each iteration of the training process. The callbacks can be used to implement custom logic. For example, the user could
   implement a callback that will print the validation error at each iteration of the training process or to provide a custom
-  setup function for training. See the `Exgboost.Training.Callback` module for more information on callbacks.
+  setup function for training. See the `EXGBoost.Training.Callback` module for more information on callbacks.
 
   Please notes that callbacks are called in the order that they are provided. If you provide multiple callbacks that modify
   the same parameter then the last callback will trump the previous callbacks. For example, if you provide a callback that
@@ -85,14 +85,14 @@ defmodule Exgboost do
 
   You are also able to pass parameters to be applied to the Booster model using the `:params` option. These parameters will
   be applied to the Booster model before training begins. This allows you to set parameters that are not available as options
-  to `Exgboost.train/2`. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for a full
+  to `EXGBoost.train/2`. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for a full
   list of parameters.
 
 
   ```elixir
   Exgboot.train(X,
                 y,
-                obj: &Exgboost.Training.train/1,
+                obj: &EXGBoost.Training.train/1,
                 evals: [{X_test, y_test, "test"}],
                 learning_rates: fn i -> i/10 end,
                 num_boost_round: 10,
@@ -102,22 +102,22 @@ defmodule Exgboost do
 
   ## Prediction
 
-  `Exgboost.predict/2` is the primary entry point for making predictions with a trained model.
-  It accepts a `Booster` struct (which is the output of `Exgboost.train/2`).
-  `Exgboost.predict/2` returns a Nx tensor containing the predictions.
-  `Exgboost.predict/2` also accepts a keyword list of options that can be used to configure the prediction process.
+  `EXGBoost.predict/2` is the primary entry point for making predictions with a trained model.
+  It accepts a `Booster` struct (which is the output of `EXGBoost.train/2`).
+  `EXGBoost.predict/2` returns a Nx tensor containing the predictions.
+  `EXGBoost.predict/2` also accepts a keyword list of options that can be used to configure the prediction process.
 
 
   ```elixir
-  preds = Exgboost.train(X, y) |> Exgboost.predict(X)
+  preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   ```
   """
-  alias Exgboost.ArrayInterface
-  alias Exgboost.Booster
-  alias Exgboost.Internal
-  alias Exgboost.DMatrix
-  alias Exgboost.ProxyDMatrix
-  alias Exgboost.Training
+  alias EXGBoost.ArrayInterface
+  alias EXGBoost.Booster
+  alias EXGBoost.Internal
+  alias EXGBoost.DMatrix
+  alias EXGBoost.ProxyDMatrix
+  alias EXGBoost.Training
 
   @doc """
   Check the build information of the xgboost library.
@@ -126,7 +126,7 @@ defmodule Exgboost do
   """
   @spec xgboost_build_info() :: map()
   def xgboost_build_info,
-    do: Exgboost.NIF.xgboost_build_info() |> Internal.unwrap!() |> Jason.decode!()
+    do: EXGBoost.NIF.xgboost_build_info() |> Internal.unwrap!() |> Jason.decode!()
 
   @doc """
   Check the version of the xgboost library.
@@ -134,7 +134,7 @@ defmodule Exgboost do
   Returns a 3-tuple in the form of `{major, minor, patch}`.
   """
   @spec xgboost_version() :: {integer(), integer(), integer()} | {:error, String.t()}
-  def xgboost_version, do: Exgboost.NIF.xgboost_version() |> Internal.unwrap!()
+  def xgboost_version, do: EXGBoost.NIF.xgboost_version() |> Internal.unwrap!()
 
   @doc """
   Set global configuration.
@@ -146,7 +146,7 @@ defmodule Exgboost do
   """
   @spec set_config(map()) :: :ok | {:error, String.t()}
   def set_config(%{} = config) do
-    Exgboost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
+    EXGBoost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
   end
 
   @doc """
@@ -158,7 +158,7 @@ defmodule Exgboost do
   """
   @spec get_config() :: map()
   def get_config do
-    Exgboost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
+    EXGBoost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
   end
 
   @doc """
@@ -167,7 +167,7 @@ defmodule Exgboost do
   ## Options
 
   * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
-  
+
   * `:num_boost_rounds` - Number of boosting iterations.
   * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
   * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
@@ -178,7 +178,7 @@ defmodule Exgboost do
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
-  * `:callbacks` - List of Exgboost.Training.Callback that are called during a given event. It is possible to use predefined callbacks by using `Exgboost.Callback` module.
+  * `:callbacks` - List of EXGBoost.Training.Callback that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Callback` module.
       Callbacks should be in the form of a keyword list where the only valid keys are `:before_training`, `:after_training`, `:before_iteration`, and `:after_iteration`.
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
@@ -186,10 +186,10 @@ defmodule Exgboost do
   * `params` - A keyword list to use as model parameters. See [Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of parameters supported in the model.  Note that
       some params can appear more than once, such as `eval_metric` for setting multiple evaluation metrics.
   """
-  @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: Exgboost.Booster.t()
+  @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
-    dmat = Exgboost.DMatrix.from_tensor(x, y, [format: :dense] ++ dmat_opts)
+    dmat = EXGBoost.DMatrix.from_tensor(x, y, [format: :dense] ++ dmat_opts)
     Training.train(dmat, opts)
   end
 
@@ -251,12 +251,12 @@ defmodule Exgboost do
   """
   def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
-    dmat = Exgboost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
+    dmat = EXGBoost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
     Booster.predict(bst, dmat, opts)
   end
 
   @doc """
-  Run prediction in-place, Unlike `Exgboost.predict/2`, inplace prediction does not cache the prediction result.
+  Run prediction in-place, Unlike `EXGBoost.predict/2`, inplace prediction does not cache the prediction result.
 
   ## Options
 
@@ -270,11 +270,11 @@ defmodule Exgboost do
 
   * `:output_margin` - Whether to output the raw untransformed margin value.
 
-  * `:validate_features` - See `Exgboost.predict/2` for details.
+  * `:validate_features` - See `EXGBoost.predict/2` for details.
 
-  * `:iteration_range` - See `Exgboost.predict/2` for details.
+  * `:iteration_range` - See `EXGBoost.predict/2` for details.
 
-  * `:strict_shape` - See `Exgboost.predict/2` for details.
+  * `:strict_shape` - See `EXGBoost.predict/2` for details.
 
   Returns an Nx.Tensor containing the predictions.
   """
@@ -334,7 +334,7 @@ defmodule Exgboost do
         data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
 
         {shape, preds} =
-          Exgboost.NIF.booster_predict_from_dense(
+          EXGBoost.NIF.booster_predict_from_dense(
             boostr.ref,
             data_interface,
             Jason.encode!(params),
@@ -350,7 +350,7 @@ defmodule Exgboost do
         values_interface = ArrayInterface.array_interface(values) |> Jason.encode!()
 
         {shape, preds} =
-          Exgboost.NIF.booster_predict_from_csr(
+          EXGBoost.NIF.booster_predict_from_csr(
             boostr.ref,
             indptr_interface,
             indices_interface,

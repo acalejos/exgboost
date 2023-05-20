@@ -1,8 +1,8 @@
-defmodule Exgboost.Training do
+defmodule EXGBoost.Training do
   @moduledoc false
-  alias Exgboost.Booster
-  alias Exgboost.DMatrix
-  alias Exgboost.Training.{State, Callback}
+  alias EXGBoost.Booster
+  alias EXGBoost.DMatrix
+  alias EXGBoost.Training.{State, Callback}
 
   def train(%DMatrix{} = dmat, opts \\ []) do
     {opts, booster_params} =

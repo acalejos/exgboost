@@ -1,7 +1,7 @@
-defmodule Exgboost.Parameters do
+defmodule EXGBoost.Parameters do
   @global_params [
     verbosity: [
-      type: {:custom, Exgboost.Parameters, :validate_verbosity, []}
+      type: {:custom, EXGBoost.Parameters, :validate_verbosity, []}
     ],
     use_rmm: [
       type: :boolean,
@@ -15,7 +15,7 @@ defmodule Exgboost.Parameters do
       default: :gbtree
     ],
     verbosity: [
-      type: {:custom, Exgboost.Parameters, :validate_verbosity, []},
+      type: {:custom, EXGBoost.Parameters, :validate_verbosity, []},
       default: :silent
     ],
     validate_parameters: [
@@ -58,42 +58,42 @@ defmodule Exgboost.Parameters do
     ],
     subsample: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 0, max: 1, left: :exclusive, right: :inclusive]]},
       default: 1.0
     ],
     colsample_bytree: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 0, max: 1, left: :exclusive, right: :inclusive]]},
       default: 1
     ],
     colsample_bylevel: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 0, max: 1, left: :exclusive, right: :inclusive]]},
       default: 1
     ],
     colsample_bynode: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 0, max: 1, left: :exclusive, right: :inclusive]]},
       default: 1
     ],
     lambda: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
       default: 1
     ],
     reg_lambda: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
       default: 1
     ],
     alpha: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
       default: 0
     ],
     reg_alpha: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
       default: 0
     ],
     tree_method: [
@@ -105,7 +105,7 @@ defmodule Exgboost.Parameters do
       default: 1.0
     ],
     updater: [
-      type: {:custom, Exgboost.Parameters, :validate_tree_updater, []}
+      type: {:custom, EXGBoost.Parameters, :validate_tree_updater, []}
     ],
     refresh_leaf: [
       type: {:in, [0, 1]},
@@ -159,7 +159,7 @@ defmodule Exgboost.Parameters do
                            ],
                            rate_drop: [
                              type:
-                               {:custom, Exgboost.Parameters, :in_range,
+                               {:custom, EXGBoost.Parameters, :in_range,
                                 [[min: 0, max: 1, left: :inclusive, right: :inclusive]]},
                              default: 0.0
                            ],
@@ -169,7 +169,7 @@ defmodule Exgboost.Parameters do
                            ],
                            skip_drop: [
                              type:
-                               {:custom, Exgboost.Parameters, :in_range,
+                               {:custom, EXGBoost.Parameters, :in_range,
                                 [[min: 0, max: 1, left: :inclusive, right: :inclusive]]},
                              default: 0.0
                            ]
@@ -200,14 +200,14 @@ defmodule Exgboost.Parameters do
 
   @learning_task_params [
     objective: [
-      type: {:custom, Exgboost.Parameters, :validate_objective, []},
+      type: {:custom, EXGBoost.Parameters, :validate_objective, []},
       default: :reg_squarederror
     ],
     base_score: [
       type: :float
     ],
     eval_metric: [
-      type: {:custom, Exgboost.Parameters, :validate_eval_metric, []}
+      type: {:custom, EXGBoost.Parameters, :validate_eval_metric, []}
     ],
     seed: [
       type: :non_neg_integer,
@@ -222,7 +222,7 @@ defmodule Exgboost.Parameters do
   @tweedie_params [
     tweedie_variance_power: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 1, max: 2, left: :exclusive, right: :exclusive]]},
       default: 1.5
     ]
@@ -230,7 +230,7 @@ defmodule Exgboost.Parameters do
 
   @pseudohubererror_params [
     huber_slope: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 0, max: Nx.Constants.infinity()]]},
       default: 1.0
     ]
   ]
@@ -238,7 +238,7 @@ defmodule Exgboost.Parameters do
   @quantileerror_params [
     quantile_alpha: [
       type:
-        {:custom, Exgboost.Parameters, :in_range,
+        {:custom, EXGBoost.Parameters, :in_range,
          [[min: 0, max: 1, left: :exclusive, right: :exclusive]]},
       default: 0.5
     ]
@@ -257,7 +257,7 @@ defmodule Exgboost.Parameters do
       default: :mean
     ],
     lambdarank_num_pair_per_sample: [
-      type: {:custom, Exgboost.Parameters, :in_range, [[min: 1, max: Nx.Constants.infinity()]]}
+      type: {:custom, EXGBoost.Parameters, :in_range, [[min: 1, max: Nx.Constants.infinity()]]}
     ],
     lambdarank_unbiased: [
       type: :boolean,

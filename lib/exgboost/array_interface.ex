@@ -1,13 +1,13 @@
-defmodule Exgboost.ArrayInterface do
+defmodule EXGBoost.ArrayInterface do
   @moduledoc false
   @typedoc """
   The XGBoost C API uses and is moving towards mainly supporting the use of
   JSON-Encoded NumPy ArrayyInterface format to pass data to and from the C API. This struct
   is used to represent the ArrayInterface format.
 
-  If you wish to use the Exgboost.NIF library directly, this will be the desired format
-  to pass Nx.Tensors to the NIFs. Use of the Exgboost.NIF library directly is not recommended
-  unless you are familiar with the XGBoost C API and the Exgboost.NIF library.
+  If you wish to use the EXGBoost.NIF library directly, this will be the desired format
+  to pass Nx.Tensors to the NIFs. Use of the EXGBoost.NIF library directly is not recommended
+  unless you are familiar with the XGBoost C API and the EXGBoost.NIF library.
 
   See https://numpy.org/doc/stable/reference/arrays.interface.html for more information on
   the ArrayInterface protocol.
@@ -90,11 +90,11 @@ defmodule Exgboost.ArrayInterface do
   This function is used to convert Nx.Tensors to the ArrayInterface format.
 
   Example:
-    iex> Exgboost.array_interface(Nx.tensor([[1,2,3],[4,5,6]]))
+    iex> EXGBoost.array_interface(Nx.tensor([[1,2,3],[4,5,6]]))
         #ArrayInterface<
         %{data: [4418559984, true], shape: [2, 3], typestr: "<i8", version: 3}
   """
-  @spec array_interface(Nx.Tensor.t()) :: %Exgboost.ArrayInterface{}
+  @spec array_interface(Nx.Tensor.t()) :: %EXGBoost.ArrayInterface{}
   def array_interface(%Nx.Tensor{type: t_type} = tensor) do
     type_char =
       case t_type do
@@ -104,14 +104,14 @@ defmodule Exgboost.ArrayInterface do
         # TODO: Use V typestr to handle other data types
         {:bf, _width} ->
           raise ArgumentError,
-                "Invalid tensor type -- #{inspect(t_type)} not supported by Exgboost"
+                "Invalid tensor type -- #{inspect(t_type)} not supported by EXGBoost"
 
         {tensor_type, type_width} ->
           "<#{Atom.to_string(tensor_type)}#{div(type_width, 8)}"
       end
 
     tensor_addr =
-      Exgboost.NIF.get_binary_address(Nx.to_binary(tensor)) |> Exgboost.Internal.unwrap!()
+      EXGBoost.NIF.get_binary_address(Nx.to_binary(tensor)) |> EXGBoost.Internal.unwrap!()
 
     %ArrayInterface{
       typestr: type_char,

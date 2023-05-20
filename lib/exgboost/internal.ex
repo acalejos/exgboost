@@ -1,7 +1,7 @@
-defmodule Exgboost.Internal do
+defmodule EXGBoost.Internal do
   @moduledoc false
-  alias Exgboost.Booster
-  alias Exgboost.DMatrix
+  alias EXGBoost.Booster
+  alias EXGBoost.DMatrix
 
   def dmatrix_feature_opts,
     do:
@@ -100,11 +100,11 @@ defmodule Exgboost.Internal do
   def set_params(_dmatrix, _opts \\ [])
 
   def set_params(%DMatrix{} = dmat, opts) do
-    Exgboost.DMatrix.set_params(dmat, opts)
+    EXGBoost.DMatrix.set_params(dmat, opts)
   end
 
   def set_params(%Booster{} = booster, opts) do
-    Exgboost.Booster.set_params(booster, opts)
+    EXGBoost.Booster.set_params(booster, opts)
   end
 
   # Need to implement this because XGBoost expects NaN to be encoded as "NaN" without being
