@@ -125,7 +125,7 @@ defmodule EXGBoost.Booster do
     for {key, value} <- params do
       if is_list(value) do
         Enum.each(value, fn v ->
-          EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), v)
+          EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(v))
         end)
       else
         EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))

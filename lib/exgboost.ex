@@ -140,12 +140,13 @@ defmodule EXGBoost do
   Set global configuration.
 
   Global configuration consists of a collection of parameters that can be
-  applied in the global scope. See [Global Configuration](https://xgboost.readthedocs.io/en/latest/parameter.html#global-config)
+  applied in the global scope. See `Global Parameters` in `EXGBosst.Parameters`
   for the full list of parameters supported in the global configuration.
 
   """
   @spec set_config(map()) :: :ok | {:error, String.t()}
   def set_config(%{} = config) do
+    config = EXGBoost.Parameters.validate_global!(config)
     EXGBoost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
   end
 
@@ -153,7 +154,7 @@ defmodule EXGBoost do
   Get current values of the global configuration.
 
   Global configuration consists of a collection of parameters that can be
-  applied in the global scope. See [Global Configuration](https://xgboost.readthedocs.io/en/latest/parameter.html#global-config)
+  applied in the global scope. See `Global Parameters` in `EXGBosst.Parameters`
   for the full list of parameters supported in the global configuration.
   """
   @spec get_config() :: map()
