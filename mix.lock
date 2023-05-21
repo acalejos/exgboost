@@ -1,4 +1,5 @@
 %{
+  "cc_precompiler": {:git, "https://github.com/cocoa-xu/cc_precompiler.git", "000f52b15aca4a60d8856b0a10cf01f1724c80ea", []},
   "complex": {:hex, :complex, "0.5.0", "af2d2331ff6170b61bb738695e481b27a66780e18763e066ee2cd863d0b1dd92", [:mix], [], "hexpm", "2683bd3c184466cfb94fad74cbfddfaa94b860e27ad4ca1bffe3bff169d91ef1"},
   "earmark_parser": {:hex, :earmark_parser, "1.4.32", "fa739a0ecfa34493de19426681b23f6814573faee95dfd4b4aafe15a7b5b32c6", [:mix], [], "hexpm", "b8b0dd77d60373e77a3d7e8afa598f325e49e8663a51bcc2b88ef41838cca755"},
   "elixir_cmake": {:hex, :elixir_cmake, "0.8.0", "675a8d0b401096dee01dd5b1108e86e5f399db01c3e34edc0f92034bf38d8764", [:mix], [], "hexpm", "afd87e2ed89dc02eb3efc4e9025a0b79c8322bea8a5f6d9abc6063ca696a67f8"},

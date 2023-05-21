@@ -1,10 +1,14 @@
 defmodule Exgboost.MixProject do
   use Mix.Project
+  @version "0.1.0"
 
   def project do
     [
       app: :exgboost,
-      version: "0.1.0",
+      version: @version,
+      make_precompiler: {:nif, CCPrecompiler},
+      make_precompiler_url: "https://github.com/acalejos/exgboost/archives/refs/tags/v#{@version}/@{artefact_filename}",
+      make_precompiler_priv_paths: ["libexgboost.so","lib/*.so","lib/*.dylib","lib/*.dll"],
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
@@ -29,7 +33,8 @@ defmodule Exgboost.MixProject do
       {:elixir_make, "~> 0.4", runtime: false},
       {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
-      {:ex_doc, "~> 0.29.0", only: :docs}
+      {:ex_doc, "~> 0.29.0", only: :docs},
+      {:cc_precompiler, "~> 0.1.0", runtime: false, github: "cocoa-xu/cc_precompiler"}
     ]
   end
 
@@ -45,7 +50,8 @@ defmodule Exgboost.MixProject do
         "Makefile",
         "README.md",
         "LICENSE",
-        ".formatter.exs"
+        ".formatter.exs",
+        "checksum.exs",
       ]
     ]
   end
