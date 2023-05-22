@@ -46,7 +46,8 @@ else
 	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
 	# and single quotes to escape shell variable
 	LIBXGBOOST = libxgboost.so
-	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib' --allow-multiple-definition
+	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
+	LDFLAGS += -Wl,--allow-multiple-definition
 	POST_INSTALL = $(NOOP)
 endif
 
