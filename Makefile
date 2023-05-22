@@ -75,7 +75,7 @@ $(XGBOOST_LIB_DIR_FLAG):
 			git checkout FETCH_HEAD && \
 			git submodule update --init --recursive && \
 			cmake -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -B build . $(CMAKE_FLAGS) && \
-			make -C build -j install
+			make -C build -j1 install
 		touch $(XGBOOST_LIB_DIR_FLAG)
 
 clean:
