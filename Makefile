@@ -35,6 +35,7 @@ LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR) -lxgboost
 ifeq ($(shell uname -s), Darwin)
 	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libxgboost.dylib @loader_path/lib/libxgboost.dylib
 	LDFLAGS += -flat_namespace -undefined suppress
+	LIBXGBOOST = libxgboost.dylib
 	ifeq ($(USE_LLVM_BREW), true)
 		LLVM_PREFIX=$(shell brew --prefix llvm)
 		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
@@ -44,6 +45,7 @@ else
 	# in ./lib regardless of the absolute location. This way priv can be safely
 	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
 	# and single quotes to escape shell variable
+	LIBXGBOOST = libxgboost.so
 	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
 	POST_INSTALL = $(NOOP)
 endif
@@ -61,7 +63,7 @@ $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	@mkdir -p cache
 	cp -a $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
-	cp -a $(XGBOOST_LIB_DIR)/lib/libxgboost.so $(EXGBOOST_CACHE_LIB_DIR)
+	mv $(XGBOOST_LIB_DIR)/lib/$(LIBXGBOOST) $(EXGBOOST_CACHE_LIB_DIR)
 	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
 	$(POST_INSTALL)
 
