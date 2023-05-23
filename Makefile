@@ -5,7 +5,7 @@
 TEMP ?= $(HOME)/.cache
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-XGBOOST_GIT_REV ?= 08ce495b5de973033160e7c7b650abf59346a984# v1.7.5 Patch Release (https://github.com/dmlc/xgboost/releases/tag/v1.7.5)
+XGBOOST_GIT_REV ?= 08ce495b5de973033160e7c7b650abf59346a984
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
@@ -41,10 +41,6 @@ ifeq ($(shell uname -s), Darwin)
 		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
 	endif
 else
-	# Use a relative RPATH, so at runtime libexgboost.so looks for libxgboost.so
-	# in ./lib regardless of the absolute location. This way priv can be safely
-	# packed into an Elixir release. Also, we use $$ to escape Makefile variable
-	# and single quotes to escape shell variable
 	LIBXGBOOST = libxgboost.so
 	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
 	LDFLAGS += -Wl,--allow-multiple-definition
@@ -53,13 +49,8 @@ endif
 
 $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
 	@ mkdir -p $(PRIV_DIR)
-	@ if [ "${MIX_BUILD_EMBEDDED}" = "true" ]; then \
-		cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR)) $(EXGBOOST_LIB_DIR) ; \
-		cp -a $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ; \
-	else \
-		ln -sf $(abspath $(EXGBOOST_CACHE_LIB_DIR)) $(EXGBOOST_LIB_DIR) ; \
-		ln -sf $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ; \
-	fi
+	cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR)) $(EXGBOOST_LIB_DIR) ; \
+	cp -a $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ;
 
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	@mkdir -p cache
