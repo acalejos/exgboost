@@ -8,8 +8,8 @@ defmodule Exgboost.MixProject do
       version: @version,
       make_precompiler: {:nif, CCPrecompiler},
       make_precompiler_url:
-        "https://github.com/acalejos/exgboost/releases/downloads/v#{@version}/@{artefact_filename}",
-      make_precompiler_priv_paths: ["libexgboost.so", "lib/*.so", "lib/*.dylib", "lib/*.dll"],
+        "https://github.com/acalejos/exgboost/releases/download/v#{@version}/@{artefact_filename}",
+      make_precompiler_priv_paths: ["libexgboost.*", "lib"],
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
