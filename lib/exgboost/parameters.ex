@@ -143,42 +143,22 @@ defmodule EXGBoost.Parameters do
     sampling_method: [
       type: {:in, [:uniform]},
       default: :uniform,
-      doc: """
+      doc: ~S"""
       The method to use to sample the training instances.
           * `:uniform` - each training instance has an equal probability of being selected.
-            Typically set subsample >= 0.5 for good results.
+            Typically set `:subsample` $\ge$ 0.5 for good results.
       """
     ],
     colsample_by: [
-      keys: [
-        tree: [
-          type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
-          default: 1,
-          doc: """
-          The subsample ratio of columns when constructing each tree. Subsampling occurs once for every tree constructed. Valid range is (0, 1].
-          """
-        ],
-        level: [
-          type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
-          default: 1,
-          doc: """
-          The subsample ratio of columns for each level. Subsampling occurs once for every new depth level reached in a tree. Columns are subsampled from the set of columns chosen for the current tree. Valid range is (0, 1].
-          """
-        ],
-        node: [
-          type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
-          default: 1,
-          doc: """
-          The subsample ratio of columns for each node (split). Subsampling occurs once every time a new split is evaluated. Columns are subsampled from the set of columns chosen for the current level. Valid range is (0, 1].
-          """
-        ]
-      ],
-      type: :keyword_list,
+      type: {:custom, EXGBoost.Parameters, :validate_colsample, []},
       doc: """
       This is a family of parameters for subsampling of columns.
       All `colsample_by` parameters have a range of `(0, 1]`, the default value of `1`, and specify the fraction of columns to be subsampled.
-      `colsample_by*` parameters work cumulatively. For instance, the combination
-      `col_sampleby: [tree: 0.5, level: 0.5, node: 0.5]` with `64` features will leave `8`
+      `colsample_by` parameters work cumulatively. For instance, the combination
+      `col_sampleby: [tree: 0.5, level: 0.5, node: 0.5]` with `64` features will leave `8`.
+          * `:tree` - The subsample ratio of columns when constructing each tree. Subsampling occurs once for every tree constructed. Valid range is (0, 1]. The default value is `1`.
+          * `:level` - The subsample ratio of columns for each level. Subsampling occurs once for every new depth level reached in a tree. Columns are subsampled from the set of columns chosen for the current tree. Valid range is (0, 1]. The default value is `1`.
+          * `:node` - The subsample ratio of columns for each node (split). Subsampling occurs once every time a new split is evaluated. Columns are subsampled from the set of columns chosen for the current level. Valid range is (0, 1]. The default value is `1`.
       """
     ],
     lambda: [
@@ -427,10 +407,10 @@ defmodule EXGBoost.Parameters do
     objective: [
       type: {:custom, EXGBoost.Parameters, :validate_objective, []},
       default: :reg_squarederror,
-      doc: """
+      doc: ~S"""
       Specify the learning task and the corresponding learning objective. The objective options are:
           * `:reg_squarederror` - regression with squared loss.
-          * `:reg_squaredlogerror` - regression with squared log loss . All input labels are required to be greater than `-1`. Also, see metric rmsle for possible issue with this objective.
+          * `:reg_squaredlogerror` - regression with squared log loss $\frac{1}{2}[\log (pred + 1) - \log (label + 1)]^2$. All input labels are required to be greater than `-1`. Also, see metric rmsle for possible issue with this objective.
           * `:reg_logistic` - logistic regression.
           * `:reg_pseudohubererror` - regression with Pseudo Huber loss, a twice differentiable alternative to absolute loss.
           * `:reg_absoluteerror` - Regression with `L1` error. When tree model is used, leaf value is refreshed after tree construction. If used in distributed training, the leaf value is calculated as the mean value from all workers, which is not guaranteed to be optimal.
@@ -440,7 +420,7 @@ defmodule EXGBoost.Parameters do
           * `:binary_hinge` - hinge loss for binary classification. This makes predictions of `0` or `1`, rather than producing probabilities.
           * `:count_poisson` - Poisson regression for count data, output mean of Poisson distribution.
               * `max_delta_step` is set to `0.7` by default in Poisson regression (used to safeguard optimization)
-          * `:survival_cox` - Cox regression for right censored survival time data (negative values are considered right censored). Note that predictions are returned on the hazard ratio scale (i.e., as `HR = exp(marginal_prediction)` in the proportional hazard function `h(t) = h0(t) * HR)`.
+          * `:survival_cox` - Cox regression for right censored survival time data (negative values are considered right censored). Note that predictions are returned on the hazard ratio scale (i.e., as `HR = exp(marginal_prediction)` in the proportional hazard function `h(t) = h0(t) * HR`).
           * `:survival_aft` - Accelerated failure time model for censored survival time data. See [Survival Analysis with Accelerated Failure Time](https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html) for details.
           * `:multi_softmax` - set XGBoost to do multiclass classification using the softmax objective, you also need to set num_class(number of classes)
           * `:multi_softprob` - same as softmax, but output a vector of ndata * nclass, which can be further reshaped to ndata * nclass matrix. The result contains predicted probability of each data point belonging to each class.
@@ -471,25 +451,26 @@ defmodule EXGBoost.Parameters do
           * `:mphe` - mean Pseudo Huber error. Default metric of `:reg_pseudohubererror` objective.
           * `:logloss` - negative log-likelihood
           * `:error` - Binary classification error rate. It is calculated as `#(wrong cases)/#(all cases)`. For the predictions, the evaluation will regard the instances with prediction value larger than `0.5` as positive instances, and the others as negative instances.
-          * `"error@t"` - a different than `0.5` binary classification threshold value could be specified by providing a numerical value through `t`.
+          * `{:error,t}` - a different than `0.5` binary classification threshold value could be specified by providing a numerical value through `t`.
           * `:merror` - Multiclass classification error rate. It is calculated as `#(wrong cases)/#(all cases)`.
           * `:mlogloss` - Multiclass logloss.
           * `:auc` - Receiver Operating Characteristic Area under the Curve. Available for classification and learning-to-rank tasks.
-              * When used with binary classification, the objective should be binary:logistic or similar functions that work on probability.
-              * When used with multi-class classification, objective should be multi:softprob instead of multi:softmax, as the latter doesn’t output probability. Also the AUC is calculated by 1-vs-rest with reference class weighted by class prevalence.
+              * When used with binary classification, the objective should be `:binary_logistic` or similar functions that work on probability.
+              * When used with multi-class classification, objective should be `:multi_softprob` instead of `:multi_softmax`, as the latter doesn’t output probability. Also the AUC is calculated by 1-vs-rest with reference class weighted by class prevalence.
               * When used with LTR task, the AUC is computed by comparing pairs of documents to count correctly sorted pairs. This corresponds to pairwise learning to rank. The implementation has some issues with average AUC around groups and distributed workers not being well-defined.
               * On a single machine the AUC calculation is exact. In a distributed environment the AUC is a weighted average over the AUC of training rows on each node - therefore, distributed AUC is an approximation sensitive to the distribution of data across workers. Use another metric in distributed environments if precision and reproducibility are important.
               * When input dataset contains only negative or positive samples, the output is NaN. The behavior is implementation defined, for instance, scikit-learn returns  instead.
           * `:aucpr` - Area under the PR curve. Available for classification and learning-to-rank tasks.
           * `:ndcg` - Normalized Discounted Cumulative Gain
           * `:map` - Mean Average Precision
-          * `"ndcg@n", "map@n"` - `n` can be assigned as an integer to cut off the top positions in the lists for evaluation.
-          * `"ndcg-", "map-", "ndcg@n-", "map@n-"` - In XGBoost, the NDCG and MAP evaluate the score of a list without any positive samples as `1`. By appending `-` to the evaluation metric name, we can ask XGBoost to evaluate these scores as `0` to be consistent under some conditions.
+          * `{:ndcg,n}`, `{:map,n}` - `n` can be assigned as an integer to cut off the top positions in the lists for evaluation.
+          * `:inv_ndcg`, `:inv_map`, `{:inv_ndcg, n}`, `{:inv_map, n}` - In XGBoost, the NDCG and MAP evaluate the score of a list without any positive samples as `1`. By using the `:inv_` variant, we can ask XGBoost to evaluate these scores as `0` to be consistent under some conditions.
           * `:poisson_nloglik` - negative log-likelihood for Poisson regression
           * `:gamma_nloglik` - negative log-likelihood for gamma regression
           * `:cox_nloglik` - negative partial log-likelihood for Cox proportional hazards regression
           * `:gamma_deviance` - residual deviance for gamma regression
-          * `:tweedie_nloglik` - negative log-likelihood for Tweedie regression (at a specified value of the tweedie_variance_power parameter)
+          * `:tweedie_nloglik` - negative log-likelihood for Tweedie regression (at a specified value of the `:tweedie_variance_power` parameter). Must provide `:tweedie_variance_power` parameter.
+          * `{:tweedie_nloglik, rho}` - negative log-likelihood for Tweedie regression with `rho` denoting the `:tweedie_variance_power` parameter.
           * `:aft_nloglik` - Negative log likelihood of Accelerated Failure Time model. See Survival Analysis with Accelerated Failure Time for details.
           * `:interval_regression_accuracy` - Fraction of data points whose predicted labels fall in the interval-censored labels. Only applicable for interval-censored data. See Survival Analysis with Accelerated Failure Time for details.
       """
@@ -628,41 +609,76 @@ defmodule EXGBoost.Parameters do
     end
   end
 
+  def validate_colsample(x) do
+    unless is_list(x) do
+      {:error, "Parameter `colsample` must be a list, got #{inspect(x)}"}
+    else
+      Enum.reduce_while(x, {:ok, []}, fn x, {_status, acc} ->
+        case x do
+          {key, value} when key in [:tree, :level, :node] and is_number(value) ->
+            if in_range(value, "(0,1]") do
+              {:cont, {:ok, [{"colsample_by#{key}", value} | acc]}}
+            else
+              {:halt, {:error, "Parameter `colsample` must be in (0,1], got #{inspect(x)}"}}
+            end
+
+          {key, _value} ->
+            {:halt,
+             {:error,
+              "Parameter `colsample` must be in [:tree, :level, :node], got #{inspect(key)}"}}
+
+          _ ->
+            {:halt, {:error, "Parameter `colsample` must be a keyword list, got #{inspect(x)}"}}
+        end
+      end)
+    end
+  end
+
   @doc false
   def validate_eval_metric(x) do
     x = if is_list(x), do: x, else: [x]
 
     metrics =
       Enum.map(x, fn y ->
-        cond do
-          String.contains?(to_string(y), "@") or String.ends_with?(to_string(y), "-") ->
-            y
+        case y do
+          {task, n} when task in [:error, :ndcg, :map, :tweedie_nloglik] and is_number(n) ->
+            task = Atom.to_string(task) |> String.replace("_", "-")
+            "#{task}@#{n}"
 
-          y in [
-            :rmse,
-            :rmsle,
-            :mae,
-            :mape,
-            :mphe,
-            :logloss,
-            :error,
-            :merror,
-            :mlogloss,
-            :auc,
-            :aucpr,
-            :ndcg,
-            :map,
-            :poisson_nloglik,
-            :gamma_nloglik,
-            :cox_nloglik,
-            :gamma_deviance,
-            :tweedie_nloglik,
-            :aft_nloglik,
-            :interval_regression_accuracy
-          ] ->
-            Atom.to_string(y) |> String.replace("_", "-")
+          {task, n} when task in [:inv_ndcg, :inv_map] and is_number(n) ->
+            [task | _tail] = task |> Atom.to_string() |> String.split("_") |> Enum.reverse()
+            "#{task}@#{n}-"
 
-          true ->
+          task when task in [:inv_ndcg, :inv_map] ->
+            [task | _tail] = task |> Atom.to_string() |> String.split("_") |> Enum.reverse()
+            "#{task}-"
+
+          task
+          when task in [
+                 :rmse,
+                 :rmsle,
+                 :mae,
+                 :mape,
+                 :mphe,
+                 :logloss,
+                 :error,
+                 :merror,
+                 :mlogloss,
+                 :auc,
+                 :aucpr,
+                 :ndcg,
+                 :map,
+                 :tweedie_nloglik,
+                 :poisson_nloglik,
+                 :gamma_nloglik,
+                 :cox_nloglik,
+                 :gamma_deviance,
+                 :aft_nloglik,
+                 :interval_regression_accuracy
+               ] ->
+            Atom.to_string(task) |> String.replace("_", "-")
+
+          _ ->
             raise ArgumentError,
                   "Parameter `eval_metric` must be in [:rmse, :mae, :logloss, :error, :error, :merror, :mlogloss, :auc, :aucpr, :ndcg, :map, :ndcg, :map, :ndcg, :map, :poisson_nloglik, :gamma_nloglik, :gamma_deviance, :tweedie_nloglik, :tweedie_deviance], got #{inspect(y)}"
         end

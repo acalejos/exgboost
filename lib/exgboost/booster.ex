@@ -119,16 +119,18 @@ defmodule EXGBoost.Booster do
   end
 
   def set_params(%Booster{} = booster, params \\ []) do
-    # TODO: List of params here: https://xgboost.readthedocs.io/en/latest/parameter.html
-    # Eventually we should validate, but there's so many, for now we will let XGBoost fail
-    # on invalid params
     for {key, value} <- params do
-      if is_list(value) do
-        Enum.each(value, fn v ->
-          EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(v))
-        end)
-      else
-        EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
+      cond do
+        is_list(value) ->
+          Enum.each(value, fn v ->
+            set_params(booster, value)
+          end)
+
+        is_atom(key) ->
+          EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
+
+        is_binary(key) ->
+          EXGBoost.NIF.booster_set_param(booster.ref, key, value)
       end
     end
 
