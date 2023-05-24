@@ -24,9 +24,9 @@ defmodule EXGBoost.Parameters do
       default: :gbtree,
       doc: """
       Which booster to use. Valid values are `:gbtree`, `:gblinear`, `:dart`
-          * `:gbtree`: tree-based models
-          * `:gblinear`: linear models
-          * `:dart`: tree-based models with dropouts
+          * `:gbtree` - tree-based models
+          * `:gblinear` - linear models
+          * `:dart` - tree-based models with dropouts
       """
     ],
     verbosity: [
@@ -50,10 +50,15 @@ defmodule EXGBoost.Parameters do
     ],
     nthread: [
       type: :non_neg_integer,
-      default: 0,
+      default: Application.compile_env(:exgboost, :nthread, 0),
       doc: """
       Number of threads to use for training and prediction. If `0`, then the
-      number of threads is set to the number of cores.
+      number of threads is set to the number of cores.  This can be set globally
+      using the `:exgboost` application environment variable `:nthread`
+      or on a per booster basis.  If set globally, the value will be used for
+      all boosters unless overridden by a specific booster.
+      To set the number of threads globally, add the following to your `config.exs`:
+      `config :exgboost, nthread: n`.
       """
     ],
     disable_default_eval_metric: [
@@ -81,17 +86,17 @@ defmodule EXGBoost.Parameters do
       Step size shrinkage used in update to prevents overfitting. After each
       boosting step, we can directly get the weights of new features. and `eta`
       actually shrinks the feature weights to make the boosting process more
-      conservative. Valid range is `[0,1]`.
+      conservative. Valid range is [0,1].
       """
     ],
     gamma: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
       default: 0.0,
-      doc: ~S'''
+      doc: ~S"""
       Minimum loss reduction required to make a further partition on a leaf node
       of the tree. The larger `gamma` is, the more conservative the algorithm will
-      be. Valid range is [0, $\\infty$].
-      '''
+      be. Valid range is [0, $\infty$].
+      """
     ],
     max_depth: [
       type: :non_neg_integer,
@@ -106,24 +111,24 @@ defmodule EXGBoost.Parameters do
     min_child_weight: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
       default: 1,
-      doc: """
+      doc: ~S"""
       Minimum sum of instance weight (hessian) needed in a child. If the tree partition
       step results in a leaf node with the sum of instance weight less than `min_child_weight`,
       then the building process will give up further partitioning. In linear regression task,
       this simply corresponds to minimum number of instances needed to be in each node.
       The larger `min_child_weight` is, the more conservative the algorithm will be.
-      Valid range is `[0, Nx.Constants.infinity()]`.
+      Valid range is [0, $\infty$].
       """
     ],
     max_delta_step: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
       default: 0,
-      doc: """
+      doc: ~S"""
       Maximum delta step we allow each tree's weight estimation to be. If the value is set
       to `0`, it means there is no constraint. If it is set to a positive value, it can help
       making the update step more conservative. Usually this parameter is not needed, but it
       might help in logistic regression when class is extremely imbalanced. Set it to value of
-      1-10 might help control the update. Valid range is `[0, Nx.Constants.infinity()]`.
+      1-10 might help control the update. Valid range is [0, $\infty$].
       """
     ],
     subsample: [
@@ -132,20 +137,16 @@ defmodule EXGBoost.Parameters do
       doc: """
       Subsample ratio of the training instance. Setting it to `0.5` means that XGBoost
       randomly collected half of the data instances to grow trees and this will prevent
-      overfitting. Subsampling will occur once in every boosting iteration. Valid range is `(0, 1]`.
+      overfitting. Subsampling will occur once in every boosting iteration. Valid range is (0, 1].
       """
     ],
     sampling_method: [
-      type: {:in, [:uniform, :gradient_based]},
+      type: {:in, [:uniform]},
       default: :uniform,
       doc: """
       The method to use to sample the training instances.
-          * `:uniform`: each training instance has an equal probability of being selected.
+          * `:uniform` - each training instance has an equal probability of being selected.
             Typically set subsample >= 0.5 for good results.
-          * `:gradient_based`: the selection probability for each training instance is proportional
-              to the regularized absolute value of gradients. subsample may be set to as low as 0.1
-              without loss of model accuracy. Note that this sampling method is only supported when
-              `tree_method` is set to `gpu_hist`; other tree methods only support `:uniform` sampling.
       """
     ],
     colsample_by: [
@@ -154,28 +155,28 @@ defmodule EXGBoost.Parameters do
           type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
           default: 1,
           doc: """
-          The subsample ratio of columns when constructing each tree. Subsampling occurs once for every tree constructed. Valid range is `(0, 1]`.
+          The subsample ratio of columns when constructing each tree. Subsampling occurs once for every tree constructed. Valid range is (0, 1].
           """
         ],
         level: [
           type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
           default: 1,
           doc: """
-          The subsample ratio of columns for each level. Subsampling occurs once for every new depth level reached in a tree. Columns are subsampled from the set of columns chosen for the current tree. Valid range is `(0, 1]`.
+          The subsample ratio of columns for each level. Subsampling occurs once for every new depth level reached in a tree. Columns are subsampled from the set of columns chosen for the current tree. Valid range is (0, 1].
           """
         ],
         node: [
           type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
           default: 1,
           doc: """
-          The subsample ratio of columns for each node (split). Subsampling occurs once every time a new split is evaluated. Columns are subsampled from the set of columns chosen for the current level. Valid range is `(0, 1]`.
+          The subsample ratio of columns for each node (split). Subsampling occurs once every time a new split is evaluated. Columns are subsampled from the set of columns chosen for the current level. Valid range is (0, 1].
           """
         ]
       ],
       type: :keyword_list,
       doc: """
       This is a family of parameters for subsampling of columns.
-      All `colsample_by*` parameters have a range of `(0, 1]`, the default value of `1`, and specify the fraction of columns to be subsampled.
+      All `colsample_by` parameters have a range of `(0, 1]`, the default value of `1`, and specify the fraction of columns to be subsampled.
       `colsample_by*` parameters work cumulatively. For instance, the combination
       `col_sampleby: [tree: 0.5, level: 0.5, node: 0.5]` with `64` features will leave `8`
       """
@@ -183,50 +184,35 @@ defmodule EXGBoost.Parameters do
     lambda: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
       default: 1,
-      doc: """
+      doc: ~S"""
       L2 regularization term on weights. Increasing this value will make model more conservative.
-      Valid range is `[0, :infinity]`.
-      """
-    ],
-    reg_lambda: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
-      default: 1,
-      doc: """
-      Alias for `lambda` parameter.
+      Valid range is [0, $\infty$].
       """
     ],
     alpha: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
       default: 0,
-      doc: """
+      doc: ~S"""
       L1 regularization term on weights. Increasing this value will make model more conservative.
-      Valid range is `[0, Nx.Constants.infinity()]`.
-      """
-    ],
-    reg_alpha: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
-      default: 0,
-      doc: """
-      Alias for `alpha` parameter.
+      Valid range is [0, $\infty$].
       """
     ],
     tree_method: [
-      type: {:in, [:auto, :exact, :approx, :hist, :gpu_hist]},
+      type: {:in, [:auto, :exact, :approx, :hist]},
       default: :auto,
       doc: """
       The tree construction algorithm used in XGBoost.
       This is a combination of commonly used updaters. For other updaters like
       `refresh`, set the parameter `updater` directly.
-          * `:auto`: Use heuristic to choose the fastest method.
+          * `:auto` - Use heuristic to choose the fastest method.
             * For small dataset, exact greedy (`exact`) will be used.
             * For larger dataset, approximate algorithm (`approx`) will be chosen. It’s recommended to try
-              `hist` and `gpu_hist` for higher performance with large dataset. (`gpu_hist`) has support for external memory.
+              `hist` for higher performance with large dataset.
             * Because old behavior is always use exact greedy in single machine, user will get a message
               when approximate algorithm is chosen to notify this choice.
-          * `:exact`: Exact greedy algorithm. Enumerates all split candidates.
-          * `:approx`: Approximate greedy algorithm using sketching and histogram.
-          * `:hist`: Faster histogram optimized approximate greedy algorithm.
-          * `:gpu_hist`: GPU implementation of hist algorithm.
+          * `:exact` - Exact greedy algorithm. Enumerates all split candidates.
+          * `:approx` - Approximate greedy algorithm using sketching and histogram.
+          * `:hist` - Faster histogram optimized approximate greedy algorithm.
       """
     ],
     scale_pos_weight: [
@@ -244,13 +230,12 @@ defmodule EXGBoost.Parameters do
       modular way to construct and to modify the trees. This is an advanced parameter that
       is usually set automatically, depending on some other parameters. However, it could be
       also set explicitly by a user. The following updaters exist:
-          * `:grow_colmaker`: non-distributed column-based construction of trees.
-          * `:grow_histmaker`: distributed tree construction with row-based data splitting based on global proposal of histogram counting.
-          * `:grow_quantile_histmaker`: Grow tree using quantized histogram.
-          * `:grow_gpu_hist`: Grow tree with GPU.
-          * `:sync`: synchronizes trees in all distributed nodes.
-          * `:refresh`: refreshes tree’s statistics and/or leaf values based on the current data. Note that no random subsampling of data rows is performed.
-          * `:prune`: prunes the splits where loss < min_split_loss (or gamma) and nodes that have depth greater than max_depth.
+          * `:grow_colmaker` - non-distributed column-based construction of trees.
+          * `:grow_histmaker` - distributed tree construction with row-based data splitting based on global proposal of histogram counting.
+          * `:grow_quantile_histmaker` - Grow tree using quantized histogram.
+          * `:sync` - synchronizes trees in all distributed nodes.
+          * `:refresh` - refreshes tree’s statistics and/or leaf values based on the current data. Note that no random subsampling of data rows is performed.
+          * `:prune` - prunes the splits where loss < min_split_loss (or gamma) and nodes that have depth greater than max_depth.
       """
     ],
     refresh_leaf: [
@@ -266,8 +251,8 @@ defmodule EXGBoost.Parameters do
       default: :default,
       doc: """
       The type of boosting process to run
-          * `:default`: The normal boosting process which creates new trees.
-          * `:update`: Starts from an existing model and only updates its trees. In each boosting iteration,
+          * `:default` - The normal boosting process which creates new trees.
+          * `:update` - Starts from an existing model and only updates its trees. In each boosting iteration,
               a tree from the initial model is taken, a specified sequence of updaters is run for that tree,
               and a modified tree is added to the new model. The new model would have either the same or
               smaller number of trees, depending on the number of boosting iterations performed. Currently,
@@ -280,9 +265,9 @@ defmodule EXGBoost.Parameters do
       default: :depthwise,
       doc: """
       Controls a way new nodes are added to the tree. Currently supported only if `tree_method` is set
-      to `:hist`, `:approx`, or `:gpu_hist`.
-          * `:depthwise`: split at nodes closest to the root.
-          * `:lossguide`: split at nodes with highest loss change.
+      to `:hist` or `:approx`.
+          * `:depthwise` - split at nodes closest to the root.
+          * `:lossguide` - split at nodes with highest loss change.
       """
     ],
     max_leaves: [
@@ -297,22 +282,18 @@ defmodule EXGBoost.Parameters do
       default: 256,
       doc: """
       Maximum number of discrete bins to bucket continuous features. Used only if
-      `tree_method` is set to `:hist`, `:approx`, or `:gpu_hist`.
+      `tree_method` is set to `:hist` or `:approx`.
       Maximum number of discrete bins to bucket continuous features.
       Increasing this number improves the optimality of splits at the cost of higher computation time.
       """
     ],
     predictor: [
-      type: {:in, [:auto, :cpu_predictor, :gpu_predictor]},
+      type: {:in, [:auto, :cpu_predictor]},
       default: :auto,
       doc: """
       The type of predictor algorithm to use. Provides the same results but allows the use of GPU or CPU.
-          * `:auto`: Configure predictor based on heuristics.
-          * `:cpu_predictor`: Multicore CPU prediction algorithm.
-          * `:gpu_predictor`: Prediction using GPU. Used when `tree_method` is `:gpu_hist`. When predictor is
-              set to default value `:auto`, the `:gpu_hist` tree method is able to provide GPU based prediction
-              without copying training data to GPU memory. If `:gpu_predictor` is explicitly specified,
-              then all data is copied into GPU, only recommended for performing prediction tasks.
+          * `:auto` - Configure predictor based on heuristics.
+          * `:cpu_predictor` - Multicore CPU prediction algorithm.
       """
     ],
     num_parallel_tree: [
@@ -342,8 +323,8 @@ defmodule EXGBoost.Parameters do
       doc: """
       The strategy used for training multi-target models, including multi-target regression and multi-class
       classification. See [Multiple Outputs](https://xgboost.readthedocs.io/en/latest/tutorials/multioutput.html) for more information.
-          * `:one_output_per_tree`: One model for each target.
-          * `:multi_output_tree`: Use multi-target trees.
+          * `:one_output_per_tree` - One model for each target.
+          * `:multi_output_tree` - Use multi-target trees.
       """
     ]
   ]
@@ -355,8 +336,8 @@ defmodule EXGBoost.Parameters do
                              default: :uniform,
                              doc: """
                              Type of sampling algorithm.
-                                  * `:uniform`: Dropped trees are selected uniformly.
-                                  * `:weighted`: Dropped trees are selected in proportion to weight.
+                                  * `:uniform` - Dropped trees are selected uniformly.
+                                  * `:weighted` - Dropped trees are selected in proportion to weight.
                              """
                            ],
                            normalize_type: [
@@ -364,10 +345,10 @@ defmodule EXGBoost.Parameters do
                              default: :tree,
                              doc: """
                              Type of normalization algorithm.
-                                  * `:tree`: New trees have the same weight of each of dropped trees.
+                                  * `:tree` - New trees have the same weight of each of dropped trees.
                                       * Weight of new trees are `1 / (k + learning_rate)`.
                                       * Dropped trees are scaled by a factor of `k / (k + learning_rate)`.
-                                  * `:forest`: New trees have the same weight of sum of dropped trees (forest).
+                                  * `:forest` - New trees have the same weight of sum of dropped trees (forest).
                                       * Weight of new trees are 1 / (1 + learning_rate).
                                       * Dropped trees are scaled by a factor of 1 / (1 + learning_rate).
                              """
@@ -376,7 +357,7 @@ defmodule EXGBoost.Parameters do
                              type: {:custom, EXGBoost.Parameters, :in_range, ["[0,1]"]},
                              default: 0.0,
                              doc: """
-                             Dropout rate (a fraction of previous trees to drop during the dropout). Valid range is `[0, 1]`.
+                             Dropout rate (a fraction of previous trees to drop during the dropout). Valid range is [0, 1].
                              """
                            ],
                            one_drop: [
@@ -390,7 +371,7 @@ defmodule EXGBoost.Parameters do
                              type: {:custom, EXGBoost.Parameters, :in_range, ["[0,1]"]},
                              default: 0.0,
                              doc: """
-                             Probability of skipping the dropout procedure during a boosting iteration. Valid range is `[0, 1]`.
+                             Probability of skipping the dropout procedure during a boosting iteration. Valid range is [0, 1].
                                   * If a dropout is skipped, new trees are added in the same manner as gbtree.
                                   * **Note** that non-zero skip_drop has higher priority than rate_drop or one_drop.
                              """
@@ -417,20 +398,20 @@ defmodule EXGBoost.Parameters do
       default: :shotgun,
       doc: """
       Choice of algorithm to fit linear model
-          * `:shotgun`: Parallel coordinate descent algorithm based on shotgun algorithm. Uses ‘hogwild’ parallelism and therefore produces a nondeterministic solution on each run.
-          * `:coord_descent`: Ordinary coordinate descent algorithm. Also multithreaded but still produces a deterministic solution.
+          * `:shotgun` - Parallel coordinate descent algorithm based on shotgun algorithm. Uses ‘hogwild’ parallelism and therefore produces a nondeterministic solution on each run.
+          * `:coord_descent` - Ordinary coordinate descent algorithm. Also multithreaded but still produces a deterministic solution.
       """
     ],
     feature_selector: [
       type: {:in, [:cyclic, :shuffle, :random, :greedy, :thrifty]},
       default: :cyclic,
-      doc: """
+      doc: ~S"""
       Feature selection and ordering method
-          * `:cyclic`: Deterministic selection by cycling through features one at a time.
-          * `:shuffle`: Similar to `:cyclic` but with random feature shuffling prior to each update.
-          * `:random`: A random (with replacement) coordinate selector.
-          * `:greedy`: Select coordinate with the greatest gradient magnitude. It has `O(num_feature^2)` complexity. It is fully deterministic. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter. Doing so would reduce the complexity to `O(num_feature*top_k)`.
-          * `:thrifty`: Thrifty, approximately-greedy feature selector. Prior to cyclic updates, reorders features in descending magnitude of their univariate weight changes. This operation is multithreaded and is a linear complexity approximation of the quadratic greedy selection. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter.
+          * `:cyclic` - Deterministic selection by cycling through features one at a time.
+          * `:shuffle` - Similar to `:cyclic` but with random feature shuffling prior to each update.
+          * `:random` - A random (with replacement) coordinate selector.
+          * `:greedy` - Select coordinate with the greatest gradient magnitude. It has $O(num_feature^2)$ complexity. It is fully deterministic. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter. Doing so would reduce the complexity to $O(num_feature^{topk})$.
+          * `:thrifty` - Thrifty, approximately-greedy feature selector. Prior to cyclic updates, reorders features in descending magnitude of their univariate weight changes. This operation is multithreaded and is a linear complexity approximation of the quadratic greedy selection. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter.
       """
     ],
     top_k: [
@@ -448,26 +429,26 @@ defmodule EXGBoost.Parameters do
       default: :reg_squarederror,
       doc: """
       Specify the learning task and the corresponding learning objective. The objective options are:
-          * `:reg_squarederror`: regression with squared loss.
-          * `:reg_squaredlogerror`: regression with squared log loss . All input labels are required to be greater than `-1`. Also, see metric rmsle for possible issue with this objective.
-          * `:reg_logistic`: logistic regression.
-          * `:reg_pseudohubererror`: regression with Pseudo Huber loss, a twice differentiable alternative to absolute loss.
-          * `:reg_absoluteerror`: Regression with `L1` error. When tree model is used, leaf value is refreshed after tree construction. If used in distributed training, the leaf value is calculated as the mean value from all workers, which is not guaranteed to be optimal.
-          * `:reg_quantileerror`: Quantile loss, also known as pinball loss. See later sections for its parameter and Quantile Regression for a worked example.
-          * `:binary_logistic`: logistic regression for binary classification, output probability
-          * `:binary_logitraw`: logistic regression for binary classification, output score before logistic transformation
-          * `:binary_hinge`: hinge loss for binary classification. This makes predictions of `0` or `1`, rather than producing probabilities.
-          * `:count_poisson`: Poisson regression for count data, output mean of Poisson distribution.
+          * `:reg_squarederror` - regression with squared loss.
+          * `:reg_squaredlogerror` - regression with squared log loss . All input labels are required to be greater than `-1`. Also, see metric rmsle for possible issue with this objective.
+          * `:reg_logistic` - logistic regression.
+          * `:reg_pseudohubererror` - regression with Pseudo Huber loss, a twice differentiable alternative to absolute loss.
+          * `:reg_absoluteerror` - Regression with `L1` error. When tree model is used, leaf value is refreshed after tree construction. If used in distributed training, the leaf value is calculated as the mean value from all workers, which is not guaranteed to be optimal.
+          * `:reg_quantileerror` - Quantile loss, also known as pinball loss. See later sections for its parameter and Quantile Regression for a worked example.
+          * `:binary_logistic` - logistic regression for binary classification, output probability
+          * `:binary_logitraw` - logistic regression for binary classification, output score before logistic transformation
+          * `:binary_hinge` - hinge loss for binary classification. This makes predictions of `0` or `1`, rather than producing probabilities.
+          * `:count_poisson` - Poisson regression for count data, output mean of Poisson distribution.
               * `max_delta_step` is set to `0.7` by default in Poisson regression (used to safeguard optimization)
-          * `:survival_cox`: Cox regression for right censored survival time data (negative values are considered right censored). Note that predictions are returned on the hazard ratio scale (i.e., as `HR = exp(marginal_prediction)` in the proportional hazard function `h(t) = h0(t) * HR)`.
-          * `:survival_aft`: Accelerated failure time model for censored survival time data. See [Survival Analysis with Accelerated Failure Time](https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html) for details.
-          * `:multi_softmax`: set XGBoost to do multiclass classification using the softmax objective, you also need to set num_class(number of classes)
-          * `:multi_softprob`: same as softmax, but output a vector of ndata * nclass, which can be further reshaped to ndata * nclass matrix. The result contains predicted probability of each data point belonging to each class.
-          * `:rank_ndcg`: Use LambdaMART to perform pair-wise ranking where Normalized Discounted Cumulative Gain (NDCG) is maximized. This objective supports position debiasing for click data.
-          * `:rank_map`: Use LambdaMART to perform pair-wise ranking where Mean Average Precision (MAP) is maximized
-          * `:rank_pairwise`: Use LambdaRank to perform pair-wise ranking using the ranknet objective.
-          * `:reg_gamma`: gamma regression with log-link. Output is a mean of gamma distribution. It might be useful, e.g., for modeling insurance claims severity, or for any outcome that might be gamma-distributed.
-          * `:reg_tweedie`: Tweedie regression with log-link. It might be useful, e.g., for modeling total loss in insurance, or for any outcome that might be Tweedie-distributed.
+          * `:survival_cox` - Cox regression for right censored survival time data (negative values are considered right censored). Note that predictions are returned on the hazard ratio scale (i.e., as `HR = exp(marginal_prediction)` in the proportional hazard function `h(t) = h0(t) * HR)`.
+          * `:survival_aft` - Accelerated failure time model for censored survival time data. See [Survival Analysis with Accelerated Failure Time](https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html) for details.
+          * `:multi_softmax` - set XGBoost to do multiclass classification using the softmax objective, you also need to set num_class(number of classes)
+          * `:multi_softprob` - same as softmax, but output a vector of ndata * nclass, which can be further reshaped to ndata * nclass matrix. The result contains predicted probability of each data point belonging to each class.
+          * `:rank_ndcg` - Use LambdaMART to perform pair-wise ranking where Normalized Discounted Cumulative Gain (NDCG) is maximized. This objective supports position debiasing for click data.
+          * `:rank_map` - Use LambdaMART to perform pair-wise ranking where Mean Average Precision (MAP) is maximized
+          * `:rank_pairwise` - Use LambdaRank to perform pair-wise ranking using the ranknet objective.
+          * `:reg_gamma` - gamma regression with log-link. Output is a mean of gamma distribution. It might be useful, e.g., for modeling insurance claims severity, or for any outcome that might be gamma-distributed.
+          * `:reg_tweedie` - Tweedie regression with log-link. It might be useful, e.g., for modeling total loss in insurance, or for any outcome that might be Tweedie-distributed.
       """
     ],
     base_score: [
@@ -483,34 +464,34 @@ defmodule EXGBoost.Parameters do
       doc: """
       Evaluation metrics for validation data, a default metric will be assigned according to objective (`:rmse` for regression, and `:logloss` for classification, `mean average precision` for `:rank_map`, etc.)
       User can add multiple evaluation metrics.
-          * `:rmse`: root mean square error
-          * `:rmsle`: root mean square log error. Default metric of `:reg_squaredlogerror` objective. This metric reduces errors generated by outliers in dataset. But because `log` function is employed, `:rmsle` might output nan when prediction value is less than `-1`. See `:reg_squaredlogerror` for other requirements.
-          * `:mae`: mean absolute error
-          * `:mape`: mean absolute percentage error
-          * `:mphe`: mean Pseudo Huber error. Default metric of `:reg_pseudohubererror` objective.
-          * `:logloss`: negative log-likelihood
-          * `:error`: Binary classification error rate. It is calculated as `#(wrong cases)/#(all cases)`. For the predictions, the evaluation will regard the instances with prediction value larger than `0.5` as positive instances, and the others as negative instances.
-          * `"error@t"`: a different than `0.5` binary classification threshold value could be specified by providing a numerical value through `t`.
-          * `:merror`: Multiclass classification error rate. It is calculated as `#(wrong cases)/#(all cases)`.
-          * `:mlogloss`: Multiclass logloss.
-          * `:auc`: Receiver Operating Characteristic Area under the Curve. Available for classification and learning-to-rank tasks.
+          * `:rmse` - root mean square error
+          * `:rmsle` - root mean square log error. Default metric of `:reg_squaredlogerror` objective. This metric reduces errors generated by outliers in dataset. But because `log` function is employed, `:rmsle` might output nan when prediction value is less than `-1`. See `:reg_squaredlogerror` for other requirements.
+          * `:mae` - mean absolute error
+          * `:mape` - mean absolute percentage error
+          * `:mphe` - mean Pseudo Huber error. Default metric of `:reg_pseudohubererror` objective.
+          * `:logloss` - negative log-likelihood
+          * `:error` - Binary classification error rate. It is calculated as `#(wrong cases)/#(all cases)`. For the predictions, the evaluation will regard the instances with prediction value larger than `0.5` as positive instances, and the others as negative instances.
+          * `"error@t"` - a different than `0.5` binary classification threshold value could be specified by providing a numerical value through `t`.
+          * `:merror` - Multiclass classification error rate. It is calculated as `#(wrong cases)/#(all cases)`.
+          * `:mlogloss` - Multiclass logloss.
+          * `:auc` - Receiver Operating Characteristic Area under the Curve. Available for classification and learning-to-rank tasks.
               * When used with binary classification, the objective should be binary:logistic or similar functions that work on probability.
               * When used with multi-class classification, objective should be multi:softprob instead of multi:softmax, as the latter doesn’t output probability. Also the AUC is calculated by 1-vs-rest with reference class weighted by class prevalence.
               * When used with LTR task, the AUC is computed by comparing pairs of documents to count correctly sorted pairs. This corresponds to pairwise learning to rank. The implementation has some issues with average AUC around groups and distributed workers not being well-defined.
               * On a single machine the AUC calculation is exact. In a distributed environment the AUC is a weighted average over the AUC of training rows on each node - therefore, distributed AUC is an approximation sensitive to the distribution of data across workers. Use another metric in distributed environments if precision and reproducibility are important.
               * When input dataset contains only negative or positive samples, the output is NaN. The behavior is implementation defined, for instance, scikit-learn returns  instead.
-          * `:aucpr`: Area under the PR curve. Available for classification and learning-to-rank tasks.
-          * `:ndcg`: Normalized Discounted Cumulative Gain
-          * `:map`: Mean Average Precision
-          * `"ndcg@n", "map@n"`: `n` can be assigned as an integer to cut off the top positions in the lists for evaluation.
-          * `"ndcg-", "map-", "ndcg@n-", "map@n-"`: In XGBoost, the NDCG and MAP evaluate the score of a list without any positive samples as `1`. By appending `-` to the evaluation metric name, we can ask XGBoost to evaluate these scores as `0` to be consistent under some conditions.
-          * `:poisson_nloglik`: negative log-likelihood for Poisson regression
-          * `:gamma_nloglik`: negative log-likelihood for gamma regression
-          * `:cox_nloglik`: negative partial log-likelihood for Cox proportional hazards regression
-          * `:gamma_deviance`: residual deviance for gamma regression
-          * `:tweedie_nloglik`: negative log-likelihood for Tweedie regression (at a specified value of the tweedie_variance_power parameter)
-          * `:aft_nloglik`: Negative log likelihood of Accelerated Failure Time model. See Survival Analysis with Accelerated Failure Time for details.
-          * `:interval_regression_accuracy`: Fraction of data points whose predicted labels fall in the interval-censored labels. Only applicable for interval-censored data. See Survival Analysis with Accelerated Failure Time for details.
+          * `:aucpr` - Area under the PR curve. Available for classification and learning-to-rank tasks.
+          * `:ndcg` - Normalized Discounted Cumulative Gain
+          * `:map` - Mean Average Precision
+          * `"ndcg@n", "map@n"` - `n` can be assigned as an integer to cut off the top positions in the lists for evaluation.
+          * `"ndcg-", "map-", "ndcg@n-", "map@n-"` - In XGBoost, the NDCG and MAP evaluate the score of a list without any positive samples as `1`. By appending `-` to the evaluation metric name, we can ask XGBoost to evaluate these scores as `0` to be consistent under some conditions.
+          * `:poisson_nloglik` - negative log-likelihood for Poisson regression
+          * `:gamma_nloglik` - negative log-likelihood for gamma regression
+          * `:cox_nloglik` - negative partial log-likelihood for Cox proportional hazards regression
+          * `:gamma_deviance` - residual deviance for gamma regression
+          * `:tweedie_nloglik` - negative log-likelihood for Tweedie regression (at a specified value of the tweedie_variance_power parameter)
+          * `:aft_nloglik` - Negative log likelihood of Accelerated Failure Time model. See Survival Analysis with Accelerated Failure Time for details.
+          * `:interval_regression_accuracy` - Fraction of data points whose predicted labels fall in the interval-censored labels. Only applicable for interval-censored data. See Survival Analysis with Accelerated Failure Time for details.
       """
     ],
     seed: [
@@ -535,7 +516,7 @@ defmodule EXGBoost.Parameters do
       default: 1.5,
       doc: """
       Parameter that controls the variance of the Tweedie distribution `var(y) ~ E(y)^tweedie_variance_power`.
-      Valid range is `(1,2)`.
+      Valid range is (1,2).
       Set closer to 2 to shift towards a gamma distribution.
       Set closer to 1 to shift towards a Poisson distribution.
       """
@@ -587,17 +568,17 @@ defmodule EXGBoost.Parameters do
       default: :mean,
       doc: """
       How to construct pairs for pair-wise learning.
-          * `:mean`: Sample `lambdarank_num_pair_per_sample` pairs for each document in the query list.
-          * `:topk`: Focus on top-`lambdarank_num_pair_per_sample` documents. Construct pairs for each document at the top-`lambdarank_num_pair_per_sample` ranked by the model.
+          * `:mean` - Sample `lambdarank_num_pair_per_sample` pairs for each document in the query list.
+          * `:topk` - Focus on top-`lambdarank_num_pair_per_sample` documents. Construct pairs for each document at the top-`lambdarank_num_pair_per_sample` ranked by the model.
       """
     ],
     lambdarank_num_pair_per_sample: [
       type: {:custom, EXGBoost.Parameters, :in_range, ["[1,:inf]"]},
-      doc: """
+      doc: ~S"""
            It specifies the number of pairs sampled for each document when pair method is `:mean`,
            or the truncation level for queries when the pair method is `:topk`. For example,
            to train with `ndcg@6`, set `:lambdarank_num_pair_per_sample` to `6` and `:lambdarank_pair_method`
-           to `topk`. Valid range is `[1, :infinity]`.
+           to `topk`. Valid range is [1, $\infty$].
       """
     ],
     lambdarank_unbiased: [
@@ -839,6 +820,17 @@ defmodule EXGBoost.Parameters do
   Parameters are used to configure the training process and the booster.
 
   ## Global Parameters
+
+  You can set the following params either using a global application config (preferred)
+  or using the `EXGBoost.set_config/1` function. The global config is set using the `:exgboost` key.
+  Note that using the `EXGBoost.set_config/1` function will override the global config for the
+  current instance of the application.
+
+  ```elixir
+  config :exgboost,
+    verbosity: :info,
+    use_rmm: true,
+  ```
   #{NimbleOptions.docs(@global_schema)}
 
   ## General Parameters
