@@ -12,7 +12,7 @@ defmodule EXGBoost.Parameters do
       default: false,
       doc: """
       Whether to use RAPIDS Memory Manager for memory allocation.
-      This This option is only applicable when XGBoost is built (compiled)
+      This option is only applicable when XGBoost is built (compiled)
       with the RMM plugin enabled. Valid values are `true` and `false`.
       """
     ]
