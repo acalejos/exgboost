@@ -206,7 +206,7 @@ defmodule EXGBoost.Parameters do
     updater: [
       type: {:custom, EXGBoost.Parameters, :validate_tree_updater, []},
       doc: """
-      A comma separated string defining the sequence of tree updaters to run, providing a
+      A list defining the sequence of tree updaters to run, providing a
       modular way to construct and to modify the trees. This is an advanced parameter that
       is usually set automatically, depending on some other parameters. However, it could be
       also set explicitly by a user. The following updaters exist:
@@ -387,11 +387,11 @@ defmodule EXGBoost.Parameters do
       default: :cyclic,
       doc: ~S"""
       Feature selection and ordering method
-          * `:cyclic` - Deterministic selection by cycling through features one at a time.
-          * `:shuffle` - Similar to `:cyclic` but with random feature shuffling prior to each update.
-          * `:random` - A random (with replacement) coordinate selector.
-          * `:greedy` - Select coordinate with the greatest gradient magnitude. It has $O(num_feature^2)$ complexity. It is fully deterministic. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter. Doing so would reduce the complexity to $O(num_feature^{topk})$.
-          * `:thrifty` - Thrifty, approximately-greedy feature selector. Prior to cyclic updates, reorders features in descending magnitude of their univariate weight changes. This operation is multithreaded and is a linear complexity approximation of the quadratic greedy selection. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter.
+          * `:cyclic` - Deterministic selection by cycling through features one at a time. Used with the `:shotgun` updater.
+          * `:shuffle` - Similar to `:cyclic` but with random feature shuffling prior to each update. Used with the `:shotgun` updater.
+          * `:random` - A random (with replacement) coordinate selector. Used with the `:coord_descent` updater.
+          * `:greedy` - Select coordinate with the greatest gradient magnitude. It has $O(num_feature^2)$ complexity. It is fully deterministic. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter. Doing so would reduce the complexity to $O(num_feature^{topk})$. Used by `:coord_descent` updater.
+          * `:thrifty` - Thrifty, approximately-greedy feature selector. Prior to cyclic updates, reorders features in descending magnitude of their univariate weight changes. This operation is multithreaded and is a linear complexity approximation of the quadratic greedy selection. It allows restricting the selection to `:top_k` features per group with the largest magnitude of univariate weight change, by setting the `:top_k` parameter. Used by `:coord_descent` updater.
       """
     ],
     top_k: [
@@ -609,7 +609,10 @@ defmodule EXGBoost.Parameters do
     end
   end
 
+  @doc false
   def validate_colsample(x) do
+    IO.inspect(x)
+
     unless is_list(x) do
       {:error, "Parameter `colsample` must be a list, got #{inspect(x)}"}
     else
