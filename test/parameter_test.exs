@@ -13,7 +13,9 @@ defmodule ParameterTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
 
     {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(1..num_class |> Enum.to_list()), samples: nrows)
+      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
+        samples: nrows
+      )
 
     num_boost_round = 10
 
@@ -54,8 +56,7 @@ defmodule ParameterTest do
       predictor: :cpu_predictor,
       num_parallel_tree: 1,
       monotone_constraints: [],
-      interaction_constraints: [],
-      updater: [:grow_colmaker, :grow_histmaker]
+      interaction_constraints: []
     ]
 
     booster = EXGBoost.train(x, y, params)
@@ -79,7 +80,9 @@ defmodule ParameterTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
 
     {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(1..num_class |> Enum.to_list()), samples: nrows)
+      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
+        samples: nrows
+      )
 
     num_boost_round = 10
 
@@ -122,7 +125,9 @@ defmodule ParameterTest do
     {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
 
     {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(1..num_class |> Enum.to_list()), samples: nrows)
+      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
+        samples: nrows
+      )
 
     num_boost_round = 10
 

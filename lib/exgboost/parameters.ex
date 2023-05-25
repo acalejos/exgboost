@@ -611,8 +611,6 @@ defmodule EXGBoost.Parameters do
 
   @doc false
   def validate_colsample(x) do
-    IO.inspect(x)
-
     unless is_list(x) do
       {:error, "Parameter `colsample` must be a list, got #{inspect(x)}"}
     else
