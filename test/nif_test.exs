@@ -2,7 +2,6 @@ defmodule NifTest do
   use ExUnit.Case, async: true
   import EXGBoost.Internal
   import EXGBoost.ArrayInterface, only: [array_interface: 1]
-  # doctest EXGBoost.NIF
 
   test "exgboost_version" do
     assert EXGBoost.NIF.xgboost_version() |> unwrap!() != :error
@@ -20,7 +19,7 @@ defmodule NifTest do
   end
 
   test "get_global_config" do
-    assert Exgboost.NIF.get_global_config() |> unwrap!() != :error
+    assert EXGBoost.NIF.get_global_config() |> unwrap!() != :error
   end
 
   test "dmatrix_create_from_sparse" do
