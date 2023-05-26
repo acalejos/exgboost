@@ -1,4 +1,4 @@
-defmodule Exgboost.DMatrix do
+defmodule EXGBoost.DMatrix do
   @moduledoc false
   @doc """
   Parameters
@@ -62,8 +62,8 @@ defmodule Exgboost.DMatrix do
   """
 
   alias __MODULE__
-  alias Exgboost.ArrayInterface
-  alias Exgboost.Internal
+  alias EXGBoost.ArrayInterface
+  alias EXGBoost.Internal
 
   @enforce_keys [
     :ref,
@@ -94,33 +94,33 @@ defmodule Exgboost.DMatrix do
              "label_upper_bound",
              "feature_weights"
            ],
-      do: Exgboost.NIF.dmatrix_get_float_info(dmatrix.ref, feature) |> Internal.unwrap!()
+      do: EXGBoost.NIF.dmatrix_get_float_info(dmatrix.ref, feature) |> Internal.unwrap!()
 
   def get_group(dmatrix), do: get_uint_info(dmatrix, "group")
 
   def get_uint_info(dmatrix, "group"),
-    do: Exgboost.NIF.dmatrix_get_uint_info(dmatrix.ref, "group_ptr") |> Internal.unwrap!()
+    do: EXGBoost.NIF.dmatrix_get_uint_info(dmatrix.ref, "group_ptr") |> Internal.unwrap!()
 
   def get_num_rows(dmatrix),
-    do: Exgboost.NIF.dmatrix_num_row(dmatrix.ref) |> Internal.unwrap!()
+    do: EXGBoost.NIF.dmatrix_num_row(dmatrix.ref) |> Internal.unwrap!()
 
   def get_num_cols(dmatrix),
-    do: Exgboost.NIF.dmatrix_num_col(dmatrix.ref) |> Internal.unwrap!()
+    do: EXGBoost.NIF.dmatrix_num_col(dmatrix.ref) |> Internal.unwrap!()
 
   def get_num_non_missing(dmatrix),
-    do: Exgboost.NIF.dmatrix_num_non_missing(dmatrix.ref) |> Internal.unwrap!()
+    do: EXGBoost.NIF.dmatrix_num_non_missing(dmatrix.ref) |> Internal.unwrap!()
 
   def get_data(dmatrix),
     do:
-      Exgboost.NIF.dmatrix_get_data_as_csr(dmatrix.ref, Jason.encode!(%{})) |> Internal.unwrap!()
+      EXGBoost.NIF.dmatrix_get_data_as_csr(dmatrix.ref, Jason.encode!(%{})) |> Internal.unwrap!()
 
   def get_feature_names(dmatrix),
     do:
-      Exgboost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_name") |> Internal.unwrap!()
+      EXGBoost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_name") |> Internal.unwrap!()
 
   def get_feature_types(dmatrix),
     do:
-      Exgboost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_type") |> Internal.unwrap!()
+      EXGBoost.NIF.dmatrix_get_str_feature_info(dmatrix.ref, "feature_type") |> Internal.unwrap!()
 
   def set_params(dmat, opts) do
     options = Internal.dmatrix_str_feature_opts() ++ Internal.dmatrix_meta_feature_opts()
@@ -134,7 +134,7 @@ defmodule Exgboost.DMatrix do
     Enum.each(meta_opts, fn {key, value} ->
       data_interface = ArrayInterface.array_interface(value) |> Jason.encode!()
 
-      Exgboost.NIF.dmatrix_set_info_from_interface(
+      EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
         Atom.to_string(key),
         data_interface
@@ -142,7 +142,7 @@ defmodule Exgboost.DMatrix do
     end)
 
     Enum.each(str_opts, fn {key, value} ->
-      Exgboost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
+      EXGBoost.NIF.dmatrix_set_str_feature_info(dmat.ref, Atom.to_string(key), value)
     end)
 
     struct(dmat, args)
@@ -155,7 +155,7 @@ defmodule Exgboost.DMatrix do
       when is_list(opts) do
     opts = Keyword.validate!(opts, allow_groups: false)
     allow_groups = Keyword.fetch!(opts, :allow_groups)
-    Exgboost.NIF.dmatrix_slice(dmat.ref, Nx.to_binary(r_index), allow_groups)
+    EXGBoost.NIF.dmatrix_slice(dmat.ref, Nx.to_binary(r_index), allow_groups)
   end
 
   defimpl Inspect do
@@ -254,7 +254,7 @@ defmodule Exgboost.DMatrix do
       end
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_file(
+      EXGBoost.NIF.dmatrix_create_from_file(
         uri,
         silent
       )
@@ -276,7 +276,7 @@ defmodule Exgboost.DMatrix do
     format = Keyword.fetch!(format_opts, :format)
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(
+      EXGBoost.NIF.dmatrix_create_from_dense(
         Jason.encode!(ArrayInterface.array_interface(tensor)),
         Jason.encode!(config)
       )
@@ -335,7 +335,7 @@ defmodule Exgboost.DMatrix do
     end
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_sparse(
+      EXGBoost.NIF.dmatrix_create_from_sparse(
         Jason.encode!(ArrayInterface.array_interface(indptr)),
         Jason.encode!(ArrayInterface.array_interface(indices)),
         Jason.encode!(ArrayInterface.array_interface(data)),
@@ -349,18 +349,18 @@ defmodule Exgboost.DMatrix do
   end
 end
 
-defmodule Exgboost.ProxyDMatrix do
+defmodule EXGBoost.ProxyDMatrix do
   @moduledoc false
   alias __MODULE__
   @enforce_keys [:ref]
   defstruct [:ref]
 
   def proxy_dmatrix() do
-    p_ref = Exgboost.NIF.proxy_dmatrix_create()
+    p_ref = EXGBoost.NIF.proxy_dmatrix_create()
     %ProxyDMatrix{ref: p_ref}
   end
 
   def set_params(%ProxyDMatrix{} = dmat, opts) do
-    Exgboost.DMatrix.set_params(dmat, opts)
+    EXGBoost.DMatrix.set_params(dmat, opts)
   end
 end

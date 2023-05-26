@@ -1,26 +1,26 @@
 defmodule NifTest do
   use ExUnit.Case, async: true
-  import Exgboost.Internal
-  import Exgboost.ArrayInterface, only: [array_interface: 1]
-  # doctest Exgboost.NIF
+  import EXGBoost.Internal
+  import EXGBoost.ArrayInterface, only: [array_interface: 1]
+  # doctest EXGBoost.NIF
 
   test "exgboost_version" do
-    assert Exgboost.NIF.xgboost_version() |> unwrap!() != :error
+    assert EXGBoost.NIF.xgboost_version() |> unwrap!() != :error
   end
 
   test "build_info" do
-    assert Exgboost.NIF.xgboost_build_info() |> unwrap!() != :error
+    assert EXGBoost.NIF.xgboost_build_info() |> unwrap!() != :error
   end
 
   test "set_global_config" do
-    assert Exgboost.NIF.set_global_config('{"use_rmm":false,"verbosity":1}') == :ok
+    assert EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity":1}') == :ok
 
-    assert Exgboost.NIF.set_global_config('{"use_rmm":false,"verbosity": true}') ==
+    assert EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity": true}') ==
              {:error, 'Invalid Parameter format for verbosity expect int but value=\'true\''}
   end
 
   test "get_global_config" do
-    assert Exgboost.NIF.get_global_config() == {:ok, '{"use_rmm":false,"verbosity":1}'}
+    assert EXGBoost.NIF.get_global_config() == {:ok, '{"use_rmm":false,"verbosity":1}'}
   end
 
   test "dmatrix_create_from_sparse" do
@@ -80,7 +80,7 @@ defmodule NifTest do
         1.0
       ])
 
-    assert Exgboost.NIF.dmatrix_create_from_sparse(
+    assert EXGBoost.NIF.dmatrix_create_from_sparse(
              array_interface(indptr) |> Jason.encode!(),
              array_interface(indices) |> Jason.encode!(),
              array_interface(data) |> Jason.encode!(),
@@ -91,7 +91,7 @@ defmodule NifTest do
            |> unwrap!() !=
              :error
 
-    assert Exgboost.NIF.dmatrix_create_from_sparse(
+    assert EXGBoost.NIF.dmatrix_create_from_sparse(
              array_interface(indptr) |> Jason.encode!(),
              array_interface(indices) |> Jason.encode!(),
              array_interface(data) |> Jason.encode!(),
@@ -103,7 +103,7 @@ defmodule NifTest do
              :error
 
     {status, _} =
-      Exgboost.NIF.dmatrix_create_from_sparse(
+      EXGBoost.NIF.dmatrix_create_from_sparse(
         array_interface(indptr) |> Jason.encode!(),
         array_interface(indices) |> Jason.encode!(),
         array_interface(data) |> Jason.encode!(),
@@ -121,7 +121,7 @@ defmodule NifTest do
 
     config = Jason.encode!(%{"missing" => -1.0})
 
-    assert Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+    assert EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
            |> unwrap!() !=
              :error
   end
@@ -133,10 +133,10 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', [
+    assert EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', [
              'name',
              'color',
              'length'
@@ -150,12 +150,12 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    Exgboost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', ['name', 'color', 'length'])
+    EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', ['name', 'color', 'length'])
 
-    assert Exgboost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> unwrap!()
+    assert EXGBoost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> unwrap!()
   end
 
   test "dmatrix_set_dense_info" do
@@ -167,15 +167,15 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     type = get_xgboost_data_type(labels) |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_set_dense_info(dmat, 'weight', Nx.to_binary(labels), size, type) ==
+    assert EXGBoost.NIF.dmatrix_set_dense_info(dmat, 'weight', Nx.to_binary(labels), size, type) ==
              :ok
 
-    assert Exgboost.NIF.dmatrix_set_dense_info(
+    assert EXGBoost.NIF.dmatrix_set_dense_info(
              dmat,
              'unsupported',
              Nx.to_binary(labels),
@@ -191,10 +191,10 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_num_row(dmat) |> unwrap! == 2
+    assert EXGBoost.NIF.dmatrix_num_row(dmat) |> unwrap! == 2
   end
 
   test "dmatrix_num_col" do
@@ -204,10 +204,10 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_num_col(dmat) |> unwrap! == 3
+    assert EXGBoost.NIF.dmatrix_num_col(dmat) |> unwrap! == 3
   end
 
   test "dmatrix_num_non_missing" do
@@ -217,10 +217,10 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_num_non_missing(dmat) |> unwrap! == 6
+    assert EXGBoost.NIF.dmatrix_num_non_missing(dmat) |> unwrap! == 6
   end
 
   test "dmatrix_set_info_from_interface" do
@@ -231,19 +231,19 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     label_interface = array_interface(labels) |> Jason.encode!()
 
-    assert Exgboost.NIF.dmatrix_set_info_from_interface(
+    assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
              'label',
              label_interface
            ) ==
              :ok
 
-    assert Exgboost.NIF.dmatrix_set_info_from_interface(
+    assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
              'unsupported',
              label_interface
@@ -258,14 +258,14 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     interface = array_interface(labels) |> Jason.encode!()
 
-    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
+    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
 
-    assert Exgboost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
+    assert EXGBoost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
   end
 
   test "dmatrix_get_float_info" do
@@ -276,13 +276,13 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     interface = array_interface(weights) |> Jason.encode!()
-    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'feature_weights', interface)
+    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'feature_weights', interface)
 
-    assert Exgboost.NIF.dmatrix_get_float_info(dmat, 'feature_weights') |> unwrap!() ==
+    assert EXGBoost.NIF.dmatrix_get_float_info(dmat, 'feature_weights') |> unwrap!() ==
              Nx.to_list(weights)
   end
 
@@ -294,12 +294,12 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     interface = array_interface(groups) |> Jason.encode!()
-    Exgboost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
-    assert Exgboost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
+    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
+    assert EXGBoost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
   end
 
   test "dmatrix_get_data_as_csr" do
@@ -309,10 +309,10 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_get_data_as_csr(dmat, Jason.encode!(%{})) |> unwrap!() != :error
+    assert EXGBoost.NIF.dmatrix_get_data_as_csr(dmat, Jason.encode!(%{})) |> unwrap!() != :error
   end
 
   test "dmatrix_slice" do
@@ -322,25 +322,25 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     # We do this because the C API uses non fixed-width types so we need to know the size they're expecting from int
-    c_int_size = Exgboost.NIF.get_int_size() |> unwrap!()
+    c_int_size = EXGBoost.NIF.get_int_size() |> unwrap!()
     tensor_size = c_int_size * 8
 
     dmatrix =
-      Exgboost.NIF.dmatrix_slice(
+      EXGBoost.NIF.dmatrix_slice(
         dmat,
         Nx.to_binary(Nx.tensor([0, 1], type: {:s, tensor_size})),
         1
       )
       |> unwrap!()
 
-    assert Exgboost.NIF.dmatrix_num_row(dmatrix) |> unwrap!() == 2
+    assert EXGBoost.NIF.dmatrix_num_row(dmatrix) |> unwrap!() == 2
 
     {status, _e} =
-      Exgboost.NIF.dmatrix_slice(
+      EXGBoost.NIF.dmatrix_slice(
         dmat,
         Nx.to_binary(Nx.tensor([0, 1], type: {:s, tensor_size})),
         2
@@ -348,7 +348,7 @@ defmodule NifTest do
 
     assert status == :error
 
-    {status, _e} = Exgboost.NIF.dmatrix_slice(dmat, Nx.to_binary(Nx.tensor([1.5, 1.6])), 2)
+    {status, _e} = EXGBoost.NIF.dmatrix_slice(dmat, Nx.to_binary(Nx.tensor([1.5, 1.6])), 2)
 
     assert status == :error
   end
@@ -362,16 +362,16 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     dmat2 =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface2, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface2, config)
       |> unwrap!()
 
-    assert Exgboost.NIF.booster_create([dmat]) |> unwrap!() != :error
-    assert Exgboost.NIF.booster_create([]) |> unwrap!() != :error
-    assert Exgboost.NIF.booster_create([dmat, dmat2]) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_create([dmat]) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_create([]) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_create([dmat, dmat2]) |> unwrap!() != :error
   end
 
   test "booster_get_num_feature" do
@@ -381,11 +381,11 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
-    assert Exgboost.NIF.booster_get_num_feature(booster) |> unwrap!() == 3
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    assert EXGBoost.NIF.booster_get_num_feature(booster) |> unwrap!() == 3
   end
 
   test "test_booster_set_str_feature_info" do
@@ -395,12 +395,12 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    assert Exgboost.NIF.booster_set_str_feature_info(booster, 'feature_name', [
+    assert EXGBoost.NIF.booster_set_str_feature_info(booster, 'feature_name', [
              'name',
              'color',
              'length'
@@ -414,14 +414,14 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    Exgboost.NIF.booster_set_str_feature_info(booster, 'feature_name', ['name', 'color', 'length'])
+    EXGBoost.NIF.booster_set_str_feature_info(booster, 'feature_name', ['name', 'color', 'length'])
 
-    assert Exgboost.NIF.booster_get_str_feature_info(booster, 'feature_name') |> unwrap!()
+    assert EXGBoost.NIF.booster_get_str_feature_info(booster, 'feature_name') |> unwrap!()
   end
 
   test "test_boster_feature_score" do
@@ -432,12 +432,12 @@ defmodule NifTest do
     config = Jason.encode!(%{"missing" => -1.0})
 
     dmat =
-      Exgboost.NIF.dmatrix_create_from_dense(array_interface, config)
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
     config = Jason.encode!(%{"importance_type" => "weight"})
-    booster = Exgboost.NIF.booster_create([dmat]) |> unwrap!()
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    Exgboost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
+    EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
   end
 end

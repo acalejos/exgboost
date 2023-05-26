@@ -1,4 +1,4 @@
-defmodule Exgboost.Training.Callback do
+defmodule EXGBoost.Training.Callback do
   @moduledoc """
   Callbacks are a mechanism to hook into the training process and perform custom actions.
 
@@ -21,13 +21,13 @@ defmodule Exgboost.Training.Callback do
   * `{:cont, state}` - continue training with the given state
   * `{:halt, state}` - stop training with the given state
 
-  The following callbacks are provided in the `Exgboost.Training.Callback` module:
+  The following callbacks are provided in the `EXGBoost.Training.Callback` module:
   * `lr_scheduler` - sets the learning rate for each iteration
   * `early_stop` - performs early stopping
   * `eval_metrics` - evaluates metrics on the training and evaluation sets
   * `eval_monitor` - prints evaluation metrics
 
-  Callbacks can be added to the training process by passing them to `Exgboost.Training.train/2`.
+  Callbacks can be added to the training process by passing them to `EXGBoost.Training.train/2`.
 
   ## Example
 
@@ -42,12 +42,12 @@ defmodule Exgboost.Training.Callback do
   ```
 
   """
-  alias Exgboost.Training.State
+  alias EXGBoost.Training.State
   @enforce_keys [:event, :fun]
   defstruct [:event, :fun, :name, :init_state]
 
   @doc """
-  Factory for a new callback without an initial state. See `Exgboost.Callback.new/4` for more details.
+  Factory for a new callback without an initial state. See `EXGBoost.Callback.new/4` for more details.
   """
   @spec new(
           event :: :before_training | :after_training | :before_iteration | :after_iteration,
@@ -87,7 +87,7 @@ defmodule Exgboost.Training.Callback do
         } = state
       ) do
     lr = if is_list(learning_rates), do: Enum.at(learning_rates, i), else: learning_rates.(i)
-    boostr = Exgboost.Booster.set_params(bst, learning_rate: lr)
+    boostr = EXGBoost.Booster.set_params(bst, learning_rate: lr)
     {:cont, %{state | booster: boostr}}
   end
 
@@ -161,7 +161,7 @@ defmodule Exgboost.Training.Callback do
         bst =
           bst
           |> struct(best_iteration: state.iteration, best_score: cur_criteria_value)
-          |> Exgboost.Booster.set_attr(
+          |> EXGBoost.Booster.set_attr(
             best_iteration: state.iteration,
             best_score: cur_criteria_value
           )
@@ -202,7 +202,7 @@ defmodule Exgboost.Training.Callback do
         } = state
       ) do
     metrics =
-      Exgboost.Booster.eval_set(bst, evals, iter)
+      EXGBoost.Booster.eval_set(bst, evals, iter)
       |> Enum.reduce(%{}, fn {evname, mname, value}, acc ->
         Map.update(acc, evname, %{mname => value}, fn existing ->
           Map.put(existing, mname, value)
