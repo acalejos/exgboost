@@ -67,5 +67,7 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_slice", 4, EXGBoosterSlice},
     {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix},
     {"booster_predict_from_dense", 4, EXGBoosterPredictFromDense},
-    {"booster_predict_from_csr", 7, EXGBoosterPredictFromCSR}};
+    {"booster_predict_from_csr", 7, EXGBoosterPredictFromCSR},
+    {"booster_load_model", 1, EXGBoosterLoadModel},
+    {"booster_save_model", 2, EXGBoosterSaveModel}};
 ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)

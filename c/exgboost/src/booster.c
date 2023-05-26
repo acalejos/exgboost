@@ -794,3 +794,64 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  char *fname = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[0], &fname)) {
+    ret = exg_error(env, "Fname must be a string representing a file path");
+    goto END;
+  }
+  result = XGBoosterLoadModel(booster, fname);
+  if (result == 0) {
+    ret = make_Booster_resource(env, booster);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fname != NULL) {
+    enif_free(fname);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char *fname = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &fname)) {
+    ret = exg_error(env, "Fname must be a string representing a file path");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterSaveModel(booster, fname);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fname != NULL) {
+    enif_free(fname);
+  }
+  return ret;
+}

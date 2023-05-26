@@ -349,4 +349,12 @@ defmodule Exgboost.NIF do
 
   @spec proxy_dmatrix_create() :: dmatrix_reference()
   def proxy_dmatrix_create, do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_load_model(String.t()) ::
+          exgboost_return_type(booster_reference())
+  def booster_load_model( _path), do: :erlang.nif_error(:not_implemented)
+
+  @spec booster_save_model(booster_reference(), String.t()) ::
+          :ok | {:error, String.t()}
+  def booster_save_model(_handle, _path), do: :erlang.nif_error(:not_implemented)
 end

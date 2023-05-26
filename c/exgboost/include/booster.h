@@ -37,5 +37,9 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
                                         const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]);
 
 #endif
