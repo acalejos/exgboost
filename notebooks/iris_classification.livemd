@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:exgboost, "~> 0.1"},
+  {:exgboost, "~> 0.2"},
   {:nx, "~> 0.5"},
   {:scidata, "~> 0.1"},
   {:scholar, "~> 0.1"}
@@ -54,7 +54,7 @@ The simplest way to train a booster is using the top-level `Exgboost.train/2` fu
 This example is a multi-class classification problem with 3 output classes. We need to configure Exgboost to train this booster as a multi-class classifier by specifying a different training objective. We also need to specify the number of output classes:
 
 ```elixir
-booster = Exgboost.train(x_train, y_train, params: [num_class: "3", objective: "multi:softprob"])
+booster = Exgboost.train(x_train, y_train, num_class: 3, objective: :multi_softprob)
 ```
 
 And that's it! Now we can test our booster.
