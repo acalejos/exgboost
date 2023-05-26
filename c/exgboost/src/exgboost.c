@@ -68,6 +68,8 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix},
     {"booster_predict_from_dense", 4, EXGBoosterPredictFromDense},
     {"booster_predict_from_csr", 7, EXGBoosterPredictFromCSR},
-    {"booster_load_model", 1, EXGBoosterLoadModel},
-    {"booster_save_model", 2, EXGBoosterSaveModel}};
-ERL_NIF_INIT(Elixir.Exgboost.NIF, nif_funcs, load, NULL, upgrade, NULL)
+    {"booster_load_model", 1, EXGBoosterLoadModel, ERL_NIF_DIRTY_JOB_IO_BOUND},
+    {"booster_save_model", 2, EXGBoosterSaveModel, ERL_NIF_DIRTY_JOB_IO_BOUND},
+    {"booster_serialize_to_buffer", 1, EXGBoosterSerializeToBuffer},
+    {"booster_deserialize_from_buffer", 1, EXGBoosterDeserializeFromBuffer}};
+ERL_NIF_INIT(Elixir.EXGBoost.NIF, nif_funcs, load, NULL, upgrade, NULL)

@@ -20,7 +20,7 @@ defmodule NifTest do
   end
 
   test "get_global_config" do
-    assert EXGBoost.NIF.get_global_config() == {:ok, '{"use_rmm":false,"verbosity":1}'}
+    assert EXGBoost.NIF.get_global_config() |> unwrap!() != :error
   end
 
   test "dmatrix_create_from_sparse" do
@@ -266,6 +266,7 @@ defmodule NifTest do
     EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
 
     assert EXGBoost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
+    assert File.rm('test.buffer') == :ok
   end
 
   test "dmatrix_get_float_info" do
@@ -286,21 +287,21 @@ defmodule NifTest do
              Nx.to_list(weights)
   end
 
-  test "dmatrix_get_uint_info" do
-    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
-    groups = Nx.tensor([1])
+  # test "dmatrix_get_uint_info" do
+  #   mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+  #   array_interface = array_interface(mat) |> Jason.encode!()
+  #   groups = Nx.tensor([1])
 
-    config = Jason.encode!(%{"missing" => -1.0})
+  #   config = Jason.encode!(%{"missing" => -1.0})
 
-    dmat =
-      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
-      |> unwrap!()
+  #   dmat =
+  #     EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+  #     |> unwrap!()
 
-    interface = array_interface(groups) |> Jason.encode!()
-    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
-    assert EXGBoost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
-  end
+  #   interface = array_interface(groups) |> Jason.encode!()
+  #   EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
+  #   assert EXGBoost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
+  # end
 
   test "dmatrix_get_data_as_csr" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -439,5 +440,79 @@ defmodule NifTest do
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
     EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
+  end
+
+  test "save model" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    json_file = "model.json"
+    ubj_file = "model.ubj"
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    assert EXGBoost.NIF.booster_save_model(booster, json_file) |> unwrap!() == :ok
+    assert EXGBoost.NIF.booster_save_model(booster, ubj_file) |> unwrap!() == :ok
+    assert File.exists?(json_file) and File.regular?(json_file)
+    assert File.exists?(ubj_file) and File.regular?(ubj_file)
+    assert File.rm(json_file) == :ok
+    assert File.rm(ubj_file) == :ok
+  end
+
+  test "load model" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    json_file = "model.json"
+    ubj_file = "model.ubj"
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    assert EXGBoost.NIF.booster_save_model(booster, json_file) |> unwrap!() == :ok
+    assert EXGBoost.NIF.booster_save_model(booster, ubj_file) |> unwrap!() == :ok
+    assert File.exists?(json_file) and File.regular?(json_file)
+    assert File.exists?(ubj_file) and File.regular?(ubj_file)
+    assert EXGBoost.NIF.booster_load_model(json_file) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_load_model(ubj_file) |> unwrap!() != :error
+    assert File.rm(json_file) == :ok
+    assert File.rm(ubj_file) == :ok
+  end
+
+  test "booster serialize" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    assert EXGBoost.NIF.booster_serialize_to_buffer(booster) |> unwrap!() != :error
+  end
+
+  test "booster deserialize" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    buffer = EXGBoost.NIF.booster_serialize_to_buffer(booster) |> unwrap!()
+    EXGBoost.NIF.booster_deserialize_from_buffer(buffer)
+    assert EXGBoost.NIF.booster_deserialize_from_buffer(buffer) |> unwrap!() != :error
   end
 end

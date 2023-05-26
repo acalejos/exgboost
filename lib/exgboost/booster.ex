@@ -20,6 +20,13 @@ defmodule EXGBoost.Booster do
     booster([dmat], opts)
   end
 
+  def booster(%Booster{} = bst, opts) do
+    boostr_bytes = EXGBoost.NIF.booster_serialize_to_buffer(bst.ref) |> Internal.unwrap!()
+    booster_ref = EXGBoost.NIF.booster_deserialize_from_buffer(boostr_bytes) |> Internal.unwrap!()
+    opts = EXGBoost.Parameters.validate!(opts)
+    Booster.set_params(%Booster{ref: booster_ref}, opts)
+  end
+
   @doc """
   Slice a model using boosting index. The slice m:n indicates taking all
   trees that were fit during the boosting rounds m, (m+1), (m+2), …, (n-1).

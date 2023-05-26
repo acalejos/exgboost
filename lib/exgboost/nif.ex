@@ -357,4 +357,8 @@ defmodule EXGBoost.NIF do
   @spec booster_save_model(booster_reference(), String.t()) ::
           :ok | {:error, String.t()}
   def booster_save_model(_handle, _path), do: :erlang.nif_error(:not_implemented)
+
+  def booster_serialize_to_buffer(_handle), do: :erlang.nif_error(:not_implemented)
+
+  def booster_deserialize_from_buffer(_buffer), do: :erlang.nif_error(:not_implemented)
 end

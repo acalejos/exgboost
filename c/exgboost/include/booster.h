@@ -41,5 +41,9 @@ ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
                                  const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
                                  const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
+                                             const ERL_NIF_TERM argv[]);
 
 #endif
