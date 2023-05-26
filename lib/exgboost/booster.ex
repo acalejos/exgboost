@@ -27,6 +27,15 @@ defmodule EXGBoost.Booster do
     Booster.set_params(%Booster{ref: booster_ref}, opts)
   end
 
+  def from_file(path, opts \\ []) do
+    unless File.exists?(path) and File.regular?(path) do
+      raise ArgumentError, "File not found: #{path}"
+    end
+    opts = EXGBoost.Parameters.validate!(opts)
+    booster_ref = EXGBoost.NIF.booster_load_model(path) |> Internal.unwrap!()
+    Booster.set_params(%Booster{ref: booster_ref}, opts)
+  end
+
   @doc """
   Slice a model using boosting index. The slice m:n indicates taking all
   trees that were fit during the boosting rounds m, (m+1), (m+2), …, (n-1).
