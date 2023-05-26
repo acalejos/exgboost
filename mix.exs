@@ -38,11 +38,11 @@ defmodule EXGBoost.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.4", runtime: false},
-      {:nimble_options, "~> 0.3.0"},
+      {:nimble_options, "~> 1.0"},
       {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.29.0", only: :docs},
-      {:cc_precompiler, "~> 0.1.0", runtime: false, github: "cocoa-xu/cc_precompiler"}
+      {:cc_precompiler, "~> 0.1.0", runtime: false}
     ]
   end
 
