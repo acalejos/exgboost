@@ -1,5 +1,7 @@
 defmodule EXGBoost.ArrayInterface do
   @moduledoc false
+  alias __MODULE__
+
   @typedoc """
   The XGBoost C API uses and is moving towards mainly supporting the use of
   JSON-Encoded NumPy ArrayyInterface format to pass data to and from the C API. This struct
@@ -12,8 +14,6 @@ defmodule EXGBoost.ArrayInterface do
   See https://numpy.org/doc/stable/reference/arrays.interface.html for more information on
   the ArrayInterface protocol.
   """
-  alias __MODULE__
-
   @type t :: %ArrayInterface{
           typestr: String.t(),
           shape: tuple(),
