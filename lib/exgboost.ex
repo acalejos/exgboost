@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.1.0"}
+    {:exgboost, "~> 0.2.1"}
   ]
   end
   ```
@@ -184,8 +184,7 @@ defmodule EXGBoost do
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
-  * `params` - A keyword list to use as model parameters. See [Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of parameters supported in the model.  Note that
-      some params can appear more than once, such as `eval_metric` for setting multiple evaluation metrics.
+  * `opts` - Refer to `EXGBoost.Parameters` for the full list of options.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do

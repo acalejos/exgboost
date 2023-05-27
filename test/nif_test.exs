@@ -2,7 +2,6 @@ defmodule NifTest do
   use ExUnit.Case, async: true
   import EXGBoost.Internal
   import EXGBoost.ArrayInterface, only: [array_interface: 1]
-  # doctest EXGBoost.NIF
 
   test "exgboost_version" do
     assert EXGBoost.NIF.xgboost_version() |> unwrap!() != :error

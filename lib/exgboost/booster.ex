@@ -138,15 +138,16 @@ defmodule EXGBoost.Booster do
     for {key, value} <- params do
       cond do
         is_list(value) ->
-          Enum.each(value, fn v ->
             set_params(booster, value)
-          end)
 
         is_atom(key) ->
           EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
 
         is_binary(key) ->
           EXGBoost.NIF.booster_set_param(booster.ref, key, value)
+
+        true ->
+          raise ArgumentError, "Invalid key #{inspect(key)}"
       end
     end
 
