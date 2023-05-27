@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.2.0"}
+    {:exgboost, "~> 0.2.1"}
   ]
   end
   ```
