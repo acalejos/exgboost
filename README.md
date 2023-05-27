@@ -22,7 +22,7 @@ billions of examples.
 ```elixir
 def deps do
 [
-  {:exgboost, "~> 0.1.0"}
+  {:exgboost, "~> 0.2.1"}
 ]
 end
 ```
@@ -102,7 +102,9 @@ Exgboot.train(X,
               learning_rates: fn i -> i/10 end,
               num_boost_round: 10,
               early_stopping_rounds: 3,
-              params: [max_depth: 3, eval_metric: ["rmse","logloss"]])
+              max_depth: 3, 
+              eval_metric: [:rmse,:logloss]
+              )
 ```
 
 ## Prediction
@@ -118,6 +120,7 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 
 # Requirements
 
+If you choose to not use the precompiled libraries, you will need the following:
 * Make
 * CMake
 * If MacOS: `brew install libomp`
