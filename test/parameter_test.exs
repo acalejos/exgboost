@@ -3,19 +3,15 @@ defmodule ParameterTest do
   alias EXGBoost.Booster
 
   setup do
-    {:ok, [key: Nx.Random.key(42)]}
+    %{key: Nx.Random.key(42)}
   end
 
   test "tree booster", context do
     num_class = 10
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-
-    {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
-        samples: nrows
-      )
+    {x, key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _key} = Nx.Random.randint(key, 0, num_class, shape: {nrows})
 
     num_boost_round = 10
 
@@ -77,12 +73,8 @@ defmodule ParameterTest do
     num_class = 10
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-
-    {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
-        samples: nrows
-      )
+    {x, key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _key} = Nx.Random.randint(key, 0, num_class, shape: {nrows})
 
     num_boost_round = 10
 
@@ -122,12 +114,8 @@ defmodule ParameterTest do
     num_class = 10
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-
-    {y, _key} =
-      Nx.Random.choice(context[:key], Nx.tensor(0..(num_class - 1) |> Enum.to_list()),
-        samples: nrows
-      )
+    {x, key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _key} = Nx.Random.randint(key, 0, num_class, shape: {nrows})
 
     num_boost_round = 10
 

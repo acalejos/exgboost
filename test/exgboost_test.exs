@@ -5,13 +5,13 @@ defmodule EXGBoostTest do
   doctest EXGBoost
 
   setup do
-    {:ok, [key: Nx.Random.key(42)]}
+    %{key: Nx.Random.key(42)}
   end
 
   test "dmatrix_from_tensor", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {tensor, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {tensor, _new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
     dmatrix = EXGBoost.DMatrix.from_tensor(tensor, format: :dense)
     assert DMatrix.get_num_rows(dmatrix) == nrows
     assert DMatrix.get_num_cols(dmatrix) == ncols
@@ -27,8 +27,8 @@ defmodule EXGBoostTest do
   test "train_booster", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
     num_boost_round = 10
     booster = EXGBoost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     assert Booster.get_boosted_rounds(booster) == num_boost_round
@@ -53,8 +53,8 @@ defmodule EXGBoostTest do
   test "predict", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
     num_boost_round = 10
     booster = EXGBoost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     dmat_preds = EXGBoost.predict(booster, x)
@@ -68,8 +68,8 @@ defmodule EXGBoostTest do
   test "train with learning rates", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
     num_boost_round = 10
     lrs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
     lrs_fun = fn i -> i / 10 end
@@ -90,8 +90,8 @@ defmodule EXGBoostTest do
   test "train with early stopping", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
 
     booster =
       EXGBoost.train(x, y,
@@ -109,8 +109,8 @@ defmodule EXGBoostTest do
   test "eval with multiple metrics", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
-    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
-    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
     num_boost_round = 10
 
     booster =
