@@ -238,7 +238,8 @@ defmodule NifTest do
 
     EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
 
-    assert EXGBoost.NIF.dmatrix_save_binary(dmat, 'test.buffer', 1) == :ok
+    path = Path.join(System.tmp_dir!(), "test.buffer") |> String.to_charlist()
+    assert EXGBoost.NIF.dmatrix_save_binary(dmat, path, 1) == :ok
   end
 
   test "dmatrix_get_float_info" do
