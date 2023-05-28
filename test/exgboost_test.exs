@@ -93,17 +93,19 @@ defmodule EXGBoostTest do
     {x, new_key} = Nx.Random.normal(context.key, 0, 1, shape: {nrows, ncols})
     {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
 
-    booster =
-      EXGBoost.train(x, y,
-        num_boost_rounds: 10,
-        early_stopping_rounds: 1,
-        evals: [{x, y, "validation"}],
-        tree_method: :hist,
-        eval_metric: [:rmse, :logloss]
-      )
+    {booster, _} =
+      ExUnit.CaptureIO.with_io(fn ->
+        EXGBoost.train(x, y,
+          num_boost_rounds: 10,
+          early_stopping_rounds: 1,
+          evals: [{x, y, "validation"}],
+          tree_method: :hist,
+          eval_metric: [:rmse, :logloss]
+        )
+      end)
 
-    assert not is_nil(booster.best_iteration)
-    assert not is_nil(booster.best_score)
+    refute is_nil(booster.best_iteration)
+    refute is_nil(booster.best_score)
   end
 
   test "eval with multiple metrics", context do

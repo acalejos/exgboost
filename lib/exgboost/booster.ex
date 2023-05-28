@@ -185,13 +185,13 @@ defmodule EXGBoost.Booster do
   end
 
   @doc """
-  Evaluate the model on mat.
+  Evaluate the model on the given data.
 
   ## Options
 
-    * `name` - The name of the dataset.
+    * `:name` - The name of the dataset.
 
-    * `iteration` - The current iteration number.
+    * `:iteration` - The current iteration number.
 
     Returns the evaluation result string.
   """
