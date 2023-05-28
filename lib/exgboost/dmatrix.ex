@@ -61,7 +61,6 @@ defmodule EXGBoost.DMatrix do
 
   """
 
-  alias __MODULE__
   alias EXGBoost.ArrayInterface
   alias EXGBoost.Internal
 
@@ -160,6 +159,7 @@ defmodule EXGBoost.DMatrix do
 
   defimpl Inspect do
     import Inspect.Algebra
+    alias EXGBoost.DMatrix
 
     def inspect(dmatrix, _opts) do
       {indptr, indices, data} = DMatrix.get_data(dmatrix)
@@ -260,7 +260,7 @@ defmodule EXGBoost.DMatrix do
       )
       |> Internal.unwrap!()
 
-    set_params(%DMatrix{ref: dmat, format: format}, opts)
+    set_params(%__MODULE__{ref: dmat, format: format}, opts)
   end
 
   def from_tensor(_tensor, _opts \\ [])
@@ -282,7 +282,7 @@ defmodule EXGBoost.DMatrix do
       )
       |> Internal.unwrap!()
 
-    set_params(%DMatrix{ref: dmat, format: format}, opts)
+    set_params(%__MODULE__{ref: dmat, format: format}, opts)
   end
 
   def from_tensor(%Nx.Tensor{} = x, %Nx.Tensor{} = y) do
@@ -345,22 +345,21 @@ defmodule EXGBoost.DMatrix do
       )
       |> Internal.unwrap!()
 
-    set_params(%DMatrix{ref: dmat, format: format}, opts)
+    set_params(%__MODULE__{ref: dmat, format: format}, opts)
   end
 end
 
 defmodule EXGBoost.ProxyDMatrix do
   @moduledoc false
-  alias __MODULE__
   @enforce_keys [:ref]
   defstruct [:ref]
 
   def proxy_dmatrix() do
     p_ref = EXGBoost.NIF.proxy_dmatrix_create()
-    %ProxyDMatrix{ref: p_ref}
+    %__MODULE__{ref: p_ref}
   end
 
-  def set_params(%ProxyDMatrix{} = dmat, opts) do
+  def set_params(%__MODULE__{} = dmat, opts) do
     EXGBoost.DMatrix.set_params(dmat, opts)
   end
 end
