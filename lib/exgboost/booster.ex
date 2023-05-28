@@ -36,6 +36,18 @@ defmodule EXGBoost.Booster do
     Booster.set_params(%Booster{ref: booster_ref}, opts)
   end
 
+  def save_to_file(%Booster{} = booster, path, opts \\ []) do
+    opts = Keyword.validate!(opts, [format: :json, overwrite: false])
+    if opts[:format] not in [:json, :ubj] do
+      raise ArgumentError, "Invalid format: #{opts[:format]} -- must be :json or :ubj"
+    end
+    if !opts[:overwrite] and File.exists?(path) do
+      raise ArgumentError, "File already exists: #{path} -- set `overwrite: true` to overwrite"
+    end
+    filepath = "#{Path.absname(path)}.#{opts[:format]}"
+    EXGBoost.NIF.booster_save_model(booster.ref, filepath) |> Internal.unwrap!()
+  end
+
   @doc """
   Slice a model using boosting index. The slice m:n indicates taking all
   trees that were fit during the boosting rounds m, (m+1), (m+2), …, (n-1).

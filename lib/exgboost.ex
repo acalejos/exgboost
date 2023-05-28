@@ -364,4 +364,12 @@ defmodule EXGBoost do
         Nx.tensor(preds) |> Nx.reshape(shape)
     end
   end
+
+  def load_model(path, opts \\ []) do
+    Booster.from_file(path, opts)
+  end
+
+  def save_model(%Booster{} = bst, path, opts \\ []) do
+    Booster.save_to_file(bst, path, opts)
+  end
 end
