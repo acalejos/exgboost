@@ -11,32 +11,11 @@ defmodule EXGBoost do
   runs on major distributed environment (Hadoop, SGE, MPI) and can solve problems beyond
   billions of examples.
 
-  ## Installation
-
-  ```elixir
-  def deps do
-  [
-    {:exgboost, "~> 0.2.1"}
-  ]
-  end
-  ```
-
   ## API Data Structures
 
-  EXGBoost's top-level `EXGBoost` API works directly and only with `Nx` tensors. However, under the hood,
-  it leverages the structs defined in the `EXGBoost.Booster` and `EXGBoost.DMatrix` modules. These structs
-  are wrappers around the structs defined in the XGBoost library.
-  The two main structs used are [DMatrix](https://xgboost.readthedocs.io/en/latest/c.html#dmatrix)
-  to represent the data matrix that will be used
-  to train the model, and [Booster](https://xgboost.readthedocs.io/en/latest/c.html#booster)
-  which represents the model.
-
-  The top-level `EXGBoost` API does not expose the structs directly. Instead, the
-  structs are exposed through the `EXGBoost.Booster` and `EXGBoost.DMatrix` modules. Power users
-  might wish to use these modules directly. For example, if you wish to use the `EXGBoost.Booster` struct
-  directly then you can use the `EXGBoost.Booster.booster/2` function to create an `EXGBoost.Booster` struct
-  from an `EXGBoost.DMatrix` and a keyword list of options. See the `EXGBoost.Booster` and `EXGBoost.DMatrix`
-  modules source for more implementation details.
+  EXGBoost's top-level `EXGBoost` API works directly and only with `Nx.Tensor` for data
+  representation and with `EXGBoost.Booster` structs as an internal representation.
+  Direct manipulation of `EXGBoost.Booster` structs is discouraged.
 
   ## Basic Usage
 
@@ -54,15 +33,8 @@ defmodule EXGBoost do
   accepts a keyword list of options that can be used to configure the training process. See the
   [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
-  `EXGBoost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training, which can
-  be used directly if you wish to work directly with the `EXGBoost.DMatrix` and `EXGBoost.Booster` structs.
-
-  One of the main features of `EXGBoost.train/2` is the ability for the end user to provide a custom training function
-  that will be used to train the model. This is done by passing a function to the `:obj` option. The function must
-  accept an `EXGBoost.DMatrix` and an `EXGBoost.Booster` and return an `EXGBoost.Booster`. It will be called on each iteration of the
-  training process. This allows the user to implement custom training logic. For example, the user could implement
-  a custom loss function or a custom metric function. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/tutorials/custom_metric_obj.html)
-  for more information on custom loss functions and custom metric functions.
+  `EXGBoost.train/2` has the ability for the user to provide a custom training function that will be used to train the model.
+  This is done by passing a function to the `:obj` option. See `EXGBoost.Booster.update/4` for more information on this.
 
   Another feature of `EXGBoost.train/2` is the ability to provide a validation set for early stopping. This is done
   by passing a list of 3-tuples to the `:evals` option. Each 3-tuple should contain an Nx tensor for the features, an Nx tensor
@@ -74,7 +46,7 @@ defmodule EXGBoost do
   Early stopping is achieved through the use of callbacks. `EXGBoost.train/2` accepts a list of callbacks that will be called
   at each iteration of the training process. The callbacks can be used to implement custom logic. For example, the user could
   implement a callback that will print the validation error at each iteration of the training process or to provide a custom
-  setup function for training. See the `EXGBoost.Training.Callback` module for more information on callbacks.
+  setup function for training. See`EXGBoost.Training.Callback` for more information on callbacks.
 
   Please notes that callbacks are called in the order that they are provided. If you provide multiple callbacks that modify
   the same parameter then the last callback will trump the previous callbacks. For example, if you provide a callback that
@@ -86,17 +58,16 @@ defmodule EXGBoost do
   to `EXGBoost.train/2`. See the [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for a full
   list of parameters.
 
-
-  EXGBoost.train(
-    x,
-    y,
-    obj: &EXGBoost.Training.train/1,
-    evals: [{x_test, y_test, "test"}],
-    learning_rates: fn i -> i / 10 end,
-    num_boost_round: 10,
-    early_stopping_rounds: 3,
-    params: [max_depth: 3, eval_metric: ["rmse", "logloss"]]
-  )
+      EXGBoost.train(
+        x,
+        y,
+        obj: :multi_softprob,
+        evals: [{x_test, y_test, "test"}],
+        learning_rates: fn i -> i / 10 end,
+        num_boost_round: 10,
+        early_stopping_rounds: 3,
+        params: [max_depth: 3, eval_metric: ["rmse", "logloss"]]
+      )
 
   ## Prediction
 
@@ -104,7 +75,6 @@ defmodule EXGBoost do
   It accepts an `EXGBoost.Booster` struct (which is the output of `EXGBoost.train/2`).
   `EXGBoost.predict/2` returns an Nx tensor containing the predictions and also accepts
   a keyword list of options that can be used to configure the prediction process.
-
 
       model = EXGBoost.train(x_train, y_train)
       predictions = EXGBoost.predict(model, x_test)
@@ -186,7 +156,7 @@ defmodule EXGBoost do
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
   def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
-    dmat = EXGBoost.DMatrix.from_tensor(x, y, Keyword.put_new(dmat_opts, :format, :dense))
+    dmat = DMatrix.from_tensor(x, y, Keyword.put_new(dmat_opts, :format, :dense))
     Training.train(dmat, opts)
   end
 
@@ -248,7 +218,7 @@ defmodule EXGBoost do
   """
   def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
-    dmat = EXGBoost.DMatrix.from_tensor(x, Keyword.put_new(dmat_opts, :format, :dense))
+    dmat = DMatrix.from_tensor(x, Keyword.put_new(dmat_opts, :format, :dense))
     Booster.predict(bst, dmat, opts)
   end
 

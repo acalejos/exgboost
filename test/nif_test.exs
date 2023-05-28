@@ -437,6 +437,6 @@ defmodule NifTest do
     config = Jason.encode!(%{"importance_type" => "weight"})
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
   end
 end

@@ -1,6 +1,8 @@
 defmodule EXGBoost.DMatrix do
   @moduledoc false
-  @doc """
+
+  # Internal docs for development only
+  """
   Parameters
   ----------
   data :

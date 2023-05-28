@@ -43,7 +43,7 @@ defmodule EXGBoostTest do
       EXGBoost.train(x, y,
         num_boost_rounds: num_boost_round,
         tree_method: :hist,
-        objective: :multi_softprob,
+        obj: :multi_softprob,
         num_class: 3
       )
 

@@ -22,7 +22,7 @@ defmodule ParameterTest do
     params = [
       num_boost_rounds: num_boost_round,
       tree_method: :hist,
-      objective: :multi_softprob,
+      obj: :multi_softprob,
       num_class: num_class,
       eval_metric: [
         :rmse,
@@ -135,7 +135,7 @@ defmodule ParameterTest do
       booster: :dart,
       num_boost_rounds: num_boost_round,
       tree_method: :hist,
-      objective: :multi_softprob,
+      obj: :multi_softprob,
       num_class: num_class,
       eval_metric: [
         :rmse,
