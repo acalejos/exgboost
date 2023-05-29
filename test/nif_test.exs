@@ -451,8 +451,8 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    json_file = "model.json"
-    ubj_file = "model.ubj"
+    json_file = Path.join(System.tmp_dir!(), "model.json") |> String.to_charlist()
+    ubj_file = Path.join(System.tmp_dir!(), "model.ubj") |> String.to_charlist()
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
     assert EXGBoost.NIF.booster_save_model(booster, json_file) |> unwrap!() == :ok
     assert EXGBoost.NIF.booster_save_model(booster, ubj_file) |> unwrap!() == :ok
@@ -472,8 +472,8 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    json_file = "model.json"
-    ubj_file = "model.ubj"
+    json_file = Path.join(System.tmp_dir!(), "model.json") |> String.to_charlist()
+    ubj_file = Path.join(System.tmp_dir!(), "model.ubj") |> String.to_charlist()
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
     assert EXGBoost.NIF.booster_save_model(booster, json_file) |> unwrap!() == :ok
     assert EXGBoost.NIF.booster_save_model(booster, ubj_file) |> unwrap!() == :ok
@@ -481,8 +481,6 @@ defmodule NifTest do
     assert File.exists?(ubj_file) and File.regular?(ubj_file)
     assert EXGBoost.NIF.booster_load_model(json_file) |> unwrap!() != :error
     assert EXGBoost.NIF.booster_load_model(ubj_file) |> unwrap!() != :error
-    assert File.rm(json_file) == :ok
-    assert File.rm(ubj_file) == :ok
   end
 
   test "booster serialize" do

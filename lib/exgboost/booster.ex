@@ -48,6 +48,19 @@ defmodule EXGBoost.Booster do
     EXGBoost.NIF.booster_save_model(booster.ref, filepath) |> Internal.unwrap!()
   end
 
+  def save_to_buffer(%Booster{} = booster, opts \\ []) do
+    opts = Keyword.validate!(opts, [format: :json])
+    if opts[:format] not in [:json, :ubj, :deprecated] do
+      raise ArgumentError, "Invalid format: #{opts[:format]} -- must be :json, :ubj, or :deprecated"
+    end
+    config =  Jason.encode!(%{format: opts[:format]})
+    EXGBoost.NIF.booster_save_model_to_buffer(booster.ref, config) |> Internal.unwrap!()
+  end
+
+  def load_from_buffer(buffer) do
+    EXGBoost.NIF.booster_load_model_from_buffer(buffer) |> Internal.unwrap!()
+  end
+
   @doc """
   Slice a model using boosting index. The slice m:n indicates taking all
   trees that were fit during the boosting rounds m, (m+1), (m+2), …, (n-1).
