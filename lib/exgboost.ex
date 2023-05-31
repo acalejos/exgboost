@@ -15,9 +15,9 @@ defmodule EXGBoost do
 
   ```elixir
   def deps do
-  [
-    {:exgboost, "~> 0.1.0"}
-  ]
+    [
+      {:exgboost, "~> 0.1.0"}
+    ]
   end
   ```
 
@@ -26,9 +26,9 @@ defmodule EXGBoost do
   EXGBoost's top-level `EXGBoost` API works directly and only with `Nx` tensors. However, under the hood,
   it leverages the structs defined in the `EXGBoost.Booster` and `EXGBoost.DMatrix` modules. These structs
   are wrappers around the structs defined in the XGBoost library.
+
   The two main structs used are [DMatrix](https://xgboost.readthedocs.io/en/latest/c.html#dmatrix)
-  to represent the data matrix that will be used
-  to train the model, and [Booster](https://xgboost.readthedocs.io/en/latest/c.html#booster)
+  to represent the data matrix that will be used to train the model, and [Booster](https://xgboost.readthedocs.io/en/latest/c.html#booster)
   which represents the model.
 
   The top-level `EXGBoost` API does not expose the structs directly. Instead, the
@@ -36,16 +36,16 @@ defmodule EXGBoost do
   might wish to use these modules directly. For example, if you wish to use the `Booster` struct
   directly then you can use the `EXGBoost.Booster.booster/2` function to create a `Booster` struct
   from a `DMatrix` and a keyword list of options. See the `EXGBoost.Booster` and `EXGBoost.DMatrix`
-  modules source for more implementation details.
+  modules for more implementation details.
 
   ## Basic Usage
 
   ```elixir
   key = Nx.Random.key(42)
-  {X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
+  {x, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
   {y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
-  model = EXGBoost.train(X,y)
-  EXGBoost.predict(model, X)
+  model = EXGBoost.train(x, y)
+  EXGBoost.predict(model, x)
   ```
 
   ## Training
@@ -167,28 +167,47 @@ defmodule EXGBoost do
 
   ## Options
 
-  * `:obj` - Specify the learning task and the corresponding learning objective. This function must accept two arguments: preds, dtrain. preds is an array of predicted real valued scores. dtrain is the training data set. This function returns gradient and second order gradient.
+  * `:obj` - Specify the learning task and the corresponding learning objective.
+    This function must accept two arguments: preds, dtrain. preds is an array of
+    predicted real valued scores. dtrain is the training data set. This function
+    returns gradient and second order gradient.
 
   * `:num_boost_rounds` - Number of boosting iterations.
-  * `:evals` - A list of 3-Tuples `{X, y, label}` to use as a validation set for early-stopping.
-  * `:early_stopping_rounds` - Activates early stopping. Target metric needs to increase/decrease (depending on metric) at least every `early_stopping_rounds` round(s) to continue training. Requires at least one item in `:evals`.
-      If there's more than one, will use the last eval set. If there’s more than one metric in the `eval_metric` parameter given in the booster's params, the last metric will be used for early stopping.
-      If early stopping occurs, the model will have two additional fields:
-     `bst.best_score`, `bst.best_iteration`.  If these values are `nil` then no early stopping occurred.
+
+  * `:evals` - A list of 3-Tuples `{x, y, label}` to use as a validation set for
+    early-stopping.
+
+  * `:early_stopping_rounds` - Activates early stopping. Target metric needs to
+    increase/decrease (depending on metric) at least every `early_stopping_rounds`
+    round(s) to continue training. Requires at least one item in `:evals`. If there's
+    more than one, will use the last eval set. If there’s more than one metric in the
+    `eval_metric` parameter given in the booster's params, the last metric will be
+    used for early stopping. If early stopping occurs, the model will have two additional fields:
+     
+      - `bst.best_score`
+      - `bst.best_iteration`.
+
+    If these values are `nil` then no early stopping occurred.
+
   * `:verbose_eval` - Requires at least one item in `evals`. If `verbose_eval` is true then the evaluation metric on the validation set is printed at each boosting stage. If verbose_eval is an
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
+
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
+
   * `:callbacks` - List of EXGBoost.Training.Callback that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Callback` module.
       Callbacks should be in the form of a keyword list where the only valid keys are `:before_training`, `:after_training`, `:before_iteration`, and `:after_iteration`.
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
+
   * `params` - A keyword list to use as model parameters. See [Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of parameters supported in the model.  Note that
       some params can appear more than once, such as `eval_metric` for setting multiple evaluation metrics.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
-  def train(%Nx.Tensor{} = x, %Nx.Tensor{} = y, opts \\ []) do
+  def train(x, y, opts \\ []) do
+    x = Nx.concatenate(x)
+    y = Nx.concatenate(y)
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
     dmat = EXGBoost.DMatrix.from_tensor(x, y, [format: :dense] ++ dmat_opts)
     Training.train(dmat, opts)
@@ -210,15 +229,15 @@ defmodule EXGBoost do
       each sample in each tree.  Note that the leaf index of a tree is
       unique per tree, so you may find leaf 1 in both tree 1 and tree 0.
 
-  * `:pred_contribs` - When this is `true` the output will be a matrix of size (nsample,
-      nfeats + 1) with each record indicating the feature contributions
+  * `:pred_contribs` - When this is `true` the output will be a matrix of size `{nsample,
+      nfeats + 1}` with each record indicating the feature contributions
       (SHAP values) for that prediction. The sum of all feature
       contributions is equal to the raw untransformed margin value of the
       prediction. Note the final column is the bias term.
 
   * `:approx_contribs` - Approximate the contributions of each feature.  Used when `pred_contribs` or
       `pred_interactions` is set to `true`.  Changing the default of this parameter
-      (False) is not recommended.
+      (false) is not recommended.
 
   * `:pred_interactions` - When this is `true` the output will be a matrix of size (nsample,
       nfeats + 1, nfeats + 1) indicating the SHAP interaction values for
@@ -250,7 +269,8 @@ defmodule EXGBoost do
 
   Returns an Nx.Tensor containing the predictions.
   """
-  def predict(%Booster{} = bst, %Nx.Tensor{} = x, opts \\ []) do
+  def predict(%Booster{} = bst, x, opts \\ []) do
+    x = Nx.concatenate(x)
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
     dmat = EXGBoost.DMatrix.from_tensor(x, [format: :dense] ++ dmat_opts)
     Booster.predict(bst, dmat, opts)
@@ -331,7 +351,7 @@ defmodule EXGBoost do
     end
 
     case data do
-      %Nx.Tensor{} ->
+      %Nx.Tensor{} = data ->
         data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
 
         {shape, preds} =
@@ -357,6 +377,21 @@ defmodule EXGBoost do
             indices_interface,
             values_interface,
             ncol,
+            Jason.encode!(params),
+            proxy
+          )
+          |> Internal.unwrap!()
+
+        Nx.tensor(preds) |> Nx.reshape(shape)
+
+      data ->
+        data = Nx.concatenate(data)
+        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
+
+        {shape, preds} =
+          EXGBoost.NIF.booster_predict_from_dense(
+            boostr.ref,
+            data_interface,
             Jason.encode!(params),
             proxy
           )
