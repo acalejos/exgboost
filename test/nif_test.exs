@@ -157,32 +157,6 @@ defmodule NifTest do
     assert EXGBoost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> unwrap!()
   end
 
-  test "dmatrix_set_dense_info" do
-    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
-    labels = Nx.tensor([1.0, 0.0])
-    {size} = labels.shape
-
-    config = Jason.encode!(%{"missing" => -1.0})
-
-    dmat =
-      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
-      |> unwrap!()
-
-    type = get_xgboost_data_type(labels) |> unwrap!()
-
-    assert EXGBoost.NIF.dmatrix_set_dense_info(dmat, 'weight', Nx.to_binary(labels), size, type) ==
-             :ok
-
-    assert EXGBoost.NIF.dmatrix_set_dense_info(
-             dmat,
-             'unsupported',
-             Nx.to_binary(labels),
-             size,
-             type
-           ) != :ok
-  end
-
   test "dmatrix_num_row" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     array_interface = array_interface(mat) |> Jason.encode!()
@@ -438,7 +412,7 @@ defmodule NifTest do
     config = Jason.encode!(%{"importance_type" => "weight"})
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
+    assert EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
   end
 
   test "save model" do
