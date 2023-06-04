@@ -1003,9 +1003,6 @@ END:
   if (config != NULL) {
     enif_free(config);
   }
-  if (out_buf != NULL) {
-    free(out_buf);
-  }
   return ret;
 }
 
@@ -1040,9 +1037,6 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
   memcpy(out_bin.data, out_buf, out_len);
   ret = exg_ok(env, enif_make_binary(env, &out_bin));
 END:
-  if (out_buf != NULL) {
-    free(out_buf);
-  }
   return ret;
 }
 

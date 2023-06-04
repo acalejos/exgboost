@@ -130,8 +130,10 @@ defmodule EXGBoostTest do
         early_stopping_rounds: 1,
         evals: [{x, y, "validation"}],
         tree_method: :hist,
-        eval_metric: [:rmse, :logloss]
+        eval_metric: [:rmse, :logloss, :error]
       )
+
+    booster |> EXGBoost.Booster.get_config()
 
     assert not is_nil(booster.best_iteration)
     assert not is_nil(booster.best_score)
@@ -161,5 +163,130 @@ defmodule EXGBoostTest do
     metric_results = EXGBoost.Booster.eval(booster, dmat)
 
     assert length(metric_results) == 2
+  end
+
+  test "save and load model to and from file", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    EXGBoost.save_model_to_file(booster, "test")
+    assert File.exists?("test.json")
+    bst = EXGBoost.load_model_from_file("test.json")
+    assert is_struct(bst, EXGBoost.Booster)
+    File.rm!("test.json")
+  end
+
+  test "save and load weights to and from file", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    EXGBoost.save_weights_to_file(booster, "test")
+    assert File.exists?("test.json")
+    bst = EXGBoost.load_weights_from_file("test.json")
+    assert is_struct(bst, EXGBoost.Booster)
+    File.rm!("test.json")
+  end
+
+  test "save and load config to and from file", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    EXGBoost.save_config_to_file(booster, "test")
+    assert File.exists?("test.json")
+    bst = EXGBoost.load_config_from_file("test.json")
+    assert is_struct(bst, EXGBoost.Booster)
+    bst = EXGBoost.load_config_from_file("test.json", booster: bst)
+    assert is_struct(bst, EXGBoost.Booster)
+    File.rm!("test.json")
+  end
+
+  test "serialize and deserialize model to and from buffer", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    buffer = EXGBoost.save_model_to_buffer(booster)
+    assert is_binary(buffer)
+    bst = EXGBoost.load_model_from_buffer(buffer)
+    assert is_struct(bst, EXGBoost.Booster)
+  end
+
+  test "serialize and deserialize weights to and from buffer", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    buffer = EXGBoost.save_weights_to_buffer(booster)
+    assert is_binary(buffer)
+    # bst = EXGBoost.load_weights_from_buffer(buffer)
+    # assert is_struct(bst, EXGBoost.Booster)
+  end
+
+  test "serialize and deserialize config to and from buffer", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    buffer = EXGBoost.save_config_to_buffer(booster)
+    assert is_binary(buffer)
+    config = EXGBoost.load_config_from_buffer(buffer)
+    assert is_map(config)
   end
 end

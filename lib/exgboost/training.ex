@@ -105,9 +105,20 @@ defmodule EXGBoost.Training do
     callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
         unless evals_dmats == [] do
+          # TODO This commented code should ideally work, but currently
+          # the booster serialized config does not contain the default
+          # metrics so it requires user supplied metrics every time,
+          # which is not ideal.
+          # https://github.com/dmlc/xgboost/issues/9245
+          # [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
+
+          # # Default to the last metric
+          # [%{"name" => metric_name} | _tail] =
+          #   Booster.get_config(bst) |> get_in(["learner","metrics"]) |> Enum.reverse()
+
+          # TODO: This is a hack to get around the aforementioned issue
           [{dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
-          # TODO: Is this the best way to get the metrics stored in the booster?
           [{_ev_name, metric_name, _metric_value} | _tail] =
             Booster.eval(bst, dmat) |> Enum.reverse()
 

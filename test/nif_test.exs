@@ -486,4 +486,33 @@ defmodule NifTest do
     EXGBoost.NIF.booster_deserialize_from_buffer(buffer)
     assert EXGBoost.NIF.booster_deserialize_from_buffer(buffer) |> unwrap!() != :error
   end
+
+  test "save booster config" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    assert EXGBoost.NIF.booster_save_json_config(booster) |> unwrap!() != :error
+  end
+
+  test "load booster config" do
+    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    array_interface = array_interface(mat) |> Jason.encode!()
+
+    config = Jason.encode!(%{"missing" => -1.0})
+
+    dmat =
+      EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
+      |> unwrap!()
+
+    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
+    buf = EXGBoost.NIF.booster_save_json_config(booster) |> unwrap!()
+    assert EXGBoost.NIF.booster_load_json_config(booster,buf) |> unwrap!() != :error
+  end
 end

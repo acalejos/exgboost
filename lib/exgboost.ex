@@ -111,6 +111,28 @@ defmodule EXGBoost do
   ```elixir
   preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   ```
+
+  ## Serliaztion
+
+  A Booster can be serialized to a file using `EXGBoost.save_*_to_file/3` and loaded from a file
+  using `EXGBoost.load_*_from_file/2`. The file format can be specified using the `:format` option
+  which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will
+  be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
+  Boosters can be serialized in three different ways: configuration only, configuration and model, or
+  model only. Any function that uses the `to` and `from` `buffer` functions will serialize the Booster
+  to a binary string. The `to` and `from` `file` functions will serialize the Booster to a file.
+  Functions named with `weights` will serialize the model weights only. Functions named with `config` will
+  serialize the configuration only. Functions that specify `model` will serialize both the model weights
+  and the configuration.
+
+  ### Output Formats
+  - 'file' - Save to a file.
+  - 'buffer' - Save to a binary string.
+
+  ### Output Contents
+  - 'config' - Save the configuration only.
+  - 'weights' - Save the model weights only.
+  - 'model' - Save both the model weights and the configuration.
   """
   alias EXGBoost.ArrayInterface
   alias EXGBoost.Booster
@@ -183,7 +205,7 @@ defmodule EXGBoost do
     more than one, will use the last eval set. If there’s more than one metric in the
     `eval_metric` parameter given in the booster's params, the last metric will be
     used for early stopping. If early stopping occurs, the model will have two additional fields:
-     
+
       - `bst.best_score`
       - `bst.best_iteration`.
 
@@ -200,7 +222,7 @@ defmodule EXGBoost do
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
-      
+
   * `opts` - Refer to `EXGBoost.Parameters` for the full list of options.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
@@ -400,11 +422,51 @@ defmodule EXGBoost do
     end
   end
 
-  def load_model(path, opts \\ []) do
-    Booster.from_file(path, opts)
+  def save_model_to_file(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :model)
   end
 
-  def save_model(%Booster{} = bst, path, opts \\ []) do
-    Booster.save_to_file(bst, path, opts)
+  def load_model_from_file(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :model)
+  end
+
+  def save_model_to_buffer(%Booster{} = booster, opts \\ []) do
+    EXGBoost.Booster.save(booster, serialize: :model, to: :buffer)
+  end
+
+  def load_model_from_buffer(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
+  end
+
+  def save_config_to_file(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :config)
+  end
+
+  def save_config_to_buffer(%Booster{} = booster, opts \\ []) do
+    EXGBoost.Booster.save(booster, serialize: :config, to: :buffer)
+  end
+
+  def load_config_from_file(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :config)
+  end
+
+  def load_config_from_buffer(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :config, from: :buffer)
+  end
+
+  def save_weights_to_file(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :weights)
+  end
+
+  def save_weights_to_buffer(%Booster{} = booster, opts \\ []) do
+    EXGBoost.Booster.save(booster, serialize: :weights, to: :buffer)
+  end
+
+  def load_weights_from_file(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :weights)
+  end
+
+  def load_weights_from_buffer(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
 end
