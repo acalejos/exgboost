@@ -114,7 +114,7 @@ defmodule EXGBoost.Training do
 
           # # Default to the last metric
           # [%{"name" => metric_name} | _tail] =
-          #   Booster.get_config(bst) |> get_in(["learner","metrics"]) |> Enum.reverse()
+          #   EXGBoost.dump_config(bst) |> Jason.decode!() |> get_in(["learner","metrics"]) |> Enum.reverse()
 
           # TODO: This is a hack to get around the aforementioned issue
           [{dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)

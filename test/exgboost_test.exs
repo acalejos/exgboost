@@ -133,8 +133,6 @@ defmodule EXGBoostTest do
         eval_metric: [:rmse, :logloss, :error]
       )
 
-    booster |> EXGBoost.Booster.get_config()
-
     assert not is_nil(booster.best_iteration)
     assert not is_nil(booster.best_score)
   end
@@ -179,9 +177,9 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    EXGBoost.save_model_to_file(booster, "test")
+    EXGBoost.write_model(booster, "test")
     assert File.exists?("test.json")
-    bst = EXGBoost.load_model_from_file("test.json")
+    bst = EXGBoost.read_model("test.json")
     assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
   end
@@ -200,9 +198,9 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    EXGBoost.save_weights_to_file(booster, "test")
+    EXGBoost.write_weights(booster, "test")
     assert File.exists?("test.json")
-    bst = EXGBoost.load_weights_from_file("test.json")
+    bst = EXGBoost.read_weights("test.json")
     assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
   end
@@ -221,11 +219,11 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    EXGBoost.save_config_to_file(booster, "test")
+    EXGBoost.write_config(booster, "test")
     assert File.exists?("test.json")
-    bst = EXGBoost.load_config_from_file("test.json")
+    bst = EXGBoost.read_config("test.json")
     assert is_struct(bst, EXGBoost.Booster)
-    bst = EXGBoost.load_config_from_file("test.json", booster: bst)
+    bst = EXGBoost.read_config("test.json", booster: bst)
     assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
   end
@@ -244,9 +242,9 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    buffer = EXGBoost.save_model_to_buffer(booster)
+    buffer = EXGBoost.dump_model(booster)
     assert is_binary(buffer)
-    bst = EXGBoost.load_model_from_buffer(buffer)
+    bst = EXGBoost.load_model(buffer)
     assert is_struct(bst, EXGBoost.Booster)
   end
 
@@ -264,10 +262,10 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    buffer = EXGBoost.save_weights_to_buffer(booster)
+    buffer = EXGBoost.dump_weights(booster)
     assert is_binary(buffer)
-    # bst = EXGBoost.load_weights_from_buffer(buffer)
-    # assert is_struct(bst, EXGBoost.Booster)
+    bst = EXGBoost.load_weights(buffer)
+    assert is_struct(bst, EXGBoost.Booster)
   end
 
   test "serialize and deserialize config to and from buffer", context do
@@ -284,9 +282,9 @@ defmodule EXGBoostTest do
         eval_metric: :rmse
       )
 
-    buffer = EXGBoost.save_config_to_buffer(booster)
+    buffer = EXGBoost.dump_config(booster)
     assert is_binary(buffer)
-    config = EXGBoost.load_config_from_buffer(buffer)
+    config = EXGBoost.load_config(buffer)
     assert is_map(config)
   end
 end

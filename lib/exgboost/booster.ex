@@ -24,8 +24,8 @@ defmodule EXGBoost.Booster do
 
   ## Serliaztion
 
-  A Booster can be serialized to a file using `EXGBoost.Booster.save_to_file/3` and loaded from a file
-  using `EXGBoost.Booster.from_file/2`. The file format can be specified using the `:format` option
+  A Booster can be serialized to a file using `EXGBoost.Booster.save` and loaded from a file
+  using `EXGBoost.Booster.load`. The file format can be specified using the `:format` option
   which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will
   be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
   Boosters can be serialized in three different ways: configuration only, configuration and model, or
@@ -146,15 +146,6 @@ defmodule EXGBoost.Booster do
     set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 
-  def from_weights_file(path, opts \\ []) do
-    unless File.exists?(path) and File.regular?(path) do
-      raise ArgumentError, "File not found: #{path}"
-    end
-    opts = EXGBoost.Parameters.validate!(opts)
-    booster_ref = EXGBoost.NIF.booster_load_model(path) |> Internal.unwrap!()
-    set_params(%__MODULE__{ref: booster_ref}, opts)
-  end
-
   @doc """
   Save a Booster to the specified source.
 
@@ -216,7 +207,7 @@ defmodule EXGBoost.Booster do
         :config ->
           config =
             if opts[:booster] do
-              Map.merge(get_config(booster), source |> Jason.decode!()) |> Jason.encode!()
+              Map.merge(EXGBoost.dump_config(booster) |> Jason.decode!(), source |> Jason.decode!()) |> Jason.encode!()
             else
               source
             end
@@ -225,15 +216,6 @@ defmodule EXGBoost.Booster do
         :weights -> EXGBoost.NIF.booster_load_model_from_buffer(source) |> Internal.unwrap!()
       end
     struct(booster, ref: booster_ref)
-  end
-
-  @doc """
-  Get Booster configuration as Map. Please note that if you wish to use this configuration to load a new Booster, please
-  use the `load_config/2` function instead. The configuration returned by this function is not compatible with the
-  `set_params/2` function.
-  """
-  def get_config(%__MODULE__{} = booster) do
-    EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!() |> Jason.decode!()
   end
 
   @doc """
@@ -334,6 +316,13 @@ defmodule EXGBoost.Booster do
     Nx.tensor(preds) |> Nx.reshape(shape)
   end
 
+  @doc """
+  Set parameters for booster. The parameters are passed as a keyword list. Please refer to
+  `EXGBoost.Parameters` for a full list of parameters. Parameters can be set multiple times
+  by passng a list of values for a given parameter. For example, `set_params(booster, eval_metric: [:rmse, :auc])`.
+  Accepts both atoms and strings as keys. Nested keyword lists will simply be treated as more key-value pairs
+  to be set. Returns the booster.
+  """
   def set_params(%__MODULE__{} = booster, params \\ []) do
     for {key, value} <- params do
       cond do
@@ -363,7 +352,7 @@ defmodule EXGBoost.Booster do
   Set attributes for booster.
 
   Key value pairs are passed as options. You can set an existing key to :nil to
-  delete the attribute
+  delete the attribute. Returns the booster.
   """
   def set_attr(booster, attrs \\ []) do
     Enum.each(attrs, fn {key, value} ->
@@ -376,45 +365,45 @@ defmodule EXGBoost.Booster do
   @doc """
   Get the names of the features for the booster.
   """
-  def get_feature_names(booster),
+  def get_feature_names(%__MODULE__{} = booster),
     do:
       EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_name") |> Internal.unwrap!()
 
   @doc """
   Get the type for each feature in the booster
   """
-  def get_feature_types(booster),
+  def get_feature_types(%__MODULE__{} = booster),
     do:
       EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_type") |> Internal.unwrap!()
 
   @doc """
   Get the number of features for the booster.
   """
-  def get_num_features(booster),
+  def get_num_features(%__MODULE__{} = booster),
     do: EXGBoost.NIF.booster_get_num_feature(booster.ref) |> Internal.unwrap!()
 
   @doc """
   Get the best iteration for the booster.
   """
-  def get_best_iteration(booster), do: get_attr(booster, "best_iteration")
+  def get_best_iteration(%__MODULE__{} = booster), do: get_attr(booster, "best_iteration")
 
   @doc"""
   Get the attribute names for the booster.
   """
-  def get_attrs(booster),
+  def get_attrs(%__MODULE__{} = booster),
     do: EXGBoost.NIF.booster_get_attr_names(booster.ref) |> Internal.unwrap!()
 
   @doc """
   Get the number of boosted rounds for the booster.
   """
-  def get_boosted_rounds(booster) do
+  def get_boosted_rounds(%__MODULE__{} = booster) do
     EXGBoost.NIF.booster_boosted_rounds(booster.ref) |> Internal.unwrap!()
   end
 
   @doc """
   Get the attribute value for the given key.
   """
-  def get_attr(booster, attr) do
+  def get_attr(%__MODULE__{} = booster, attr) do
     attrs = get_attrs(booster)
 
     if Enum.member?(attrs, attr) do
