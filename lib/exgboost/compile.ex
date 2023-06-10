@@ -1,18 +1,61 @@
 defimpl DecisionTree, for: EXGBoost.Booster do
-  @spec trees(data :: any) :: [Tree.t()]
-  def trees(data) do
-    model = EXGBoost.
+  def trees(booster) do
+    model = EXGBoost.dump_weights(booster) |> Jason.decode!()
+    trees = get_in(model, ["learner", "learner_model_param", "trees"])
   end
 
-  @spec num_classes(data :: any) :: pos_integer()
-  def num_classes(data)
+  def num_classes(booster) do
+    num_classes =
+      EXGBoost.dump_weights(booster)
+      |> Jason.decode!()
+      |> get_in(["learner", "learner_model_param", "num_class"])
 
-  @spec num_features(data :: any) :: pos_integer()
-  def num_features(data)
+    if is_nil(num_classes) do
+      raise "Could not find num_classes in model"
+    end
 
-  @spec output_type(data :: any) :: :classification | :regression
-  def output_type(data)
+    String.to_integer(num_classes)
+  end
 
-  @spec condition(data :: any) :: :gt | :lt | :ge | :le
-  def condition(data)
+  def num_features(booster) do
+    model = EXGBoost.dump_weights(booster) |> Jason.decode!()
+    num_features = get_in(model, ["learner", "learner_model_param", "num_feature"])
+
+    if is_nil(num_features) do
+      raise "Could not find num_features in model"
+    end
+
+    String.to_integer(num_features)
+  end
+
+  def output_type(booster) do
+    model = EXGBoost.dump_weights(booster) |> Jason.decode!()
+
+    num_classes =
+      model
+      |> get_in(["learner", "learner_model_param", "num_class"])
+
+    if is_nil(num_classes) do
+      objective =
+        model
+        |> get_in(["learner", "objective", "name"])
+
+      case String.split(objective, ":") |> hd do
+        type when type in ["reg", "count", "survival", "rank"] ->
+          :classification
+
+        type when type in ["multi", "binary"] ->
+          :classification
+
+        _ ->
+          raise "Could not infer output type from model objective -- unknonwn objective: #{objective}"
+      end
+    else
+      if num_classes == "0", do: :regression, else: :classification
+    end
+  end
+
+  def condition(booster) do
+    model = EXGBoost.dump_weights(booster) |> Jason.decode!()
+  end
 end
