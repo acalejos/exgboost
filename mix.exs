@@ -42,7 +42,9 @@ defmodule EXGBoost.MixProject do
       {:nx, github: "elixir-nx/nx", sparse: "nx"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.29.0", only: :docs},
-      {:cc_precompiler, "~> 0.1.0", runtime: false}
+      {:cc_precompiler, "~> 0.1.0", runtime: false},
+      {:mockingjay, github: "acalejos/mockingjay", branch: "main"},
+      {:scidata, "~> 0.1.9", only: :test}
     ]
   end
 
