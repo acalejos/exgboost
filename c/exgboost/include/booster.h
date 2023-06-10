@@ -37,5 +37,20 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
                                         const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]);
-
+ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
+                                             const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterLoadModelFromBuffer(ErlNifEnv *env, int argc,
+    const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
+    const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]);
 #endif

@@ -1,6 +1,6 @@
 defmodule EXGBoost.MixProject do
   use Mix.Project
-  @version "0.2.1"
+  @version "0.3.0"
 
   def project do
     [

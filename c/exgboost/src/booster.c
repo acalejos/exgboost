@@ -794,3 +794,285 @@ END:
   }
   return ret;
 }
+
+ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  char *fname = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[0], &fname)) {
+    ret = exg_error(env, "Fname must be a string representing a file path");
+    goto END;
+  }
+  result = XGBoosterCreate(NULL, 0, &booster);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  result = XGBoosterLoadModel(booster, fname);
+  if (result == 0) {
+    ret = make_Booster_resource(env, booster);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fname != NULL) {
+    enif_free(fname);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
+                                 const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char *fname = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &fname)) {
+    ret = exg_error(env, "Fname must be a string representing a file path");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterSaveModel(booster, fname);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fname != NULL) {
+    enif_free(fname);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  bst_ulong out_len = 0;
+  char *out_buf = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary out_bin;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterSerializeToBuffer(booster, &out_len, &out_buf);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  if (!enif_alloc_binary(out_len, &out_bin)) {
+    ret = exg_error(env, "Failed to allocate binary");
+    goto END;
+  }
+  memcpy(out_bin.data, out_buf, out_len);
+  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+END:
+  return ret;
+}
+ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
+                                             const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  char *buf = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary bin;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[0], &bin)) {
+    ret = exg_error(env, "Buf must be a binary");
+    goto END;
+  }
+  buf = (char *)enif_alloc(bin.size + 1);
+  memcpy(buf, bin.data, bin.size);
+  result = XGBoosterCreate(NULL, 0, &booster);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  result = XGBoosterUnserializeFromBuffer(booster, buf, bin.size);
+  if (result == 0) {
+    ret = make_Booster_resource(env, booster);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (buf != NULL) {
+    enif_free(buf);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterLoadModelFromBuffer(ErlNifEnv *env, int argc,
+                                           const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  char *buf = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary bin;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[0], &bin)) {
+    ret = exg_error(env, "Buf must be a binary");
+    goto END;
+  }
+  buf = (char *)enif_alloc(bin.size + 1);
+  memcpy(buf, bin.data, bin.size);
+  result = XGBoosterCreate(NULL, 0, &booster);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  result = XGBoosterLoadModelFromBuffer(booster, buf, bin.size);
+  if (result == 0) {
+    ret = make_Booster_resource(env, booster);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (buf != NULL) {
+    enif_free(buf);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
+                                        const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  bst_ulong out_len = 0;
+  char *out_buf = NULL;
+  char *config = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary out_bin;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &config)) {
+    ret = exg_error(env, "Invalid config -- config should be a JSON-encoded string");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterSaveModelToBuffer(booster, config, &out_len, &out_buf);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  if (!enif_alloc_binary(out_len, &out_bin)) {
+    ret = exg_error(env, "Failed to allocate binary");
+    goto END;
+  }
+  memcpy(out_bin.data, out_buf, out_len);
+  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+END:
+  if (config != NULL) {
+    enif_free(config);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  bst_ulong out_len = 0;
+  char *out_buf = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary out_bin;
+  if (1 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterSaveJsonConfig(booster, &out_len, &out_buf);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+  if (!enif_alloc_binary(out_len, &out_bin)) {
+    ret = exg_error(env, "Failed to allocate binary");
+    goto END;
+  }
+  memcpy(out_bin.data, out_buf, out_len);
+  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+END:
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  char *buf = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  ErlNifBinary bin;
+  if (2 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!enif_inspect_binary(env, argv[1], &bin)) {
+    ret = exg_error(env, "Buf must be a binary");
+    goto END;
+  }
+  buf = (char *)enif_alloc(bin.size + 1);
+  memcpy(buf, bin.data, bin.size);
+  booster = *booster_resource;
+  result = XGBoosterLoadJsonConfig(booster, buf);
+  if (result == 0) {
+    ret = ok_atom(env);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (buf != NULL) {
+    enif_free(buf);
+  }
+  return ret;
+}

@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.2"}
+    {:exgboost, "~> 0.3"}
   ]
   end
   ```
@@ -111,6 +111,28 @@ defmodule EXGBoost do
   ```elixir
   preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   ```
+
+  ## Serliaztion
+
+  A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
+  using `EXGBoost.read_*`. The file format can be specified using the `:format` option
+  which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will NOT
+  be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
+  Boosters can be serialized in three different ways: configuration only, configuration and model, or
+  model only. `dump` functions will serialize the Booster to a binary string.
+  Functions named with `weights` will serialize the model's trained parameters only. This is best used when the model
+  is already trained and only inferences/predictions are going to be performed. Functions named with `config` will
+  serialize the configuration only. Functions that specify `model` will serialize both the model parameters
+  and the configuration.
+
+  ### Output Formats
+  - 'read'/`write` -  File.
+  - 'load`/`dump` - Binary buffer.
+
+  ### Output Contents
+  - 'config' - Save the configuration only.
+  - 'weights' - Save the model parameters only.
+  - 'model' - Save both the model parameters and the configuration.
   """
   alias EXGBoost.ArrayInterface
   alias EXGBoost.Booster
@@ -183,7 +205,7 @@ defmodule EXGBoost do
     more than one, will use the last eval set. If there’s more than one metric in the
     `eval_metric` parameter given in the booster's params, the last metric will be
     used for early stopping. If early stopping occurs, the model will have two additional fields:
-     
+
       - `bst.best_score`
       - `bst.best_iteration`.
 
@@ -200,7 +222,7 @@ defmodule EXGBoost do
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
       If the function returns the original booster, the original booster will be used. If the function returns a booster with the same memory address but different contents, the behavior is undefined.
-      
+
   * `opts` - Refer to `EXGBoost.Parameters` for the full list of options.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
@@ -290,8 +312,6 @@ defmodule EXGBoost do
 
   * `:output_margin` - Whether to output the raw untransformed margin value.
 
-  * `:validate_features` - See `EXGBoost.predict/2` for details.
-
   * `:iteration_range` - See `EXGBoost.predict/2` for details.
 
   * `:strict_shape` - See `EXGBoost.predict/2` for details.
@@ -330,24 +350,6 @@ defmodule EXGBoost do
       else
         nil
       end
-
-    if Keyword.fetch!(opts, :validate_features) do
-      case Nx.shape(data) do
-        {_rows} ->
-          nil
-
-        {_rows, cols} ->
-          if cols != Booster.get_num_features(boostr),
-            do:
-              raise(
-                ArgumentError,
-                "Feature shape mismatch, expected: #{Booster.get_num_features(boostr)}, got #{cols}"
-              )
-
-        _ ->
-          raise ArgumentError, "Data must be a 1D or 2D tensor"
-      end
-    end
 
     case data do
       %Nx.Tensor{} = data ->
@@ -398,5 +400,110 @@ defmodule EXGBoost do
 
         Nx.tensor(preds) |> Nx.reshape(shape)
     end
+  end
+
+  @doc """
+  Write a model to a file.
+
+  ## Options
+  * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
+  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  """
+  def write_model(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :model)
+  end
+
+  @doc """
+  Read a model from a file and return the Booster.
+  """
+  def read_model(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :model)
+  end
+
+  @doc """
+  Dump a model to a binary encoded in the desired format.
+
+  ## Options
+  * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
+  """
+  def dump_model(%Booster{} = booster, opts \\ []) do
+    EXGBoost.Booster.save(booster, serialize: :model, to: :buffer)
+  end
+
+  @doc """
+  Read a model from a buffer and return the Booster.
+  """
+  def load_model(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
+  end
+
+  @doc """
+  Write a model config to a file as a JSON - encoded string.
+
+  ## Options
+  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  """
+  def write_config(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :config)
+  end
+
+  @doc """
+  Dump the model config to a buffer as a JSON-encoded binary.
+  """
+  def dump_config(%Booster{} = booster) do
+    EXGBoost.Booster.save(booster, serialize: :config, to: :buffer)
+  end
+
+  @doc """
+  Create a new Booster from a config file. The config file must be from the output of `write_config/2`.
+
+  ## Options
+  * `:booster` - The Booster to load the config into. Defaults to a new Booster.
+  """
+  def read_config(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :config)
+  end
+
+  @doc """
+  Create a new Booster from a config buffer. The config buffer must be from the output of `dump_config/2`.
+
+  ## Options
+  * `:booster` - The Booster to load the config into. Defaults to a new Booster.
+      If a Booster is passed in, the config will be loaded into that Booster with the config
+      merging using Map.merge/2. The `:booster` parameter's config will take precedence.
+  """
+  def load_config(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :config, from: :buffer)
+  end
+
+  @doc """
+  Write a model's trained parameters to a file.
+
+  ## Options
+  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  """
+  def write_weights(%Booster{} = booster, path, opts \\ []) do
+    EXGBoost.Booster.save(booster, path: path, serialize: :weights)
+  end
+
+  @doc """
+  Dump a model's trained parameters to a buffer as a JSON-encoded binary.
+  """
+  def dump_weights(%Booster{} = booster, opts \\ []) do
+    EXGBoost.Booster.save(booster, serialize: :weights, to: :buffer)
+  end
+
+  @doc """
+  Read a model's trained parameters from a file and return the Booster.
+  """
+  def read_weights(path, opts \\ []) do
+    EXGBoost.Booster.load(path, deserialize: :weights)
+  end
+
+  @doc """
+  Read a model's trained parameters from a buffer and return the Booster.
+  """
+  def load_weights(buffer, opts \\ []) do
+    EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
 end
