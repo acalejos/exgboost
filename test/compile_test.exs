@@ -30,10 +30,28 @@ defmodule EXGBoostTest do
       EXGBoost.train(context.x_train, context.y_train, num_class: 3, objective: :multi_softprob)
 
     trees = DecisionTree.trees(booster)
-    # assert is_list(trees)
-    # assert is_struct(hd(trees), Mockingjay.Tree)
+
+    trees_params =
+      EXGBoost.dump_weights(booster)
+      |> Jason.decode!()
+      |> get_in(["learner", "gradient_booster", "model", "trees"])
+
+    Enum.each(Enum.zip(trees, trees_params), fn {tree, tree_param} ->
+      assert length(Mockingjay.Tree.bfs(tree)) ==
+               String.to_integer(get_in(tree_param, ["tree_param", "num_nodes"]))
+    end)
+
+    assert is_list(trees)
+    assert is_struct(hd(trees), Mockingjay.Tree)
     assert DecisionTree.num_classes(booster) == 3
     assert DecisionTree.num_features(booster) == 4
     assert DecisionTree.output_type(booster) == :classification
+  end
+
+  test "compiles", context do
+    booster =
+      EXGBoost.train(context.x_train, context.y_train, num_class: 3, objective: :multi_softprob)
+
+    EXGBoost.compile(booster)
   end
 end

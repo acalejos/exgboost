@@ -506,4 +506,8 @@ defmodule EXGBoost do
   def load_weights(buffer, opts \\ []) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
+
+  def compile(booster, opts \\ []) do
+    Mockingjay.convert(booster, opts)
+  end
 end
