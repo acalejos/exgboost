@@ -1,7 +1,4 @@
 defmodule EXGBoostTest do
-  alias ElixirLS.LanguageServer.Server.Decider
-  alias EXGBoost.DMatrix
-  alias EXGBoost.Booster
   use ExUnit.Case, async: true
 
   setup do
@@ -52,6 +49,19 @@ defmodule EXGBoostTest do
     booster =
       EXGBoost.train(context.x_train, context.y_train, num_class: 3, objective: :multi_softprob)
 
-    EXGBoost.compile(booster)
+    compiled_predict = EXGBoost.compile(booster)
+    preds1 = EXGBoost.predict(booster, context.x_test) |> Nx.argmax(axis: -1)
+    acc1 = Scholar.Metrics.accuracy(context.y_test, preds1)
+    IO.puts("Labels: #{inspect(context.y_test)}")
+
+    preds2 =
+      compiled_predict.(context.x_test)
+      |> IO.inspect()
+      |> Nx.argmax(axis: 0)
+      |> Nx.squeeze()
+      |> IO.inspect()
+
+    acc2 = Scholar.Metrics.accuracy(context.y_test, preds2)
+    assert preds1 == preds2
   end
 end

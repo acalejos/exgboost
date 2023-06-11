@@ -45,7 +45,8 @@ defmodule EXGBoost.MixProject do
       {:cc_precompiler, "~> 0.1.0", runtime: false},
       # {:mockingjay, github: "acalejos/mockingjay", branch: "main"},
       {:mockingjay, path: "/Users/andres/Documents/mockingjay"},
-      {:scidata, "~> 0.1.9", only: :test}
+      {:scidata, "~> 0.1.9", only: :test},
+      {:scholar, "~> 0.1", only: :test}
     ]
   end
 
