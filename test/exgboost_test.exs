@@ -50,6 +50,22 @@ defmodule EXGBoostTest do
     assert Booster.get_boosted_rounds(booster) == num_boost_round
   end
 
+  test "train with container" do
+    x = {Nx.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])}
+    y = {Nx.tensor([0, 1, 2])}
+    num_boost_round = 10
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: num_boost_round,
+        tree_method: :hist,
+        objective: :multi_softprob,
+        num_class: 3
+      )
+
+    assert Booster.get_boosted_rounds(booster) == num_boost_round
+  end
+
   test "predict", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
@@ -59,6 +75,21 @@ defmodule EXGBoostTest do
     booster = EXGBoost.train(x, y, num_boost_rounds: num_boost_round, tree_method: :hist)
     dmat_preds = EXGBoost.predict(booster, x)
     inplace_preds_no_proxy = EXGBoost.inplace_predict(booster, x)
+    # TODO: Test inplace_predict with proxy
+    # inplace_preds_with_proxy = EXGBoost.inplace_predict(booster, x, base_margin: true)
+    assert dmat_preds.shape == y.shape
+    assert inplace_preds_no_proxy.shape == y.shape
+  end
+
+  test "predict with container", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows})
+    num_boost_round = 10
+    booster = EXGBoost.train({x}, {y}, num_boost_rounds: num_boost_round, tree_method: :hist)
+    dmat_preds = EXGBoost.predict(booster, {x})
+    inplace_preds_no_proxy = EXGBoost.inplace_predict(booster, {x})
     # TODO: Test inplace_predict with proxy
     # inplace_preds_with_proxy = EXGBoost.inplace_predict(booster, x, base_margin: true)
     assert dmat_preds.shape == y.shape

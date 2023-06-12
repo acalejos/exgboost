@@ -167,17 +167,6 @@ defmodule EXGBoost.NIF do
   def dmatrix_set_str_feature_info(_dmatrix_resource, _field, _features),
     do: :erlang.nif_error(:not_implemented)
 
-  @deprecated "Use dmatrix_set_info_from_interface/4 instead"
-  @spec dmatrix_set_dense_info(
-          dmatrix_reference(),
-          String.t(),
-          binary,
-          pos_integer(),
-          xgboost_data_type()
-        ) :: :ok | {:error, String.t()}
-  def dmatrix_set_dense_info(_handle, _field, _data, _size, _type),
-    do: :erlang.nif_error(:not_implemented)
-
   @spec dmatrix_num_row(dmatrix_reference()) :: exgboost_return_type(pos_integer())
   def dmatrix_num_row(_handle), do: :erlang.nif_error(:not_implemented)
 
