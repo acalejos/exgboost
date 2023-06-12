@@ -1,9 +1,11 @@
 defmodule EXGBoost.Booster do
   @moduledoc false
-  alias __MODULE__
   alias EXGBoost.DMatrix
   alias EXGBoost.Internal
   alias EXGBoost.NIF
+
+  alias Nx.Tensor
+
   @enforce_keys [:ref]
   defstruct [:ref, :best_iteration, :best_score]
 
@@ -13,7 +15,7 @@ defmodule EXGBoost.Booster do
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = EXGBoost.NIF.booster_create(refs) |> Internal.unwrap!()
     opts = EXGBoost.Parameters.validate!(opts)
-    Booster.set_params(%Booster{ref: booster_ref}, opts)
+    set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 
   def booster(%DMatrix{} = dmat, opts) do
@@ -32,10 +34,10 @@ defmodule EXGBoost.Booster do
   Boost the booster for one iteration, with customized gradient statistics.
   """
   def boost(
-        %Booster{} = booster,
+        %__MODULE__{} = booster,
         %DMatrix{} = dmatrix,
-        %Nx.Tensor{} = grad,
-        %Nx.Tensor{} = hess
+        %Tensor{} = grad,
+        %Tensor{} = hess
       ) do
     Internal.validate_type!(grad, {:f, 32})
     Internal.validate_type!(hess, {:f, 32})
@@ -53,7 +55,7 @@ defmodule EXGBoost.Booster do
     )
   end
 
-  def predict(%Booster{} = booster, %DMatrix{} = data, opts \\ []) do
+  def predict(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
     opts =
       Keyword.validate!(opts,
         output_margin: false,
@@ -118,11 +120,11 @@ defmodule EXGBoost.Booster do
     Nx.tensor(preds) |> Nx.reshape(shape)
   end
 
-  def set_params(%Booster{} = booster, params \\ []) do
+  def set_params(%__MODULE__{} = booster, params \\ []) do
     for {key, value} <- params do
       cond do
         is_list(value) ->
-            set_params(booster, value)
+          set_params(booster, value)
 
         is_atom(key) ->
           EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
@@ -183,17 +185,17 @@ defmodule EXGBoost.Booster do
   end
 
   @doc """
-  Evaluate the model on mat.
+  Evaluate the model on the given data.
 
   ## Options
 
-    * `name` - The name of the dataset.
+    * `:name` - The name of the dataset.
 
-    * `iteration` - The current iteration number.
+    * `:iteration` - The current iteration number.
 
     Returns the evaluation result string.
   """
-  def eval(%Booster{} = booster, %DMatrix{} = data, opts \\ []) do
+  def eval(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
     {name, opts} = Keyword.pop(opts, :name, "eval")
     {iteration, opts} = Keyword.pop(opts, :iteration, 0)
     Internal.validate_features!(booster, data)
@@ -210,7 +212,7 @@ defmodule EXGBoost.Booster do
 
   Returns the resulting metrics as a list of 2-tuples in the form of {eval_metric, value}.
   """
-  def eval_set(%Booster{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
+  def eval_set(%__MODULE__{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
     opts = Keyword.validate!(opts, feval: nil, output_margin: true)
     feval = opts[:feval]
     output_margin = opts[:output_margin]
@@ -233,7 +235,7 @@ defmodule EXGBoost.Booster do
       Enum.each(evals, fn {dmat, evname} ->
         feval_ret =
           feval.(
-            Booster.predict(booster, dmat, training: false, output_margin: output_margin),
+            predict(booster, dmat, training: false, output_margin: output_margin),
             dmat
           )
 
@@ -259,10 +261,16 @@ defmodule EXGBoost.Booster do
 
   See [Custom Objective](https://xgboost.readthedocs.io/en/latest/tutorials/custom_metric_obj.html) for details.
   """
-  def update(%Booster{} = booster, %DMatrix{} = dmatrix, iteration, objective)
+  def update(%__MODULE__{} = booster, %DMatrix{} = dmatrix, iteration, objective)
       when is_integer(iteration) do
     if is_function(objective, 2) do
-      pred = Booster.predict(booster, dmatrix, output_margin: true, training: true)
+      pred = predict(booster, dmatrix, output_margin: true, training: true)
+
+      # TO-DO(polvalente): the custom objective actually received a tensor in the first argument and
+      # a dmatrix in the second argument. How are the objective functions actually meant
+      # to function? We need to discuss this and improve documentation with examples.
+      # There are currently no examples on this.
+
       {grad, hess} = objective.(pred, dmatrix)
       boost(booster, dmatrix, grad, hess)
     else
