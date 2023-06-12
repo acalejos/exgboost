@@ -1,4 +1,4 @@
-defimpl DecisionTree, for: EXGBoost.Booster do
+defimpl Mockingjay.DecisionTree, for: EXGBoost.Booster do
   def trees(booster) do
     model = EXGBoost.dump_weights(booster) |> Jason.decode!()
     trees = get_in(model, ["learner", "gradient_booster", "model", "trees"])
@@ -64,14 +64,12 @@ defimpl DecisionTree, for: EXGBoost.Booster do
     end
   end
 
-  def condition(booster) do
+  def condition(_booster) do
     :lt
   end
 end
 
 defmodule EXGBoost.Compile do
-  alias EXGBoost.Booster
-
   def to_tree(%{} = tree_map) do
     nodes =
       Enum.zip([
