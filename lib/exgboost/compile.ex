@@ -80,19 +80,16 @@ defmodule EXGBoost.Compile do
       ])
 
     case nodes do
-      [root | rest] ->
+      [{_left, _right, _threshold, value}] ->
+        %{value: value}
+
+      [_root | _rest] ->
         nodes = Enum.with_index(nodes)
         [current | rest] = nodes
         _to_tree(current, rest)
 
-      [{_left, _right, _threshold, value}] ->
-        %{value: value}
-
       [] ->
         %{}
-
-      _ ->
-        raise "Could not parse Booster to tree"
     end
   end
 

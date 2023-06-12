@@ -50,16 +50,17 @@ defmodule EXGBoostTest do
       EXGBoost.train(context.x_train, context.y_train, num_class: 3, objective: :multi_softprob)
 
     compiled_predict = EXGBoost.compile(booster)
-    preds1 = EXGBoost.predict(booster, context.x_test) |> Nx.argmax(axis: -1)
-    acc1 = Scholar.Metrics.accuracy(context.y_test, preds1)
+    preds1 = EXGBoost.predict(booster, context.x_train) |> Nx.argmax(axis: -1)
+    acc1 = Scholar.Metrics.accuracy(context.y_train, preds1)
 
     preds2 =
-      compiled_predict.(context.x_test)
+      compiled_predict.(context.x_train)
+      |> Nx.slice_along_axis(0, 3, axis: 0)
       |> IO.inspect()
       |> Nx.argmax(axis: 0)
       |> IO.inspect()
 
-    acc2 = Scholar.Metrics.accuracy(context.y_test, preds2)
+    acc2 = Scholar.Metrics.accuracy(context.y_train, preds2)
     assert preds1 == preds2
   end
 end
