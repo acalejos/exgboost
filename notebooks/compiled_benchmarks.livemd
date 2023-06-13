@@ -1,0 +1,68 @@
+# Compiled Decision Trees Benchmark
+
+```elixir
+Mix.install([
+  {:scidata, "~> 0.1"},
+  {:exgboost, github: "https://github.com/acalejos/exgboost", branch: "compile_model"},
+  {:mockingjay, path: "https://github.com/acalejos/mockingjay"},
+  {:nx, "~> 0.5"},
+  {:exla, "~> 0.5"},
+  {:benchee, "~> 1.0"}
+])
+```
+
+## Setup Dataset
+
+```elixir
+{x, y} = Scidata.Iris.download()
+data = Enum.zip(x, y) |> Enum.shuffle()
+{train, test} = Enum.split(data, ceil(length(data) * 0.8))
+{x_train, y_train} = Enum.unzip(train)
+{x_test, y_test} = Enum.unzip(test)
+
+x_train = Nx.tensor(x_train)
+y_train = Nx.tensor(y_train)
+
+x_test = Nx.tensor(x_test)
+y_test = Nx.tensor(y_test)
+```
+
+## Gather Model / Prediction Functions
+
+```elixir
+model = EXGBoost.train(x_train, y_train, num_class: 3, objective: :multi_softprob)
+compiled_predict = EXGBoost.compile(model)
+host_jit = EXLA.jit(compiled_predict)
+```
+
+`EXGBoost.compile/1` will convert your trained `Booster` model into a set of tensor operations which can then be run on any of the `Nx` backends.
+
+## Run Time Benchmarks
+
+```elixir
+benches = %{
+  "base" => fn -> EXGBoost.predict(model, x_train) end,
+  "binary" => fn -> compiled_predict.(x_train) end,
+  "elxa" => fn -> host_jit.(x_train) end
+}
+
+Benchee.run(
+  benches,
+  time: 10,
+  memory_time: 2
+)
+```
+
+## Compare Accuracies
+
+```elixir
+acc1 =
+  EXGBoost.predict(model, x_test)
+  |> Nx.argmax(axis: -1)
+  |> then(&Scholar.Metrics.accuracy(y_test, &1))
+
+acc2 =
+  host_jit.(x_test)
+  |> Nx.argmax(axis: -1)
+  |> then(&Scholar.Metrics.accuracy(y_test, &1))
+```
