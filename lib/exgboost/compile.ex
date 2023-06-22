@@ -37,35 +37,8 @@ defimpl Mockingjay.DecisionTree, for: EXGBoost.Booster do
     String.to_integer(num_features)
   end
 
-  def output_type(booster) do
-    model = EXGBoost.dump_weights(booster) |> Jason.decode!()
-
-    num_classes =
-      model
-      |> get_in(["learner", "learner_model_param", "num_class"])
-
-    if is_nil(num_classes) do
-      objective =
-        model
-        |> get_in(["learner", "objective", "name"])
-
-      case String.split(objective, ":") |> hd do
-        type when type in ["reg", "count", "survival", "rank"] ->
-          :classification
-
-        type when type in ["multi", "binary"] ->
-          :classification
-
-        _ ->
-          raise "Could not infer output type from model objective -- unknonwn objective: #{objective}"
-      end
-    else
-      if num_classes == "0", do: :regression, else: :classification
-    end
-  end
-
   def condition(_booster) do
-    :lt
+    :less
   end
 end
 

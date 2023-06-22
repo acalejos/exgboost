@@ -110,8 +110,33 @@ defmodule EXGBoost.Booster do
     ]
   ]
 
+  @dump_schema [
+    fmap: [
+      type: :string,
+      default: "",
+      doc: """
+      The path to the file containing the feature map.
+      """
+    ],
+    with_stats: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to include the statistics in the dump.
+      """
+    ],
+    format: [
+      type: {:in, [:json, :text]},
+      default: :text,
+      doc: """
+      The format to dump to. Can be either `:json` or `:text`.
+      """
+    ]
+  ]
+
   @save_schema NimbleOptions.new!(@save_schema)
   @load_schema NimbleOptions.new!(@load_schema)
+  @dump_schema NimbleOptions.new!(@dump_schema)
 
   @doc """
   Create a new Booster.
@@ -153,25 +178,48 @@ defmodule EXGBoost.Booster do
   #{NimbleOptions.docs(@save_schema)}
   """
   def save(%__MODULE__{} = booster, opts \\ []) do
-    opts = NimbleOptions.validate!(opts,@save_schema)
+    opts = NimbleOptions.validate!(opts, @save_schema)
+
     if opts[:to] == :file do
       if is_nil(opts[:path]) do
         raise ArgumentError, "Missing required option: `path`"
       end
+
       filepath = "#{Path.absname(opts[:path])}.#{opts[:format]}"
+
       if !opts[:overwrite] and File.exists?(filepath) do
-        raise ArgumentError, "File already exists: #{filepath} -- set `overwrite: true` to overwrite"
+        raise ArgumentError,
+              "File already exists: #{filepath} -- set `overwrite: true` to overwrite"
       end
+
       case opts[:serialize] do
-        :config -> EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!() |> then(&File.write!(filepath,&1))
-        :model -> EXGBoost.NIF.booster_serialize_to_buffer(booster.ref) |> Internal.unwrap!() |> then(&File.write!(filepath,&1))
-        :weights -> EXGBoost.NIF.booster_save_model(booster.ref, filepath) |> Internal.unwrap!()
+        :config ->
+          EXGBoost.NIF.booster_save_json_config(booster.ref)
+          |> Internal.unwrap!()
+          |> then(&File.write!(filepath, &1))
+
+        :model ->
+          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref)
+          |> Internal.unwrap!()
+          |> then(&File.write!(filepath, &1))
+
+        :weights ->
+          EXGBoost.NIF.booster_save_model(booster.ref, filepath) |> Internal.unwrap!()
       end
     else
       case opts[:serialize] do
-        :config -> EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!()
-        :model -> EXGBoost.NIF.booster_serialize_to_buffer(booster.ref) |> Internal.unwrap!()
-        :weights -> EXGBoost.NIF.booster_save_model_to_buffer(booster.ref, Jason.encode!(%{format: opts[:format]})) |> Internal.unwrap!()
+        :config ->
+          EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!()
+
+        :model ->
+          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref) |> Internal.unwrap!()
+
+        :weights ->
+          EXGBoost.NIF.booster_save_model_to_buffer(
+            booster.ref,
+            Jason.encode!(%{format: opts[:format]})
+          )
+          |> Internal.unwrap!()
       end
     end
   end
@@ -186,36 +234,71 @@ defmodule EXGBoost.Booster do
   #{NimbleOptions.docs(@load_schema)}
   """
   def load(source, opts \\ []) do
-    opts = NimbleOptions.validate!(opts,@load_schema)
-    booster = if opts[:booster] do
-      opts[:booster]
-    else
-      booster([])
-    end
-    source =
-    if opts[:from] == :file do
-      filepath = Path.absname(source)
-      if not File.exists?(filepath) do
-        raise ArgumentError, "File not found: #{filepath}"
+    opts = NimbleOptions.validate!(opts, @load_schema)
+
+    booster =
+      if opts[:booster] do
+        opts[:booster]
+      else
+        booster([])
       end
-      File.read!(filepath)
-    else
-      source
-    end
+
+    source =
+      if opts[:from] == :file do
+        filepath = Path.absname(source)
+
+        if not File.exists?(filepath) do
+          raise ArgumentError, "File not found: #{filepath}"
+        end
+
+        File.read!(filepath)
+      else
+        source
+      end
+
     booster_ref =
       case opts[:deserialize] do
         :config ->
           config =
             if opts[:booster] do
-              Map.merge(EXGBoost.dump_config(booster) |> Jason.decode!(), source |> Jason.decode!()) |> Jason.encode!()
+              Map.merge(
+                EXGBoost.dump_config(booster) |> Jason.decode!(),
+                source |> Jason.decode!()
+              )
+              |> Jason.encode!()
             else
               source
             end
+
           EXGBoost.NIF.booster_load_json_config(booster.ref, config) |> Internal.unwrap!()
-        :model -> EXGBoost.NIF.booster_deserialize_from_buffer(source) |> Internal.unwrap!()
-        :weights -> EXGBoost.NIF.booster_load_model_from_buffer(source) |> Internal.unwrap!()
+
+        :model ->
+          EXGBoost.NIF.booster_deserialize_from_buffer(source) |> Internal.unwrap!()
+
+        :weights ->
+          EXGBoost.NIF.booster_load_model_from_buffer(source) |> Internal.unwrap!()
       end
+
     struct(booster, ref: booster_ref)
+  end
+
+  @doc """
+  Get a formatted representation of the Booster's model.
+
+  ## Options
+  #{NimbleOptions.docs(@dump_schema)}
+  """
+  def get_dump(booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @dump_schema)
+    with_stats = if opts[:with_stats], do: 1, else: 0
+
+    EXGBoost.NIF.booster_dump_model(
+      booster.ref,
+      opts[:fmap],
+      with_stats,
+      Atom.to_string(opts[:format])
+    )
+    |> Internal.unwrap!()
   end
 
   @doc """
@@ -330,9 +413,9 @@ defmodule EXGBoost.Booster do
           set_params(booster, value)
 
         is_list(value) ->
-            Enum.each(value, fn v ->
-              EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(v))
-            end)
+          Enum.each(value, fn v ->
+            EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(v))
+          end)
 
         is_atom(key) ->
           EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
@@ -387,7 +470,7 @@ defmodule EXGBoost.Booster do
   """
   def get_best_iteration(%__MODULE__{} = booster), do: get_attr(booster, "best_iteration")
 
-  @doc"""
+  @doc """
   Get the attribute names for the booster.
   """
   def get_attrs(%__MODULE__{} = booster),

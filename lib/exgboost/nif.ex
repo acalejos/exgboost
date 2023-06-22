@@ -341,7 +341,7 @@ defmodule EXGBoost.NIF do
 
   @spec booster_load_model(String.t()) ::
           exgboost_return_type(booster_reference())
-  def booster_load_model( _path), do: :erlang.nif_error(:not_implemented)
+  def booster_load_model(_path), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_save_model(booster_reference(), String.t()) ::
           :ok | {:error, String.t()}
@@ -359,9 +359,12 @@ defmodule EXGBoost.NIF do
   @spec booster_load_model_from_buffer(binary()) :: exgboost_return_type(booster_reference())
   def booster_load_model_from_buffer(_buffer), do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_load_json_config(booster_reference(),String.t()) :: :ok | {:error, String.t()}
+  @spec booster_load_json_config(booster_reference(), String.t()) :: :ok | {:error, String.t()}
   def booster_load_json_config(_handle, _config), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_save_json_config(booster_reference()) :: binary()
   def booster_save_json_config(_handle), do: :erlang.nif_error(:not_implemented)
+
+  def booster_dump_model(_handle, _fmap, _with_stats, _format),
+    do: :erlang.nif_error(:not_implemented)
 end

@@ -43,7 +43,7 @@ host_jit = EXLA.jit(compiled_predict)
 benches = %{
   "base" => fn -> EXGBoost.predict(model, x_train) end,
   "binary" => fn -> compiled_predict.(x_train) end,
-  "elxa" => fn -> host_jit.(x_train) end
+  "exla" => fn -> host_jit.(x_train) end
 }
 
 Benchee.run(

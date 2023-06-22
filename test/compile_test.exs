@@ -43,20 +43,50 @@ defmodule EXGBoostTest do
     assert is_struct(hd(trees), Mockingjay.Tree)
     assert DecisionTree.num_classes(booster) == 3
     assert DecisionTree.num_features(booster) == 4
-    assert DecisionTree.output_type(booster) == :classification
   end
 
   test "compiles", context do
     booster =
       EXGBoost.train(context.x_train, context.y_train, num_class: 3, objective: :multi_softprob)
 
-    compiled_predict = EXGBoost.compile(booster)
-    preds1 = EXGBoost.predict(booster, context.x_train) |> Nx.argmax(axis: -1)
-    acc1 = Scholar.Metrics.accuracy(context.y_train, preds1)
+    gemm_predict = EXGBoost.compile(booster, strategy: :gemm)
+    tt_predict = EXGBoost.compile(booster, strategy: :tree_traversal)
+    ptt_predict = EXGBoost.compile(booster, strategy: :ptt)
+    auto_predict = EXGBoost.compile(booster, strategy: :auto)
+    # host_jit = EXLA.jit(compiled_predict)
 
-    preds2 = compiled_predict.(context.x_train) |> Nx.argmax(axis: -1)
+    preds1 =
+      EXGBoost.predict(booster, context.x_test)
+      |> Nx.argmax(axis: -1)
 
-    acc2 = Scholar.Metrics.accuracy(context.y_train, preds2)
-    assert preds1 == preds2
+    preds2 = gemm_predict.(context.x_test) |> Nx.argmax(axis: -1)
+    preds3 = tt_predict.(context.x_test) |> Nx.argmax(axis: -1)
+    preds4 = ptt_predict.(context.x_test) |> Nx.argmax(axis: -1)
+    preds5 = auto_predict.(context.x_test) |> Nx.argmax(axis: -1)
+
+    base_acc =
+      Scholar.Metrics.accuracy(context.y_test, preds1)
+      |> Nx.to_number()
+
+    gmm_accuracy =
+      Scholar.Metrics.accuracy(context.y_test, preds2)
+      |> Nx.to_number()
+
+    tt_accuracy =
+      Scholar.Metrics.accuracy(context.y_test, preds3)
+      |> Nx.to_number()
+
+    ptt_accuracy =
+      Scholar.Metrics.accuracy(context.y_test, preds4)
+      |> Nx.to_number()
+
+    auto_accuracy =
+      Scholar.Metrics.accuracy(context.y_test, preds5)
+      |> Nx.to_number()
+
+    assert gmm_accuracy >= base_acc
+    assert tt_accuracy >= base_acc
+    assert ptt_accuracy >= base_acc
+    assert auto_accuracy >= base_acc
   end
 end

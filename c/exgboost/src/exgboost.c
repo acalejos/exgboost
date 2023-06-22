@@ -71,8 +71,9 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_save_model", 2, EXGBoosterSaveModel, ERL_NIF_DIRTY_JOB_IO_BOUND},
     {"booster_serialize_to_buffer", 1, EXGBoosterSerializeToBuffer},
     {"booster_deserialize_from_buffer", 1, EXGBoosterDeserializeFromBuffer},
-    {"booster_save_model_to_buffer",2,EXGBoosterSaveModelToBuffer},
-    {"booster_load_model_from_buffer",1,EXGBoosterLoadModelFromBuffer},
-    {"booster_load_json_config",2,EXGBoosterLoadJsonConfig},
-    {"booster_save_json_config",1,EXGBoosterSaveJsonConfig}};
+    {"booster_save_model_to_buffer", 2, EXGBoosterSaveModelToBuffer},
+    {"booster_load_model_from_buffer", 1, EXGBoosterLoadModelFromBuffer},
+    {"booster_load_json_config", 2, EXGBoosterLoadJsonConfig},
+    {"booster_dump_model", 4, EXGBoosterDumpModelEx},
+    {"booster_save_json_config", 1, EXGBoosterSaveJsonConfig}};
 ERL_NIF_INIT(Elixir.EXGBoost.NIF, nif_funcs, load, NULL, upgrade, NULL)

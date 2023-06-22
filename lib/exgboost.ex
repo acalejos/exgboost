@@ -409,14 +409,14 @@ defmodule EXGBoost do
   * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
-  def write_model(%Booster{} = booster, path, opts \\ []) do
+  def write_model(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :model)
   end
 
   @doc """
   Read a model from a file and return the Booster.
   """
-  def read_model(path, opts \\ []) do
+  def read_model(path) do
     EXGBoost.Booster.load(path, deserialize: :model)
   end
 
@@ -426,14 +426,14 @@ defmodule EXGBoost do
   ## Options
   * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
   """
-  def dump_model(%Booster{} = booster, opts \\ []) do
+  def dump_model(%Booster{} = booster) do
     EXGBoost.Booster.save(booster, serialize: :model, to: :buffer)
   end
 
   @doc """
   Read a model from a buffer and return the Booster.
   """
-  def load_model(buffer, opts \\ []) do
+  def load_model(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
   end
 
@@ -443,7 +443,7 @@ defmodule EXGBoost do
   ## Options
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
-  def write_config(%Booster{} = booster, path, opts \\ []) do
+  def write_config(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :config)
   end
 
@@ -460,7 +460,7 @@ defmodule EXGBoost do
   ## Options
   * `:booster` - The Booster to load the config into. Defaults to a new Booster.
   """
-  def read_config(path, opts \\ []) do
+  def read_config(path) do
     EXGBoost.Booster.load(path, deserialize: :config)
   end
 
@@ -472,7 +472,7 @@ defmodule EXGBoost do
       If a Booster is passed in, the config will be loaded into that Booster with the config
       merging using Map.merge/2. The `:booster` parameter's config will take precedence.
   """
-  def load_config(buffer, opts \\ []) do
+  def load_config(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :config, from: :buffer)
   end
 
@@ -482,31 +482,45 @@ defmodule EXGBoost do
   ## Options
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
-  def write_weights(%Booster{} = booster, path, opts \\ []) do
+  def write_weights(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :weights)
   end
 
   @doc """
   Dump a model's trained parameters to a buffer as a JSON-encoded binary.
   """
-  def dump_weights(%Booster{} = booster, opts \\ []) do
+  def dump_weights(%Booster{} = booster) do
     EXGBoost.Booster.save(booster, serialize: :weights, to: :buffer)
   end
 
   @doc """
   Read a model's trained parameters from a file and return the Booster.
   """
-  def read_weights(path, opts \\ []) do
+  def read_weights(path) do
     EXGBoost.Booster.load(path, deserialize: :weights)
   end
 
   @doc """
   Read a model's trained parameters from a buffer and return the Booster.
   """
-  def load_weights(buffer, opts \\ []) do
+  def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
 
+  @doc """
+  Compiles a trained Booster into function to perform inferences.
+
+  ## Options
+  * `:reorder_trees` - whether to reorder the trees in the model to optimize inference accuracy. Defaults to `true`. This assumes
+  that trees are ordere such that they classify classes in order 0..n then repeat (e.g. a cyclic class prediction). If this is not
+  the case, set this to `false` and implement custom ordering in the DecisionTree protocol implementation.
+  * `:forward` - the forward function to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t().
+  If none is specified, the best option will be chosen based on the output type of the model.
+  * `:aggregate` - The aggregation function to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t(). If none is specified,
+  the best option will be chosen based on the output type of the model.
+  * `:post_transform` - the post transform to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t().
+  If none is specified, the best option will be chosen based on the output type of the model.
+  """
   def compile(booster, opts \\ []) do
     Mockingjay.convert(booster, opts)
   end

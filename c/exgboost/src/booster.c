@@ -965,7 +965,7 @@ END:
 }
 
 ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
-                                        const ERL_NIF_TERM argv[]) {
+                                         const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
@@ -984,7 +984,8 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
     goto END;
   }
   if (!exg_get_string(env, argv[1], &config)) {
-    ret = exg_error(env, "Invalid config -- config should be a JSON-encoded string");
+    ret = exg_error(env,
+                    "Invalid config -- config should be a JSON-encoded string");
     goto END;
   }
   booster = *booster_resource;
@@ -1073,6 +1074,63 @@ ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc,
 END:
   if (buf != NULL) {
     enif_free(buf);
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
+                                   const ERL_NIF_TERM argv[]) {
+  BoosterHandle booster;
+  BoosterHandle **booster_resource = NULL;
+  bst_ulong out_len = 0;
+  char **out_dump_array = NULL;
+  char *fmap = NULL;
+  int with_stats = 0;
+  char *format = NULL;
+  int result = -1;
+  ERL_NIF_TERM ret = -1;
+  if (4 != argc) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
+                         (void *)&(booster_resource))) {
+    ret = exg_error(env, "Invalid Booster");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &fmap)) {
+    ret = exg_error(env, "Invalid fmap -- should be a string");
+    goto END;
+  }
+  if (!enif_get_int(env, argv[2], &with_stats)) {
+    ret = exg_error(env, "Invalid with_stats -- should be an int");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[3], &format)) {
+    ret = exg_error(env, "Invalid format -- should be a string");
+    goto END;
+  }
+  booster = *booster_resource;
+  result = XGBoosterDumpModelEx(booster, fmap, with_stats, format, &out_len,
+                                &out_dump_array);
+  if (result == 0) {
+    ERL_NIF_TERM arr[out_len];
+    for (bst_ulong i = 0; i < out_len; ++i) {
+      char *local = enif_alloc(strlen(out_dump_array[i]) + 1);
+      strcpy(local, out_dump_array[i]);
+      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
+      // TODO: Do we free here or is it handled by the XGBoost library / BEAM ?
+    }
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (fmap != NULL) {
+    enif_free(fmap);
+  }
+  if (format != NULL) {
+    enif_free(format);
   }
   return ret;
 }
