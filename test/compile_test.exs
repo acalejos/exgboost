@@ -51,7 +51,7 @@ defmodule EXGBoostTest do
 
     gemm_predict = EXGBoost.compile(booster, strategy: :gemm)
     tt_predict = EXGBoost.compile(booster, strategy: :tree_traversal)
-    ptt_predict = EXGBoost.compile(booster, strategy: :ptt)
+    ptt_predict = EXGBoost.compile(booster, strategy: :perfect_tree_traversal)
     auto_predict = EXGBoost.compile(booster, strategy: :auto)
     # host_jit = EXLA.jit(compiled_predict)
 

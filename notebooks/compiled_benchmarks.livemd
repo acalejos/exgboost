@@ -28,27 +28,36 @@ y_test = Nx.tensor(y_test)
 
 ## Gather Model / Prediction Functions
 
+`EXGBoost.compile/1` will convert your trained `Booster` model into a set of tensor operations which can then be run on any of the `Nx` backends.
+
 ```elixir
+# Get Baseline Model (XGBoost C API)
 model = EXGBoost.train(x_train, y_train, num_class: 3, objective: :multi_softprob)
+# Get Compiled Models w/ Binary Backend
+Nx.Defn.default_options(compiler: Nx.Defn.Evaluator)
+Nx.default_backend(Nx.BinaryBackend)
 gemm_predict = EXGBoost.compile(model, strategy: :gemm)
+gemm_jit_exla = EXLA.jit(gemm_predict)
 tree_trav_predict = EXGBoost.compile(model, strategy: :tree_traversal)
-ptt_predict = EXGBoost.compile(model, strategy: :ptt)
-gemm_exla = EXLA.jit(gemm_predict)
-tree_trav_exla = EXLA.jit(tree_trav_predict)
-ptt_exla = EXLA.jit(ptt_predict)
+ptt_predict = EXGBoost.compile(model, strategy: :perfect_tree_traversal)
+# Get Compiled Models w/ EXLA Backend
+Nx.Defn.default_options(compiler: EXLA)
+Nx.default_backend(EXLA.Backend)
+gemm_exla = EXGBoost.compile(model, strategy: :gemm)
+tree_trav_exla = EXGBoost.compile(model, strategy: :tree_traversal)
+ptt_exla = EXGBoost.compile(model, strategy: :perfect_tree_traversal)
 
 funcs = %{
   "Base" => fn x -> EXGBoost.predict(model, x) end,
   "Compiled -- GEMM Strategy -- Binary Backend" => fn x -> gemm_predict.(x) end,
   "Compiled -- Tree Traversal Strategy -- Binary Backend" => fn x -> tree_trav_predict.(x) end,
   "Compiled -- Perfect Tree Traversal Strategy -- Binary Backend" => fn x -> ptt_predict.(x) end,
-  "Compiled -- GEMM Strategy -- EXLA Backend" => fn x -> gemm_exla.(x) end
-  # "Compiled -- Tree Traversal Strategy -- EXLA Backend" => fn x -> tree_trav_exla.(x) end,
-  # "Compiled -- Perfect Tree Traversal Strategy -- EXLA Backend" => fn x -> ptt_exla.(x) end
+  "Compiled -- GEMM Strategy -- EXLA Backend" => fn x -> gemm_exla.(x) end,
+  "Compiled -- Tree Traversal Strategy -- EXLA Backend" => fn x -> tree_trav_exla.(x) end,
+  "Compiled -- Perfect Tree Traversal Strategy -- EXLA Backend" => fn x -> ptt_exla.(x) end,
+  "Compiled -- GEMM Strategy -- EXLA Backend (JIT)" => fn x -> gemm_jit_exla.(x) end
 }
 ```
-
-`EXGBoost.compile/1` will convert your trained `Booster` model into a set of tensor operations which can then be run on any of the `Nx` backends.
 
 ## Run Time Benchmarks
 
@@ -58,13 +67,17 @@ benches = Enum.reduce(funcs, %{}, fn {k, v}, acc -> Map.put(acc, k, fn -> v.(x_t
 Benchee.run(
   benches,
   time: 10,
-  memory_time: 2
+  memory_time: 2,
+  warmup: 5
 )
 ```
 
 ## Compare Accuracies
 
 ```elixir
+Nx.Defn.default_options(compiler: Nx.Defn.Evaluator)
+Nx.default_backend(Nx.BinaryBackend)
+
 accuracies =
   Enum.reduce(funcs, %{}, fn {name, pred_fn}, acc ->
     accuracy =
