@@ -3,9 +3,8 @@
 ```elixir
 Mix.install([
   {:scidata, "~> 0.1"},
-  {:exgboost, github: "https://github.com/acalejos/exgboost", branch: "compile_model"},
-  {:mockingjay, path: "https://github.com/acalejos/mockingjay"},
-  {:nx, "~> 0.5"},
+  {:exgboost, github: "acalejos/exgboost", branch: "compile_model"},
+  {:nx, "~> 0.5", override: true},
   {:exla, "~> 0.5"},
   {:benchee, "~> 1.0"}
 ])
@@ -31,8 +30,22 @@ y_test = Nx.tensor(y_test)
 
 ```elixir
 model = EXGBoost.train(x_train, y_train, num_class: 3, objective: :multi_softprob)
-compiled_predict = EXGBoost.compile(model)
-host_jit = EXLA.jit(compiled_predict)
+gemm_predict = EXGBoost.compile(model, strategy: :gemm)
+tree_trav_predict = EXGBoost.compile(model, strategy: :tree_traversal)
+ptt_predict = EXGBoost.compile(model, strategy: :ptt)
+gemm_exla = EXLA.jit(gemm_predict)
+tree_trav_exla = EXLA.jit(tree_trav_predict)
+ptt_exla = EXLA.jit(ptt_predict)
+
+funcs = %{
+  "Base" => fn x -> EXGBoost.predict(model, x) end,
+  "Compiled -- GEMM Strategy -- Binary Backend" => fn x -> gemm_predict.(x) end,
+  "Compiled -- Tree Traversal Strategy -- Binary Backend" => fn x -> tree_trav_predict.(x) end,
+  "Compiled -- Perfect Tree Traversal Strategy -- Binary Backend" => fn x -> ptt_predict.(x) end,
+  "Compiled -- GEMM Strategy -- EXLA Backend" => fn x -> gemm_exla.(x) end
+  # "Compiled -- Tree Traversal Strategy -- EXLA Backend" => fn x -> tree_trav_exla.(x) end,
+  # "Compiled -- Perfect Tree Traversal Strategy -- EXLA Backend" => fn x -> ptt_exla.(x) end
+}
 ```
 
 `EXGBoost.compile/1` will convert your trained `Booster` model into a set of tensor operations which can then be run on any of the `Nx` backends.
@@ -40,11 +53,7 @@ host_jit = EXLA.jit(compiled_predict)
 ## Run Time Benchmarks
 
 ```elixir
-benches = %{
-  "base" => fn -> EXGBoost.predict(model, x_train) end,
-  "binary" => fn -> compiled_predict.(x_train) end,
-  "exla" => fn -> host_jit.(x_train) end
-}
+benches = Enum.reduce(funcs, %{}, fn {k, v}, acc -> Map.put(acc, k, fn -> v.(x_train) end) end)
 
 Benchee.run(
   benches,
@@ -56,13 +65,14 @@ Benchee.run(
 ## Compare Accuracies
 
 ```elixir
-acc1 =
-  EXGBoost.predict(model, x_test)
-  |> Nx.argmax(axis: -1)
-  |> then(&Scholar.Metrics.accuracy(y_test, &1))
+accuracies =
+  Enum.reduce(funcs, %{}, fn {name, pred_fn}, acc ->
+    accuracy =
+      pred_fn.(x_test)
+      |> Nx.argmax(axis: -1)
+      |> then(&Scholar.Metrics.accuracy(y_test, &1))
+      |> Nx.to_number()
 
-acc2 =
-  host_jit.(x_test)
-  |> Nx.argmax(axis: -1)
-  |> then(&Scholar.Metrics.accuracy(y_test, &1))
+    Map.put(acc, name, accuracy)
+  end)
 ```
