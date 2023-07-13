@@ -48,10 +48,10 @@ modules source for more implementation details.
 
 ```elixir
 key = Nx.Random.key(42)
-{X, _} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
-{y, _} = Nx.Random.normal(key, 0, 1, shape: {10})
-model = EXGBoost.train(X,y)
-EXGBoost.predict(model, X)
+{x, key} = Nx.Random.normal(key, 0, 1, shape: {10, 5})
+{y, key} = Nx.Random.normal(key, 0, 1, shape: {10})
+model = EXGBoost.train(x, y)
+EXGBoost.predict(model, x)
 ```
 
 ## Training
@@ -102,7 +102,7 @@ Exgboot.train(X,
               learning_rates: fn i -> i/10 end,
               num_boost_round: 10,
               early_stopping_rounds: 3,
-              max_depth: 3, 
+              max_depth: 3,
               eval_metric: [:rmse,:logloss]
               )
 ```
@@ -118,14 +118,17 @@ It accepts a `Booster` struct (which is the output of `EXGBoost.train/2`).
 preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 ```
 
-# Requirements
+## Requirements
 
-If you choose to not use the precompiled libraries, you will need the following:
+If you are contributing to the library and need to compile locally or choose to not use the precompiled libraries, you will need the following:
+
 * Make
 * CMake
 * If MacOS: `brew install libomp`
 
 When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
+
+You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the first local compilation, otherwise you will get an error related to a missing checksum file.
 
 ## Known Limitations
 
