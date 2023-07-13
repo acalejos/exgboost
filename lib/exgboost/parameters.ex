@@ -2,6 +2,7 @@ defmodule EXGBoost.Parameters do
   @global_params [
     verbosity: [
       type: {:custom, EXGBoost.Parameters, :validate_verbosity, []},
+      default: :silent,
       doc: """
       Verbosity of printing messages. Valid values are:
       `:silent`, `:warning`, `:info`, `:debug`.

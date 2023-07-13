@@ -1,6 +1,5 @@
 defmodule EXGBoost.ArrayInterface do
   @moduledoc false
-  alias __MODULE__
 
   @typedoc """
   The XGBoost C API uses and is moving towards mainly supporting the use of
@@ -14,7 +13,7 @@ defmodule EXGBoost.ArrayInterface do
   See https://numpy.org/doc/stable/reference/arrays.interface.html for more information on
   the ArrayInterface protocol.
   """
-  @type t :: %ArrayInterface{
+  @type t :: %__MODULE__{
           typestr: String.t(),
           shape: tuple(),
           address: pos_integer(),
@@ -113,7 +112,7 @@ defmodule EXGBoost.ArrayInterface do
     tensor_addr =
       EXGBoost.NIF.get_binary_address(Nx.to_binary(tensor)) |> EXGBoost.Internal.unwrap!()
 
-    %ArrayInterface{
+    %__MODULE__{
       typestr: type_char,
       shape: Nx.shape(tensor),
       address: tensor_addr,

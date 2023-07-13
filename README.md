@@ -136,7 +136,6 @@ The XGBoost C API uses C function pointers to implement streaming data types.  T
 
 ## Roadmap
 
-* [ ] Model Serialization
 * [ ] CUDA support
 * [ ] [Collective API](https://xgboost.readthedocs.io/en/latest/c.html#collective)?
 

@@ -1,5 +1,49 @@
 defmodule EXGBoost.Booster do
-  @moduledoc false
+  @moduledoc """
+  A Booster is the main object used for training and prediction. It is a wrapper around the
+  underlying XGBoost C API.  Booster have three main concepts for tracking associated data:
+  parameters, attributes, and features. Parameters are used to configure the Booster and are
+  from a set of valid options (such as `tree_depth` and `eta` -- refer to `EXGBoost.Parameters` for full list).
+  Attributes are user-provided key-value pairs that are assigned to a Booster (such as `best_iteration` and `best_score`).
+  Features are used to track the metadata associated with the features used in training (such as `feature_names` and `feature_types`).
+
+  ## Training
+
+  When using `EXGBoost.train/2`, a Booster is created and trained automatically with the given parameters.
+  If you need more control over the training process, please refer to `EXGBoost.Training.Callback` for
+  guidance on how to inject custom logic into the training process.
+
+  ## Creation
+
+  A Booster can be created using `EXGBoost.Booster.booster` from a list of DMatrices, a single DMatrix, or
+  another Booster. If a list of DMatrices is provided, the first DMatrix is used as the training
+  data and the rest are used for evaluation. If a single DMatrix is provided, it is used as the
+  training data. If another Booster is provided, it is copied and returned as a new Booster with
+  the same configuration -- if params are provided, they will override the configuration of the
+  copied Booster.
+
+  ## Serialization
+
+  A Booster can be serialized to a file using `EXGBoost.Booster.save` and loaded from a file
+  using `EXGBoost.Booster.load`. The file format can be specified using the `:format` option
+  which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will
+  be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
+  Boosters can be serialized in three different ways: configuration only, configuration and model, or
+  model only. Any function that uses the `to` and `from` `buffer` functions will serialize the Booster
+  to a binary string. The `to` and `from` `file` functions will serialize the Booster to a file.
+  Functions named with `weights` will serialize the model weights only. Functions named with `config` will
+  serialize the configuration only. Functions that specify `model` will serialize both the model weights
+  and the configuration.
+
+  ### Output Formats
+  - 'file' - Save to a file.
+  - 'buffer' - Save to a binary string.
+
+  ### Output Contents
+  - 'config' - Save the configuration only.
+  - 'weights' - Save the model weights only.
+  - 'model' - Save both the model weights and the configuration.
+  """
   alias EXGBoost.DMatrix
   alias EXGBoost.Internal
   alias EXGBoost.NIF
@@ -9,17 +53,255 @@ defmodule EXGBoost.Booster do
   @enforce_keys [:ref]
   defstruct [:ref, :best_iteration, :best_score]
 
+  @save_schema [
+    to: [
+      type: {:in, [:file, :buffer]},
+      default: :file,
+      doc: """
+      The output format. Can be either `:file` or `:buffer`.
+      """
+    ],
+    path: [
+      type: :string,
+      doc: """
+      The path to the file to save to. Required if `to` is `:file`.
+      """
+    ],
+    serialize: [
+      type: {:in, [:config, :weights, :model]},
+      default: :model,
+      doc: """
+      The contents to serialize. Can be either `:config`, `:weights`, or `:model`.
+      """
+    ],
+    format: [
+      type: {:in, [:json, :ubj]},
+      default: :json,
+      doc: """
+      The format to serialize to. Can be either `:json` or `:ubj`.
+      """
+    ],
+    overwrite: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to overwrite the file if it already exists.
+      """
+    ]
+  ]
+
+  @load_schema [
+    from: [
+      type: {:in, [:file, :buffer]},
+      default: :file,
+      doc: """
+      The input format. Can be either `:file` or `:buffer`.
+      """
+    ],
+    deserialize: [
+      type: {:in, [:config, :weights, :model]},
+      default: :model,
+      doc: """
+      The contents to deserialize. Can be either `:config`, `:weights`, or `:model`.
+      """
+    ],
+    booster: [
+      type: {:struct, __MODULE__},
+      doc: """
+      The Booster to load the model into. If not provided, a new Booster will be created.
+      """
+    ]
+  ]
+
+  @dump_schema [
+    fmap: [
+      type: :string,
+      default: "",
+      doc: """
+      The path to the file containing the feature map.
+      """
+    ],
+    with_stats: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to include the statistics in the dump.
+      """
+    ],
+    format: [
+      type: {:in, [:json, :text]},
+      default: :text,
+      doc: """
+      The format to dump to. Can be either `:json` or `:text`.
+      """
+    ]
+  ]
+
+  @save_schema NimbleOptions.new!(@save_schema)
+  @load_schema NimbleOptions.new!(@load_schema)
+  @dump_schema NimbleOptions.new!(@dump_schema)
+
+  @doc """
+  Create a new Booster.
+
+  A Booster can be created from a list of DMatrices, a single DMatrix, or
+  another Booster. If a list of DMatrices is provided, the first DMatrix is used as the training
+  data and the rest are used for evaluation. If a single DMatrix is provided, it is used as the
+  training data. If another Booster is provided, it is copied and returned as a new Booster with
+  the same configuration -- if params are provided, they will override the configuration of the
+  copied Booster.
+
+  ## Options
+  Refer to `EXGBoost.Parameters` for a list of valid options.
+  """
   def booster(dmats, opts \\ [])
 
-  def booster([%DMatrix{} | _] = dmats, opts) when is_list(dmats) do
+  def booster(dmats, opts) when is_list(dmats) do
+    opts = EXGBoost.Parameters.validate!(opts)
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = EXGBoost.NIF.booster_create(refs) |> Internal.unwrap!()
-    opts = EXGBoost.Parameters.validate!(opts)
     set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 
   def booster(%DMatrix{} = dmat, opts) do
     booster([dmat], opts)
+  end
+
+  def booster(%__MODULE__{} = bst, opts) do
+    opts = EXGBoost.Parameters.validate!(opts)
+    boostr_bytes = EXGBoost.NIF.booster_serialize_to_buffer(bst.ref) |> Internal.unwrap!()
+    booster_ref = EXGBoost.NIF.booster_deserialize_from_buffer(boostr_bytes) |> Internal.unwrap!()
+    set_params(%__MODULE__{ref: booster_ref}, opts)
+  end
+
+  @doc """
+  Save a Booster to the specified source.
+
+  ## Options
+  #{NimbleOptions.docs(@save_schema)}
+  """
+  def save(%__MODULE__{} = booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @save_schema)
+
+    if opts[:to] == :file do
+      if is_nil(opts[:path]) do
+        raise ArgumentError, "Missing required option: `path`"
+      end
+
+      filepath = "#{Path.absname(opts[:path])}.#{opts[:format]}"
+
+      if !opts[:overwrite] and File.exists?(filepath) do
+        raise ArgumentError,
+              "File already exists: #{filepath} -- set `overwrite: true` to overwrite"
+      end
+
+      case opts[:serialize] do
+        :config ->
+          EXGBoost.NIF.booster_save_json_config(booster.ref)
+          |> Internal.unwrap!()
+          |> then(&File.write!(filepath, &1))
+
+        :model ->
+          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref)
+          |> Internal.unwrap!()
+          |> then(&File.write!(filepath, &1))
+
+        :weights ->
+          EXGBoost.NIF.booster_save_model(booster.ref, filepath) |> Internal.unwrap!()
+      end
+    else
+      case opts[:serialize] do
+        :config ->
+          EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!()
+
+        :model ->
+          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref) |> Internal.unwrap!()
+
+        :weights ->
+          EXGBoost.NIF.booster_save_model_to_buffer(
+            booster.ref,
+            Jason.encode!(%{format: opts[:format]})
+          )
+          |> Internal.unwrap!()
+      end
+    end
+  end
+
+  @doc """
+  Load a Booster from the specified source. If a Booster is provided, the model will be loaded into
+  that Booster. Otherwise, a new Booster will be created. If a Booster is provided, model parameters
+  will be merged with the existing Booster's parameters using Map.merge/2, where the parameters
+  of the provided Booster take precedence.
+
+  ## Options
+  #{NimbleOptions.docs(@load_schema)}
+  """
+  def load(source, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @load_schema)
+
+    booster =
+      if opts[:booster] do
+        opts[:booster]
+      else
+        booster([])
+      end
+
+    source =
+      if opts[:from] == :file do
+        filepath = Path.absname(source)
+
+        if not File.exists?(filepath) do
+          raise ArgumentError, "File not found: #{filepath}"
+        end
+
+        File.read!(filepath)
+      else
+        source
+      end
+
+    booster_ref =
+      case opts[:deserialize] do
+        :config ->
+          config =
+            if opts[:booster] do
+              Map.merge(
+                EXGBoost.dump_config(booster) |> Jason.decode!(),
+                source |> Jason.decode!()
+              )
+              |> Jason.encode!()
+            else
+              source
+            end
+
+          EXGBoost.NIF.booster_load_json_config(booster.ref, config) |> Internal.unwrap!()
+
+        :model ->
+          EXGBoost.NIF.booster_deserialize_from_buffer(source) |> Internal.unwrap!()
+
+        :weights ->
+          EXGBoost.NIF.booster_load_model_from_buffer(source) |> Internal.unwrap!()
+      end
+
+    struct(booster, ref: booster_ref)
+  end
+
+  @doc """
+  Get a formatted representation of the Booster's model.
+
+  ## Options
+  #{NimbleOptions.docs(@dump_schema)}
+  """
+  def get_dump(booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @dump_schema)
+    with_stats = if opts[:with_stats], do: 1, else: 0
+
+    EXGBoost.NIF.booster_dump_model(
+      booster.ref,
+      opts[:fmap],
+      with_stats,
+      Atom.to_string(opts[:format])
+    )
+    |> Internal.unwrap!()
   end
 
   @doc """
@@ -120,17 +402,29 @@ defmodule EXGBoost.Booster do
     Nx.tensor(preds) |> Nx.reshape(shape)
   end
 
+  @doc """
+  Set parameters for booster. The parameters are passed as a keyword list. Please refer to
+  `EXGBoost.Parameters` for a full list of parameters. Parameters can be set multiple times
+  by passng a list of values for a given parameter. For example, `set_params(booster, eval_metric: [:rmse, :auc])`.
+  Accepts both atoms and strings as keys. Nested keyword lists will simply be treated as more key-value pairs
+  to be set. Returns the booster.
+  """
   def set_params(%__MODULE__{} = booster, params \\ []) do
     for {key, value} <- params do
       cond do
-        is_list(value) ->
+        Keyword.keyword?(value) ->
           set_params(booster, value)
+
+        is_list(value) ->
+          Enum.each(value, fn v ->
+            EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(v))
+          end)
 
         is_atom(key) ->
           EXGBoost.NIF.booster_set_param(booster.ref, Atom.to_string(key), to_string(value))
 
         is_binary(key) ->
-          EXGBoost.NIF.booster_set_param(booster.ref, key, value)
+          EXGBoost.NIF.booster_set_param(booster.ref, key, to_string(value))
 
         true ->
           raise ArgumentError, "Invalid key #{inspect(key)}"
@@ -144,7 +438,7 @@ defmodule EXGBoost.Booster do
   Set attributes for booster.
 
   Key value pairs are passed as options. You can set an existing key to :nil to
-  delete the attribute
+  delete the attribute. Returns the booster.
   """
   def set_attr(booster, attrs \\ []) do
     Enum.each(attrs, fn {key, value} ->
@@ -154,27 +448,48 @@ defmodule EXGBoost.Booster do
     booster
   end
 
-  def get_feature_names(booster),
+  @doc """
+  Get the names of the features for the booster.
+  """
+  def get_feature_names(%__MODULE__{} = booster),
     do:
       EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_name") |> Internal.unwrap!()
 
-  def get_feature_types(booster),
+  @doc """
+  Get the type for each feature in the booster
+  """
+  def get_feature_types(%__MODULE__{} = booster),
     do:
       EXGBoost.NIF.booster_get_str_feature_info(booster.ref, "feature_type") |> Internal.unwrap!()
 
-  def get_num_features(booster),
+  @doc """
+  Get the number of features for the booster.
+  """
+  def get_num_features(%__MODULE__{} = booster),
     do: EXGBoost.NIF.booster_get_num_feature(booster.ref) |> Internal.unwrap!()
 
-  def get_best_iteration(booster), do: get_attr(booster, "best_iteration")
+  @doc """
+  Get the best iteration for the booster.
+  """
+  def get_best_iteration(%__MODULE__{} = booster), do: get_attr(booster, "best_iteration")
 
-  def get_attrs(booster),
+  @doc """
+  Get the attribute names for the booster.
+  """
+  def get_attrs(%__MODULE__{} = booster),
     do: EXGBoost.NIF.booster_get_attr_names(booster.ref) |> Internal.unwrap!()
 
-  def get_boosted_rounds(booster) do
+  @doc """
+  Get the number of boosted rounds for the booster.
+  """
+  def get_boosted_rounds(%__MODULE__{} = booster) do
     EXGBoost.NIF.booster_boosted_rounds(booster.ref) |> Internal.unwrap!()
   end
 
-  def get_attr(booster, attr) do
+  @doc """
+  Get the attribute value for the given key.
+  """
+  def get_attr(%__MODULE__{} = booster, attr) do
     attrs = get_attrs(booster)
 
     if Enum.member?(attrs, attr) do

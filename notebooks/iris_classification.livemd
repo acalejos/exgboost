@@ -54,7 +54,13 @@ The simplest way to train a booster is using the top-level `EXGBoost.train/2` fu
 This example is a multi-class classification problem with 3 output classes. We need to configure EXGBoost to train this booster as a multi-class classifier by specifying a different training objective. We also need to specify the number of output classes:
 
 ```elixir
-booster = EXGBoost.train(x_train, y_train, num_class: 3, obj: :multi_softprob)
+booster =
+  EXGBoost.train(x_train, y_train,
+    num_class: 3,
+    objective: :multi_softprob,
+    num_boost_rounds: 10000,
+    evals: [{x_train, y_train, "training"}]
+  )
 ```
 
 And that's it! Now we can test our booster.
