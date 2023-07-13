@@ -22,7 +22,7 @@ defmodule EXGBoost.Booster do
   the same configuration -- if params are provided, they will override the configuration of the
   copied Booster.
 
-  ## Serliaztion
+  ## Serialization
 
   A Booster can be serialized to a file using `EXGBoost.Booster.save` and loaded from a file
   using `EXGBoost.Booster.load`. The file format can be specified using the `:format` option
@@ -160,7 +160,6 @@ defmodule EXGBoost.Booster do
     opts = EXGBoost.Parameters.validate!(opts)
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = EXGBoost.NIF.booster_create(refs) |> Internal.unwrap!()
-    opts = EXGBoost.Parameters.validate!(opts)
     set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 
@@ -318,7 +317,6 @@ defmodule EXGBoost.Booster do
   """
   def boost(
         %__MODULE__{} = booster,
-        %__MODULE__{} = booster,
         %DMatrix{} = dmatrix,
         %Tensor{} = grad,
         %Tensor{} = hess
@@ -339,7 +337,6 @@ defmodule EXGBoost.Booster do
     )
   end
 
-  def predict(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
   def predict(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
     opts =
       Keyword.validate!(opts,
@@ -514,7 +511,6 @@ defmodule EXGBoost.Booster do
     Returns the evaluation result string.
   """
   def eval(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
-  def eval(%__MODULE__{} = booster, %DMatrix{} = data, opts \\ []) do
     {name, opts} = Keyword.pop(opts, :name, "eval")
     {iteration, opts} = Keyword.pop(opts, :iteration, 0)
     Internal.validate_features!(booster, data)
@@ -531,7 +527,6 @@ defmodule EXGBoost.Booster do
 
   Returns the resulting metrics as a list of 2-tuples in the form of {eval_metric, value}.
   """
-  def eval_set(%__MODULE__{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
   def eval_set(%__MODULE__{} = booster, evals, iteration, opts \\ []) when is_list(evals) do
     opts = Keyword.validate!(opts, feval: nil, output_margin: true)
     feval = opts[:feval]
@@ -581,7 +576,6 @@ defmodule EXGBoost.Booster do
 
   See [Custom Objective](https://xgboost.readthedocs.io/en/latest/tutorials/custom_metric_obj.html) for details.
   """
-  def update(%__MODULE__{} = booster, %DMatrix{} = dmatrix, iteration, objective)
   def update(%__MODULE__{} = booster, %DMatrix{} = dmatrix, iteration, objective)
       when is_integer(iteration) do
     if is_function(objective, 2) do

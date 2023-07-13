@@ -334,24 +334,6 @@ defmodule EXGBoost do
         nil
       end
 
-    if Keyword.fetch!(opts, :validate_features) do
-      case Nx.shape(data) do
-        {_rows} ->
-          nil
-
-        {_rows, cols} ->
-          if cols != Booster.get_num_features(boostr) do
-            raise(
-              ArgumentError,
-              "Feature shape mismatch, expected: #{Booster.get_num_features(boostr)}, got #{cols}"
-            )
-          end
-
-        _ ->
-          raise ArgumentError, "Data must be a 1D or 2D tensor"
-      end
-    end
-
     case data do
       %Nx.Tensor{} = data ->
         data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()

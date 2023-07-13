@@ -225,8 +225,6 @@ defmodule EXGBoostTest do
     assert File.exists?("test.json")
     bst = EXGBoost.read_config("test.json")
     assert is_struct(bst, EXGBoost.Booster)
-    bst = EXGBoost.read_config("test.json", booster: bst)
-    assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
   end
 
