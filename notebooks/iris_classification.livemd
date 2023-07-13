@@ -59,7 +59,6 @@ booster =
     num_class: 3,
     objective: :multi_softprob,
     num_boost_rounds: 10000,
-    callbacks: [cb],
     evals: [{x_train, y_train, "training"}]
   )
 ```
