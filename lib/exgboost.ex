@@ -506,22 +506,4 @@ defmodule EXGBoost do
   def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
-
-  @doc """
-  Compiles a trained Booster into function to perform inferences.
-
-  ## Options
-  * `:reorder_trees` - whether to reorder the trees in the model to optimize inference accuracy. Defaults to `true`. This assumes
-  that trees are ordere such that they classify classes in order 0..n then repeat (e.g. a cyclic class prediction). If this is not
-  the case, set this to `false` and implement custom ordering in the DecisionTree protocol implementation.
-  * `:forward` - the forward function to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t().
-  If none is specified, the best option will be chosen based on the output type of the model.
-  * `:aggregate` - The aggregation function to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t(). If none is specified,
-  the best option will be chosen based on the output type of the model.
-  * `:post_transform` - the post transform to use. A function that takes a Nx.Container.t() and returns a Nx.Container.t().
-  If none is specified, the best option will be chosen based on the output type of the model.
-  """
-  def compile(booster, opts \\ []) do
-    Mockingjay.convert(booster, opts)
-  end
 end
