@@ -55,7 +55,7 @@ defmodule EXGBoost.Training do
         value -> value
       end
 
-    callbacks = Keyword.fetch!(opts, :callbacks)
+    callbacks = Keyword.fetch!(opts, :callbacks) |> Enum.reverse()
 
     callbacks =
       unless is_nil(opts[:learning_rates]) do
@@ -65,21 +65,6 @@ defmodule EXGBoost.Training do
             fun: &Callback.lr_scheduler/1,
             name: :lr_scheduler,
             init_state: %{learning_rates: learning_rates}
-          }
-          | callbacks
-        ]
-      else
-        callbacks
-      end
-
-    callbacks =
-      unless evals_dmats == [] do
-        [
-          %Callback{
-            event: :after_iteration,
-            fun: &Callback.eval_metrics/1,
-            name: :eval_metrics,
-            init_state: %{evals: evals_dmats, filter: fn {_, _} -> true end}
           }
           | callbacks
         ]
@@ -145,6 +130,21 @@ defmodule EXGBoost.Training do
         callbacks
       end
 
+    callbacks =
+      unless evals_dmats == [] do
+        [
+          %Callback{
+            event: :after_iteration,
+            fun: &Callback.eval_metrics/1,
+            name: :eval_metrics,
+            init_state: %{evals: evals_dmats, filter: fn {_, _} -> true end}
+          }
+          | callbacks
+        ]
+      else
+        callbacks
+      end
+
     default = %{
       before_iteration: [],
       after_iteration: [],
@@ -154,7 +154,9 @@ defmodule EXGBoost.Training do
     }
 
     env =
-      Enum.reduce(callbacks, default, fn %Callback{} = callback, acc ->
+      callbacks
+      |> Enum.reverse()
+      |> Enum.reduce(default, fn %Callback{} = callback, acc ->
         acc =
           case callback.event do
             :before_iteration ->
