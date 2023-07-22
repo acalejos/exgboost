@@ -36,19 +36,25 @@ defmodule EXGBoost.Booster do
   and the configuration.
 
   ### Output Formats
-  - 'file' - Save to a file.
-  - 'buffer' - Save to a binary string.
+  - `file` - Save to a file.
+  - `buffer` - Save to a binary string.
 
   ### Output Contents
-  - 'config' - Save the configuration only.
-  - 'weights' - Save the model weights only.
-  - 'model' - Save both the model weights and the configuration.
+  - `config` - Save the configuration only.
+  - `weights` - Save the model weights only.
+  - `model` - Save both the model weights and the configuration.
   """
   alias EXGBoost.DMatrix
   alias EXGBoost.Internal
   alias EXGBoost.NIF
 
   alias Nx.Tensor
+
+  @type t :: %__MODULE__{
+          ref: reference(),
+          best_iteration: integer(),
+          best_score: float()
+        }
 
   @enforce_keys [:ref]
   defstruct [:ref, :best_iteration, :best_score]

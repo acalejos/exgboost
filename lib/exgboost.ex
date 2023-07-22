@@ -105,8 +105,8 @@ defmodule EXGBoost do
   and the configuration.
 
   ### Output Formats
-  - 'read'/`write` -  File.
-  - 'load`/`dump` - Binary buffer.
+  - `read`/`write` -  File.
+  - `load`/`dump` - Binary buffer.
 
   ### Output Contents
   - 'config' - Save the configuration only.
@@ -392,6 +392,7 @@ defmodule EXGBoost do
   * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
+  @spec write_model(Booster.t(), String.t()) :: :ok | {:error, String.t()}
   def write_model(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :model)
   end
@@ -399,6 +400,7 @@ defmodule EXGBoost do
   @doc """
   Read a model from a file and return the Booster.
   """
+  @spec read_model(String.t()) :: EXGBoost.Booster.t()
   def read_model(path) do
     EXGBoost.Booster.load(path, deserialize: :model)
   end
@@ -409,6 +411,7 @@ defmodule EXGBoost do
   ## Options
   * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
   """
+  @spec dump_model(Booster.t()) :: binary()
   def dump_model(%Booster{} = booster) do
     EXGBoost.Booster.save(booster, serialize: :model, to: :buffer)
   end
@@ -416,6 +419,7 @@ defmodule EXGBoost do
   @doc """
   Read a model from a buffer and return the Booster.
   """
+  @spec load_model(binary()) :: EXGBoost.Booster.t()
   def load_model(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
   end
@@ -426,6 +430,7 @@ defmodule EXGBoost do
   ## Options
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
+  @spec write_config(Booster.t(), String.t()) :: :ok | {:error, String.t()}
   def write_config(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :config)
   end
@@ -433,6 +438,7 @@ defmodule EXGBoost do
   @doc """
   Dump the model config to a buffer as a JSON-encoded binary.
   """
+  @spec dump_config(Booster.t()) :: binary()
   def dump_config(%Booster{} = booster) do
     EXGBoost.Booster.save(booster, serialize: :config, to: :buffer)
   end
@@ -443,6 +449,7 @@ defmodule EXGBoost do
   ## Options
   * `:booster` - The Booster to load the config into. Defaults to a new Booster.
   """
+  @spec read_config(String.t()) :: EXGBoost.Booster.t()
   def read_config(path) do
     EXGBoost.Booster.load(path, deserialize: :config)
   end
@@ -455,6 +462,7 @@ defmodule EXGBoost do
       If a Booster is passed in, the config will be loaded into that Booster with the config
       merging using Map.merge/2. The `:booster` parameter's config will take precedence.
   """
+  @spec load_config(binary()) :: EXGBoost.Booster.t()
   def load_config(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :config, from: :buffer)
   end
@@ -465,6 +473,7 @@ defmodule EXGBoost do
   ## Options
   * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
   """
+  @spec write_weights(Booster.t(), String.t()) :: :ok | {:error, String.t()}
   def write_weights(%Booster{} = booster, path) do
     EXGBoost.Booster.save(booster, path: path, serialize: :weights)
   end
@@ -472,6 +481,7 @@ defmodule EXGBoost do
   @doc """
   Dump a model's trained parameters to a buffer as a JSON-encoded binary.
   """
+  @spec dump_weights(Booster.t()) :: binary()
   def dump_weights(%Booster{} = booster) do
     EXGBoost.Booster.save(booster, serialize: :weights, to: :buffer)
   end
@@ -479,6 +489,7 @@ defmodule EXGBoost do
   @doc """
   Read a model's trained parameters from a file and return the Booster.
   """
+  @spec read_weights(String.t()) :: EXGBoost.Booster.t()
   def read_weights(path) do
     EXGBoost.Booster.load(path, deserialize: :weights)
   end
@@ -486,6 +497,7 @@ defmodule EXGBoost do
   @doc """
   Read a model's trained parameters from a buffer and return the Booster.
   """
+  @spec load_weights(binary()) :: EXGBoost.Booster.t()
   def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end

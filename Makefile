@@ -5,7 +5,7 @@
 TEMP ?= $(HOME)/.cache
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-XGBOOST_GIT_REV ?= a1367ea1f834bdf6fcaa3e9f38af0305fbed5ce8
+XGBOOST_GIT_REV ?= 08ce495b5de973033160e7c7b650abf59346a984
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost

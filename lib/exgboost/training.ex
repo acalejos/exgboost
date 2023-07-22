@@ -4,6 +4,7 @@ defmodule EXGBoost.Training do
   alias EXGBoost.DMatrix
   alias EXGBoost.Training.{State, Callback}
 
+  @spec train(DMatrix.t(), Keyword.t()) :: Booster.t()
   def train(%DMatrix{} = dmat, opts \\ []) do
     {opts, booster_params} =
       Keyword.split(opts, [

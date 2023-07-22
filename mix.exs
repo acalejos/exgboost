@@ -39,7 +39,7 @@ defmodule EXGBoost.MixProject do
     [
       {:elixir_make, "~> 0.4", runtime: false},
       {:nimble_options, "~> 1.0"},
-      {:nx, github: "elixir-nx/nx", sparse: "nx", override: true},
+      {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.29.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false}
