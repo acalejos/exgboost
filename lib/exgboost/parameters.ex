@@ -616,7 +616,7 @@ defmodule EXGBoost.Parameters do
         case x do
           {key, value} when key in [:tree, :level, :node] and is_number(value) ->
             if in_range(value, "(0,1]") do
-              {:cont, {:ok, [{"colsample_by#{key}", value} | acc]}}
+              {:cont, {:ok, [{String.to_atom("colsample_by#{key}"), value} | acc]}}
             else
               {:halt, {:error, "Parameter `colsample` must be in (0,1], got #{inspect(x)}"}}
             end
