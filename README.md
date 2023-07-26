@@ -22,7 +22,7 @@ billions of examples.
 ```elixir
 def deps do
 [
-  {:exgboost, "~> 0.3}
+  {:exgboost, "~> 0.3"}
 ]
 end
 ```
