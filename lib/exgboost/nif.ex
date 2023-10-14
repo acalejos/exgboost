@@ -82,6 +82,7 @@ defmodule EXGBoost.NIF do
   """
   def get_global_config, do: :erlang.nif_error(:not_implemented)
 
+  @deprecated "Since 0.4.0 -- Use `EXGBoost.NIF.dmatrix_create_from_uri/1` instead"
   @spec dmatrix_create_from_file(String.t(), Integer) ::
           exgboost_return_type(reference)
   @doc """
@@ -98,6 +99,9 @@ defmodule EXGBoost.NIF do
   """
   def dmatrix_create_from_file(_file_uri, _silent),
     do: :erlang.nif_error(:not_implemented)
+
+  @since "0.4.0"
+  def dmatrix_create_from_uri(_config), do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::
           exgboost_return_type(dmatrix_reference())

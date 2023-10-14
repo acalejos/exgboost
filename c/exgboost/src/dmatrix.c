@@ -15,6 +15,7 @@ static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
   return ret;
 }
 
+// Deprecated since XGBoost 2.0.0
 ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   char *fname = NULL;
@@ -49,6 +50,34 @@ END:
   if (format != NULL) {
     enif_free(format);
     format = NULL;
+  }
+  return ret;
+}
+
+ERL_NIF_TERM EXGDMatrixCreateFromURI(ErlNifEnv *env, int argc,
+                                     const ERL_NIF_TERM argv[]) {
+  char *config = NULL;
+  DMatrixHandle handle;
+  int result = -1;
+  ERL_NIF_TERM ret = 0;
+  if (argc != 1) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[0], &config)) {
+    ret = exg_error(env, "Config must be a string");
+    goto END;
+  }
+  result = XGDMatrixCreateFromURI(config, &handle);
+  if (result == 0) {
+    ret = make_DMatrix_resource(env, handle);
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (config != NULL) {
+    enif_free(config);
+    config = NULL;
   }
   return ret;
 }

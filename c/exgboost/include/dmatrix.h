@@ -6,6 +6,9 @@
 ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]);
 
+ERL_NIF_TERM EXGDMatrixCreateFromURI(ErlNifEnv *env, int argc,
+                                     const ERL_NIF_TERM argv[]);
+
 ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
                                      const ERL_NIF_TERM argv[]);
 

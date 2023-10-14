@@ -202,7 +202,8 @@ defmodule EXGBoost.DMatrix do
         cacheprefix: nil,
         format: :dense,
         ext: :auto,
-        silent: 1
+        silent: 1,
+        data_split_mode: :row
       )
 
     if not (File.exists?(filepath) and File.regular?(filepath)) do
@@ -214,6 +215,11 @@ defmodule EXGBoost.DMatrix do
     {format, opts} = Keyword.pop!(opts, :format)
     {label_column, opts} = Keyword.pop!(opts, :label_column)
     {cacheprefix, opts} = Keyword.pop!(opts, :cacheprefix)
+    {data_split_mode, opts} = Keyword.pop!(opts, :data_split_mode)
+
+    unless data_split_mode in [:row, :column] do
+      raise ArgumentError, "data_split_mode must be :row or :column"
+    end
 
     ext =
       case file_format do
@@ -227,9 +233,9 @@ defmodule EXGBoost.DMatrix do
 
     if file_format != :csv and not is_nil(label_column) do
       if silent == 1 do
-        IO.warn("label_column only be specified for CSV files -- ignoring...")
+        IO.warn("label_column should only be specified for CSV files -- ignoring...")
       else
-        raise ArgumentError, "label_column only be specified for CSV files"
+        raise ArgumentError, "label_column should only be specified for CSV files"
       end
     end
 
@@ -250,16 +256,15 @@ defmodule EXGBoost.DMatrix do
 
     uri =
       if not is_nil(cacheprefix) and File.exists?(cacheprefix) and File.regular?(cacheprefix) do
-        uri <> "#cacheprefix=#{cacheprefix}"
+        uri <> "##{cacheprefix}"
       else
         uri
       end
 
+    config = %{uri: uri, silent: silent, data_split_mode: data_split_mode} |> Jason.encode!()
+
     dmat =
-      EXGBoost.NIF.dmatrix_create_from_file(
-        uri,
-        silent
-      )
+      EXGBoost.NIF.dmatrix_create_from_uri(config)
       |> Internal.unwrap!()
 
     set_params(%__MODULE__{ref: dmat, format: format}, opts)

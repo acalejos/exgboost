@@ -22,6 +22,11 @@ defmodule NifTest do
     assert EXGBoost.NIF.get_global_config() |> unwrap!() != :error
   end
 
+  test "dmatrix_create_from_uri" do
+    config = Jason.encode!(%{uri: "test/data/train.txt?format=libsvm"})
+    assert EXGBoost.NIF.dmatrix_create_from_uri(config) |> unwrap!() != :error
+  end
+
   test "dmatrix_create_from_sparse" do
     config = Jason.encode!(%{"missing" => 0.0})
     indptr = Nx.tensor([0, 22])
