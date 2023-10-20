@@ -253,6 +253,8 @@ defmodule EXGBoost.NIF do
   @spec dmatrix_slice(dmatrix_reference(), binary(), 0 | 1) :: dmatrix_reference()
   def dmatrix_slice(_handle, _index_set, _allow_groups), do: :erlang.nif_error(:not_implemented)
 
+  def dmatrix_get_quantile_cut(_handle, _config), do: :erlang.nif_error(:not_implemented)
+
   @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
   def booster_create(_handles), do: :erlang.nif_error(:not_implemented)
 

@@ -53,6 +53,7 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
     {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},
     {"dmatrix_slice", 3, EXGDMatrixSliceDMatrix},
+    {"dmatrix_get_quantile_cut", 2, EXGDMatrixGetQuantileCut},
     {"booster_create", 1, EXGBoosterCreate},
     {"booster_boosted_rounds", 1, EXGBoosterBoostedRounds},
     {"booster_set_param", 3, EXGBoosterSetParam},

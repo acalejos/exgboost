@@ -910,3 +910,44 @@ ERL_NIF_TERM EXGProxyDMatrixCreate(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
+
+ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,
+                                      const ERL_NIF_TERM argv[]) {
+  DMatrixHandle handle;
+  DMatrixHandle **resource = NULL;
+  char *config = NULL;
+  char const *out_indptr = NULL;
+  char const *out_data = NULL;
+  ERL_NIF_TERM ret = -1;
+  int result = -1;
+
+  if (argc != 2) {
+    ret = exg_error(env, "Wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
+                         (void *)&resource)) {
+    ret = exg_error(env, "DMatrix must be a resource");
+    goto END;
+  }
+  if (!exg_get_string(env, argv[1], &config)) {
+    ret = exg_error(env, "Config must be a JSON-Encoded string");
+    goto END;
+  }
+  handle = *resource;
+  result = XGDMatrixGetQuantileCut(handle, config, &out_indptr, &out_data);
+  if (result == 0) {
+    ret = exg_ok(
+        env,
+        enif_make_tuple2(env, enif_make_string(env, out_indptr, ERL_NIF_LATIN1),
+                         enif_make_string(env, out_data, ERL_NIF_LATIN1)));
+  } else {
+    ret = exg_error(env, XGBGetLastError());
+  }
+END:
+  if (config != NULL) {
+    enif_free(config);
+    config = NULL;
+  }
+  return ret;
+}

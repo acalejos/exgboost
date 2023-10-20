@@ -32,6 +32,20 @@ defmodule EXGBoost.Parameters do
         * `:dart` - tree-based models with dropouts
       """
     ],
+    device: [
+      type: {:custom, EXGBoost.Parameters, :validate_device, []},
+      default: :cpu,
+      doc: """
+      Device for XGBoost to run. User can set it to one of the following values:
+        * `:cpu` - Use a CPU.
+        * `:cuda` - Use a GPU (CUDA device).
+        * `{:cuda, ordinal}` -  `ordinal` is an integer that specifies the ordinal of the GPU (which GPU do you want to use if you have more than one devices).
+        * `:gpu` - Default GPU device selection from the list of available and supported devices. Only `cuda` devices are supported currently.
+        * `{:gpu, ordinal}` - Default GPU device selection from the list of available and supported devices. Only `cuda` devices are supported currently.
+
+        For more information about GPU acceleration, see [XGBoost GPU Support](https://xgboost.readthedocs.io/en/stable/gpu/index.html). In distributed environments, ordinal selection is handled by distributed frameworks instead of XGBoost. As a result, using `{:cuda, ordinal}` will result in an error. Use `:cuda` instead.
+      """
+    ],
     verbosity: [
       type: {:custom, EXGBoost.Parameters, :validate_verbosity, []},
       default: :silent,
@@ -308,6 +322,13 @@ defmodule EXGBoost.Parameters do
       classification. See [Multiple Outputs](https://xgboost.readthedocs.io/en/latest/tutorials/multioutput.html) for more information.
         * `:one_output_per_tree` - One model for each target.
         * `:multi_output_tree` - Use multi-target trees.
+      """
+    ],
+    max_cached_hist_node: [
+      type: :non_neg_integer,
+      default: 65536,
+      doc: """
+      Maximum number of cached nodes for CPU histogram. For most of the cases this parameter should not be set except for growing deep trees on CPU.
       """
     ]
   ]
@@ -606,6 +627,21 @@ defmodule EXGBoost.Parameters do
       _ ->
         {:error,
          "Parameter `verbosity` must be in [:silent, :warning, :info, :debug], got #{inspect(x)}"}
+    end
+  end
+
+  def validate_device(x) do
+    case x do
+      {device, ordinal}
+      when device in [:cuda, :gpu] and is_integer(ordinal) and ordinal >= 0 ->
+        {:ok, "#{device}:#{ordinal}"}
+
+      device when device in [:cpu, :gpu, :cuda] ->
+        {:ok, Atom.to_string(device)}
+
+      _ ->
+        {:error,
+         "Parameter `device` must be in [:cpu, :gpu, :cuda, {:cuda, device}, {:gpu, device}], got #{inspect(x)}"}
     end
   end
 

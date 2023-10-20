@@ -2,7 +2,7 @@ defmodule EXGBoost.DMatrix do
   @moduledoc false
 
   # Internal docs for development only
-  """
+  _docstring = """
   Parameters
   ----------
   data :
@@ -157,6 +157,20 @@ defmodule EXGBoost.DMatrix do
     opts = Keyword.validate!(opts, allow_groups: false)
     allow_groups = Keyword.fetch!(opts, :allow_groups)
     EXGBoost.NIF.dmatrix_slice(dmat.ref, Nx.to_binary(r_index), allow_groups)
+  end
+
+  def get_quantile_cut(%__MODULE__{} = dmat) do
+    # https://xgboost.readthedocs.io/en/stable/c.html#_CPPv423XGDMatrixGetQuantileCutK13DMatrixHandlePKcPPKcPPKc
+    # config – JSON configuration string. At the moment it should be an empty document, preserved for future use.
+    config = %{} |> Jason.encode!()
+
+    {indptr, data} =
+      EXGBoost.NIF.dmatrix_get_quantile_cut(dmat.ref, config)
+      |> Internal.unwrap!()
+
+    indptr = Jason.decode!(indptr) |> IO.inspect(charlists: :as_lists)
+    data = Jason.decode!(data) |> IO.inspect(charlists: :as_lists)
+    # TODO -- Make CSC to dense
   end
 
   defimpl Inspect do
