@@ -1,21 +1,26 @@
 name: precompile
 
-on:
-  push:
-    tags:
-      - 'v*'
+on: push
 
 jobs:
   linux:
+    name: Linux Erlang/OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: "prod"
+    strategy:
+      matrix:
+        # Elixir 1.14.5 is first version compatible with OTP 26
+        # NIF versionsss change according to
+        # https://github.com/erlang/otp/blob/dd57c853a324a9572a9e5ce227d8675ff004c6fe/erts/emulator/beam/erl_nif.h#L33
+        otp: ["25.0", "26.0"]
+        elixir: ["1.14.5"]
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: "25.2.1"
-          elixir-version: "1.14"
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
       - name: Install system dependecies
         run: |
           sudo apt-get update
@@ -39,13 +44,26 @@ jobs:
 
   macos:
     runs-on: macos-latest
+    # Homebrew supports versioned Erlang/OTP but not Elixir
+    # It's a deliberate design decision from Homebrew to
+    # only support versioned distrinutions for certin packages
+    name: Mac (Intel) Erlang/OTP ${{matrix.otp}} / Elixir
     env:
       MIX_ENV: "prod"
+    strategy:
+      matrix:
+        otp: ["25.0", "26.0"]
+        elixir: ["1.14.5"]
     steps:
       - uses: actions/checkout@v3
-      - name: Install erlang and elixir
+      - uses: asdf-vm/actions/install@v2
+        with:
+          tool_versions: |
+            erlang ${{matrix.otp}}
+            elixir ${{matrix.elixir}}
+      - name: Install libomp
         run: |
-          brew install erlang elixir libomp
+          brew install libomp
           mix local.hex --force
           mix local.rebar --force
       - name: Mix Test
