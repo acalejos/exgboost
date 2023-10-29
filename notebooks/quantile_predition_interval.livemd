@@ -490,13 +490,9 @@ where
 $$
 \texttt{pinball}(\hat{y}_i, y_i, \alpha) =
   \begin{cases}
-
-```
-|\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
-|\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
-```
-
-\end{cases}
+    |\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
+    |\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
+  \end{cases}
 $$
 
 Essentially, the error should be $0$ if the the prediction matches the true value ($\hat{y}_i = y_i$).
