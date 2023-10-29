@@ -1,0 +1,561 @@
+# Prediction Intervals using Quantile Regression
+
+```elixir
+Mix.install([
+  {:exgboost, "~> 0.3"},
+  {:explorer, "~> 0.7"},
+  {:kino_explorer, "~> 0.1.8"},
+  {:kino_vega_lite, "~> 0.1.8"},
+  {:nx, "~> 0.6"},
+  {:tucan, "~> 0.2"}
+])
+```
+
+## Introduction
+
+This livebook shows how quantile regression can be used to create [prediction intervals](https://en.wikipedia.org/wiki/Prediction_interval). It was inspired by the fantastic example from scikit-learn:
+
+https://scikit-learn.org/stable/auto_examples/ensemble/plot_gradient_boosting_quantile.html
+
+## Synthetic data
+
+First, let's generate some synthetic data to work with.
+We'll apply the function $f(x) = x\sin(x)$ to uniformly sampled random inputs from $x \in [0, 10]$.
+
+```elixir
+# Generate the data.
+key = Nx.Random.key(42)
+{x, key} = Nx.Random.uniform(key, 0.0, 10.0, shape: {1000})
+y_expected = x |> Nx.sin() |> Nx.multiply(x)
+:ok
+```
+
+Now let's plot the data.
+
+We'll be building a number of plots throughout this Livebook using the `Tucan` library, so we'll create a small plotting module for convenience.
+It's just a small wrapper around `Tucan`, but with conveniences for passing in `Nx.Tensor`s.
+
+```elixir
+defmodule NxTucan do
+  @moduledoc "Convenience for plotting `Nx.Tensor`s using the Tucan library"
+  @plot_types [:lineplot, :scatter]
+
+  for plot_type <- @plot_types do
+    def unquote(plot_type)(data, opts), do: plot(unquote(plot_type), data, opts)
+  end
+
+  def plot(plot_type, data, opts) do
+    {cols, rows} = to_tabular(data)
+    apply(Tucan, plot_type, [rows] ++ cols ++ [opts])
+  end
+
+  def to_tabular(data) do
+    {cols, rows} = Enum.unzip(data)
+    cols = Enum.map(cols, &to_string/1)
+
+    rows =
+      rows
+      |> Enum.map(&Nx.to_list/1)
+      |> Enum.zip()
+      |> Enum.map(fn tuple -> cols |> Enum.zip(Tuple.to_list(tuple)) |> Map.new() end)
+
+    {cols, rows}
+  end
+end
+```
+
+Now we can use our new module to do the actual plot:
+
+```elixir
+NxTucan.scatter([x: x, y_expected: y_expected], filled: true)
+|> Tucan.set_width(750)
+```
+
+Then we'll add some random noise to the true output.
+
+```elixir
+sigma = x |> Nx.divide(10) |> Nx.add(0.5)
+
+# Note: log-normal noise was used in the original write-up.
+# Nx doesn't support log-normal yet, so we've just used normal.
+{noise, _key} = Enum.map_reduce(Nx.to_list(sigma), key, &Nx.Random.normal(&2, 0.0, &1 * &1))
+noise = noise |> Nx.stack() |> Nx.subtract(sigma |> Nx.pow(2) |> Nx.divide(2) |> Nx.exp())
+y = Nx.add(y_expected, noise)
+
+Tucan.layers([
+  NxTucan.scatter([x: x, y: y], filled: true, fill_opacity: 0.75),
+  NxTucan.lineplot([x: x, y_expected: y_expected], line_color: "red")
+])
+|> Tucan.set_width(750)
+```
+
+Last we split the data into train and test sets.
+
+```elixir
+split = 0.8
+shuffle_key = key
+{x_shuffled, _key} = Nx.Random.shuffle(shuffle_key, x)
+{y_shuffled, _key} = Nx.Random.shuffle(shuffle_key, y)
+{x_train, x_test} = Nx.split(x_shuffled, split)
+{y_train, y_test} = Nx.split(y_shuffled, split)
+
+[x_train, x_test, y_train, y_test] |> Enum.map(&Nx.size/1)
+
+Tucan.layers([
+  NxTucan.scatter([x_train: x_train, y_train: y_train], filled: true),
+  NxTucan.scatter([x_test: x_test, y_test: y_test], filled: true, point_color: "orange")
+])
+|> Tucan.set_width(750)
+```
+
+## Prediction intervals
+
+Regression models generally make specific predictions.
+If you give a regression model an input $x$, it will return a prediction $\hat{y}$ which it believes to be close to the real output $y$.
+Something regressions models don't typically give you, however, is a sense of how confident they are in their predictions.
+
+One way we quantify a model's confidence is with a _prediction interval_.
+A prediction interval is an interval $[\hat{y}_{\text{lower}}, \hat{y}_{\text{upper}}]$ which a model believes the true $y$ lies in with some probability $p$.
+
+Our goal is to construct a regression model that gives both a prediction and a prediction interval.
+We'll do so by using quantile regression to train 3 separate models on the same data but with the following parameters:
+
+* $\alpha = 0.05$ (5th percentile)
+* $\alpha = 0.50$ (50th percentile -- median)
+* $\alpha = 0.95$ (95th percentile)
+
+The model trained with $\alpha = 0.50$ produces a estimate of the median.
+This will be our actual prediction.
+
+The models trained with $\alpha = 0.05$ and $\alpha = 0.95$ will act as our $\hat{y}_{\text{lower}}$ and $\hat{y}_{\text{upper}}$, resp.
+Together, they'll provide a $90\%$ prediction interval ($95\% - 5\% = 90\%$).
+
+Typically, the $\alpha = 0.50$ estimate will lie within the prediction interval.
+This is not guaranteed, however.
+See the discussion at the end.
+
+```elixir
+opts = [
+  # The default is `max_depth: 6`. It led to a complex model, so I've lowered it.
+  max_depth: 4,
+  # This is how you specify to EXGBoost that it should perform regression.
+  objective: :reg_quantileerror,
+  # This is method generally faster than `:exact`.
+  tree_method: :hist,
+  # The output isn't necessary for our purposes.
+  verbose_eval: false
+]
+
+model = %{
+  p05: EXGBoost.train(x_train, y_train, Keyword.put(opts, :quantile_alpha, 0.05)),
+  p50: EXGBoost.train(x_train, y_train, Keyword.put(opts, :quantile_alpha, 0.50)),
+  p95: EXGBoost.train(x_train, y_train, Keyword.put(opts, :quantile_alpha, 0.95))
+}
+
+:ok
+```
+
+Now we'll plot our model against a validation set (just another $1,000$ points randomly sampled from $[0, 10]$) to get a sense of its performance.
+
+We'll also overlay the test data.
+Remember, the model hasn't seen this data.
+So if the model captures the test data well, we've built a reasonably general model.
+
+```elixir
+{x_val, key} = Nx.Random.uniform(key, 0.0, 10.0, shape: {1000})
+
+y_val_p05 = EXGBoost.predict(model.p05, x_val)
+y_val_p50 = EXGBoost.predict(model.p50, x_val)
+y_val_p95 = EXGBoost.predict(model.p95, x_val)
+
+{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_val_p05, p50: y_val_p50, p95: y_val_p95)
+
+Tucan.layers([
+  Tucan.step(plot_data, "x", "p05", line_color: "black"),
+  Tucan.step(plot_data, "x", "p50", line_color: "blue"),
+  Tucan.step(plot_data, "x", "p95", line_color: "black"),
+  NxTucan.scatter([x_test: x_test, y_test: y_test],
+    point_color: "orange",
+    fill_opacity: 0.75,
+    filled: true
+  )
+])
+|> Tucan.set_width(750)
+|> Tucan.set_height(375)
+```
+
+Not bad!
+It certainly has the rough shape we want:
+
+* The median (blue) generally lies in the "middle" of the test data.
+* And the prediction interval (the space between the two black lines) contains most of the test data (orange).
+
+But we can do better.
+For example, notice how the the prediction interval tends to remain flat across the highly concave parts of the sinusoid.
+That doesn't seem quite right.
+
+However, first, we need to quantify what we mean by "better".
+
+## Metrics: Interval width
+
+An issue with our initial model is that its prediction intervals are too wide (or tall if you like, since the width of the interval appears vertically).
+We generally want our prediction intervals to be as narrow as possible.
+
+We can build a simple metric for the width of the prediction interval -- the average of all the widths:
+
+```elixir
+defmodule Metric.Width do
+  import Nx.Defn
+
+  def calc(model_lo, model_hi, x) do
+    y_lo = EXGBoost.predict(model_lo, x)
+    y_hi = EXGBoost.predict(model_hi, x)
+
+    mean(y_lo, y_hi)
+    |> Nx.to_number()
+  end
+
+  defn(mean(y_lo, y_hi), do: Nx.mean(y_hi - y_lo))
+end
+
+[
+  train: Metric.Width.calc(model.p05, model.p95, x_train),
+  test: Metric.Width.calc(model.p05, model.p95, x_test)
+]
+```
+
+These numbers aren't particularly interpretable at the moment, but we want them to be as low as possible in the improved model.
+
+However, we don't want them _too_ small, or we won't capture the correct percentage of the data.
+
+## Metrics: Coverage
+
+In addition to having narrow prediction intervals, another desirable property of our model is to produce what we'll refer to as "well-calibrated" prediction intervals.
+
+We trained $5\%$ and $95\%$ sub-models to (hopefully) produce an overall 90% prediction interval.
+We should expect, then, that $\approx 90\%$ of the data should lie in that interval. If that's the case, then we can call our overall model well-calibrated.
+
+We can emprically check our model's calibration by calculating its "coverage", i.e. how much of the data lies in the prediction interval:
+
+```elixir
+defmodule Metric.Coverage do
+  import Nx.Defn
+
+  def calc(model_lo, model_hi, x, y) do
+    y_lo = EXGBoost.predict(model_lo, x)
+    y_hi = EXGBoost.predict(model_hi, x)
+
+    Nx.to_number(fraction(y, y_lo, y_hi))
+  end
+
+  defn fraction(y, y_lo, y_hi) do
+    Nx.mean(Nx.logical_and(y >= y_lo, y <= y_hi))
+  end
+end
+
+[
+  train: Metric.Coverage.calc(model.p05, model.p95, x_train, y_train),
+  test: Metric.Coverage.calc(model.p05, model.p95, x_test, y_test)
+]
+```
+
+This is pretty good, though we've captured a bit too much of the both the test and training sets.
+This seems to corroborate our visual observation that the prediction interval doesn't hug the sinusoid as tightly as we might hope.
+
+Now we need to train a model that has balances both these metrics.
+
+## Improved model: combining width and coverage
+
+We want to build a model that has both narrow prediction intervals and good coverage.
+Unfortunately, our lower and upper bounds are trained independently.
+This is a problem because the width and coverage metrics are functions of both bounds.
+
+To work around this, we'll perform hyper-parameter tuning.
+Basically, we're gonna train many models using the same quantile regression as before, but we'll chose the best one based on a metric that `EXGBoost` doesn't know about directly.
+
+For this example, since the size of the data is relatively small, we'll do a simple, brute-force search of the parameter space.
+We'll be varying the following parameters:
+
+* `alpha` (Default: 0)
+  * $L_1$ regularization term on weights. Increasing this value will make model more conservative.
+* `eta` (Default: 0.3)
+  * Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and `eta` shrinks the feature weights to make the boosting process more conservative.
+* `lambda` (Default: 0)
+  * $L_2$ regularization term on weights. Increasing this value will make model more conservative.
+* `max_depth` (Default: 6)
+  * Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
+
+There are more parameters we could tune, but these suffice for demonstration purposes.
+
+This brute-force approach will train hundreds of models. It runs in about 45 seconds for me.
+
+```elixir
+defmodule Metric.Combined do
+  def calc(model_lo, model_hi, x, y) do
+    y_lo = EXGBoost.predict(model_lo, x)
+    y_hi = EXGBoost.predict(model_hi, x)
+
+    coverage = Metric.Coverage.fraction(y, y_lo, y_hi) |> Nx.to_number()
+    coverage_score = abs(0.90 - coverage)
+
+    width_score = Metric.Width.mean(y_lo, y_hi) |> Nx.to_number()
+
+    # Combine both scores with magic weights: the "dark art" of data engineering.
+    2 * coverage_score + width_score / 4
+  end
+end
+
+model_opts =
+  [
+    alpha: 1..3,
+    eta: -2..-5,
+    lambda: 1..3,
+    max_depth: 1..3
+  ]
+  |> Enum.map(fn {k, v} -> {k, Enum.map(v, &(2 ** &1))} end)
+
+# Since we're training so many models, we'll implement early stopping.
+opts =
+  Keyword.merge(opts,
+    early_stopping_rounds: 2,
+    evals: [{x_test, y_test, "test"}],
+    num_boost_rounds: 64
+  )
+
+best_result =
+  for alpha <- model_opts[:alpha],
+      eta <- model_opts[:eta],
+      lambda <- model_opts[:lambda],
+      max_depth <- model_opts[:max_depth],
+      reduce: %{score: 1_000} do
+    acc ->
+      params = [
+        alpha: alpha,
+        eta: eta,
+        lambda: lambda,
+        max_depth: max_depth
+      ]
+
+      train_opts = Keyword.merge(opts, params)
+
+      model_lo = EXGBoost.train(x_train, y_train, Keyword.put(train_opts, :quantile_alpha, 0.05))
+      model_hi = EXGBoost.train(x_train, y_train, Keyword.put(train_opts, :quantile_alpha, 0.95))
+
+      score = Metric.Combined.calc(model_lo, model_hi, x_test, y_test)
+
+      if score < acc[:score] do
+        IO.puts("Best score: #{score}")
+        %{model_lo: model_lo, model_hi: model_hi, params: params, score: score}
+      else
+        acc
+      end
+  end
+
+IO.puts("Best params: #{inspect(best_result[:params])}")
+
+%{model_lo: best_model_lo, model_hi: best_model_hi} = best_result
+```
+
+Now let's plot our new model to see if it improved:
+
+```elixir
+y_lo = EXGBoost.predict(best_model_lo, x_val)
+y_hi = EXGBoost.predict(best_model_hi, x_val)
+
+{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_lo, p50: y_val_p50, p95: y_hi)
+
+Tucan.layers([
+  Tucan.step(plot_data, "x", "p05", line_color: "black"),
+  Tucan.step(plot_data, "x", "p50", line_color: "blue"),
+  Tucan.step(plot_data, "x", "p95", line_color: "black"),
+  NxTucan.scatter([x_test: x_test, y_test: y_test],
+    point_color: "orange",
+    fill_opacity: 0.75,
+    filled: true
+  )
+])
+|> Tucan.set_width(750)
+|> Tucan.set_height(375)
+```
+
+That seems much better!
+At least visually, it looks like our new model has narrower prediction intervals.
+
+But did the model _actually_ improve on the metrics we specified?
+Let's check.
+
+```elixir
+require Explorer.DataFrame, as: DF
+
+[
+  %{
+    model: "old",
+    train_coverage: Metric.Coverage.calc(model.p05, model.p95, x_train, y_train),
+    test_coverage: Metric.Coverage.calc(model.p05, model.p95, x_test, y_test),
+    train_width: Metric.Width.calc(model.p05, model.p95, x_train),
+    test_width: Metric.Width.calc(model.p05, model.p95, x_test)
+  },
+  %{
+    model: "new",
+    train_coverage: Metric.Coverage.calc(best_model_lo, best_model_hi, x_train, y_train),
+    test_coverage: Metric.Coverage.calc(best_model_lo, best_model_hi, x_test, y_test),
+    train_width: Metric.Width.calc(best_model_lo, best_model_hi, x_train),
+    test_width: Metric.Width.calc(best_model_lo, best_model_hi, x_test)
+  }
+]
+|> DF.new()
+```
+
+The train coverage and width metrics both improved. Train coverage is now closer to $0.90$, and the average width was reduced by $\frac{|5.57 - 3.50|}{5.57} = 37.2\%$.
+
+For test, the coverage improved nearly as much.
+But the coverage remained about the same distance from $0.90$ as before, though now the model under-covers instead of over-covering.
+This is probably an acceptable trade-off.
+Though if we wanted further improvements, we could always do more tuning.
+
+## Discussion
+
+The focus of this example was the prediction interval.
+We were able to create a model that would not only predict an output, but also quantify how close it thought its prediction was.
+
+For example:
+
+```elixir
+x_comp = Nx.tensor([1.0, 8.0])
+
+y_comp_p05 = EXGBoost.predict(best_model_lo, x_comp)
+y_comp_p50 = EXGBoost.predict(model.p50, x_comp)
+y_comp_p95 = EXGBoost.predict(best_model_hi, x_comp)
+width = Nx.subtract(y_comp_p95, y_comp_p05)
+
+DF.new(
+  x: x_comp |> Nx.to_list() |> Enum.map(&Float.round(&1, 2)),
+  y_hat: y_comp_p50 |> Nx.to_list() |> Enum.map(&Float.round(&1, 2)),
+  interval_lo: y_comp_p05 |> Nx.to_list() |> Enum.map(&Float.round(&1, 2)),
+  interval_hi: y_comp_p95 |> Nx.to_list() |> Enum.map(&Float.round(&1, 2)),
+  width: width |> Nx.to_list() |> Enum.map(&Float.round(&1, 2))
+)
+```
+
+In a vacuum, we might expect that the model was equally as confident in its two predictions:
+
+* $1 \mapsto -0.59$
+* $8 \mapsto 4.58$
+
+But with the additional context of a prediction interval, we can see that our model is much more confident in the former than the latter:
+
+* $1 \mapsto -0.59 \in [-0.89, 0.07]$ (width: $0.97$)
+* $8 \mapsto  4.58 \in [ 1.89, 7.40]$ (width: $5.51$)
+
+That additional context can be very helpful for anyone who wishes to make a decision based off a prediction.
+However, it's worth discussing the limitations of this model.
+
+## Discussion: Quantile crossing
+
+The fact that the sub-parts of our model were trained independently has already caused some issues.
+Because `EXGBoost` had no knowledge of the metrics we were interested in, we had to train multiple models to find a pair that had the properties we wanted.
+
+Similarly, quantile regression models trained independently as we've done are subject to _quantile crossing_.
+
+Briefly, there's no guarantee that the predictions from the models we've trained will have the right order.
+E.g. the $\alpha = 0.05$ model may sometimes be higher than the $\alpha = 0.95$.
+This ought to rare in a well-trained model.
+But especially when the prediction interval is narrow, crossing can occur.
+
+For the same reason, the actual prediction may sometimes fall outside the prediction interval.
+Again, it ought to be rare if the model was trained well.
+But it's a limitation worth knowing about.
+
+## Discussion: Pinball error
+
+Something else we didn't discuss is how `EXGBoost` trains quantile regression in the first place.
+We discuss it now for completeness and to provide a warning about early stopping.
+
+With most regression tasks, `EXGBoost` is optimizing for a familiar metric such as `mean_absolute_error`:
+
+$$
+\texttt{mean\_absolute\_error} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|
+$$
+
+But the more familiar metrics don't take into account the $\alpha$ that we want to train.
+As such, when `objective: reg_quantileerror` is provided, `EXGBoost` optimizes for a metric called the `mean_quantile_error` / `mean_pinball_error`:
+
+$$
+\texttt{mean\_pinball\_error}(\alpha) =
+  \frac{1}{n} \sum_{i=1}^{n} \texttt{pinball}(\hat{y}_i, y_i, \alpha)
+$$
+
+where
+
+$$
+\texttt{pinball}(\hat{y}_i, y_i, \alpha) =
+  \begin{cases}
+
+```
+|\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
+|\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
+```
+
+\end{cases}
+$$
+
+Essentially, the error should be $0$ if the the prediction matches the true value ($\hat{y}_i = y_i$).
+But the penalty for being incorrect is now a function of the quantile $\alpha$.
+
+Take $\alpha = 0.95$ as an example.
+A model trained for $\alpha = 0.95$ should predict values that are above $95\%$ of the true values.
+So we want high penalties for any prediction below $95\%$, and moderate penalties for being above.
+
+(Sidenote: if $\alpha = 0.5$, the `mean_pinball_error` is equivalent to the `mean_absolute_error` up to a constant factor of $0.5$).
+
+Now let's write our own `mean_pinball_error`:
+
+```elixir
+defmodule Pinball do
+  import Nx.Defn
+
+  defn mean_error(y_pred, y_true, alpha) do
+    dy = y_true - y_pred
+    # if dy < 0, do: alpha, else: alpha - 1
+    coeff = alpha + (dy >= 0) - 1
+    error = coeff * dy
+    Nx.mean(error)
+  end
+end
+```
+
+Then let's score our model on the test data using this metric:
+
+```elixir
+y_pinball_p05 = EXGBoost.predict(best_model_lo, x_test)
+y_pinball_p50 = EXGBoost.predict(model.p50, x_test)
+y_pinball_p95 = EXGBoost.predict(best_model_hi, x_test)
+
+y_preds = [y_pinball_p05, y_pinball_p50, y_pinball_p95]
+alpha_strings = ["05", "50", "95"]
+
+alpha_strings
+|> Map.new(fn alpha_string ->
+  alpha = String.to_float("0.#{alpha_string}")
+
+  y_pred =
+    y_preds
+    |> Enum.map(&Pinball.mean_error(&1, y_test, alpha))
+    |> Enum.map(&Nx.to_number/1)
+    |> Enum.map(&Float.round(&1, 2))
+
+  {"p_#{alpha_string} metric", y_pred}
+end)
+|> Map.put("model", ["q_05", "q_50", "q_95"])
+|> Explorer.DataFrame.new()
+```
+
+Each of the 3 models performed better than the other 2 when the metric matched what quantile it was trained for.
+We can see this in the table above where, for each column, the lowest score lies on the diagonal.
+
+We discuss the pinball error because it's the metric that should be used for early stopping.
+However, `EXGBoost` (not `XGBoost` under the hood) currently does not expose expose this metric through their API.
+
+This isn't terribly surprising as quantile regression is [relatively new](https://github.com/dmlc/xgboost/pull/8750).
+However, if one wished to perform early stopping correctly, they'd need a custom metric set to the `Pinball.mean_error` function provided here (or equivalent).
+This is left as an exercise to the reader :)
