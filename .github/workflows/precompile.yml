@@ -43,15 +43,16 @@ jobs:
             cache/*.tar.gz
 
   macos:
-    runs-on: macos-latest
+    runs-on: ${{matrix.runner}}
     # Homebrew supports versioned Erlang/OTP but not Elixir
     # It's a deliberate design decision from Homebrew to
     # only support versioned distrinutions for certin packages
-    name: Mac (Intel) Erlang/OTP ${{matrix.otp}} / Elixir
+    name: Mac (${{ matrix.runner == 'macos-latest' && 'Intel' || 'ARM' }}) Erlang/OTP ${{matrix.otp}} / Elixir
     env:
       MIX_ENV: "prod"
     strategy:
       matrix:
+        runner: ["macos-latest", "self-hosted"]
         otp: ["25.0", "26.0"]
         elixir: ["1.14.5"]
     steps:
@@ -79,4 +80,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            cache/*.tar.gz
+            ${{ matrix.runner == 'macos-latest' && 'cache/*x86_64*.tar.gz' || 'cache/*aarch64*.tar.gz' }}
