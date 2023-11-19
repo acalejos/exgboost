@@ -138,6 +138,34 @@ END:
   return ret;
 }
 
+ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]) {
+  ErlNifBinary out_bin;
+  ErlNifUInt64 address = 0;
+  ErlNifUInt64 size = 0;
+  ERL_NIF_TERM ret = -1;
+  if (argc != 2) {
+    ret = exg_error(env, "exg_get_binary_address: wrong number of arguments");
+    goto END;
+  }
+  if (!enif_get_uint64(env, argv[0], &address)) {
+    ret = exg_error(env, "exg_get_binary_address: invalid address");
+    goto END;
+  }
+  if (!enif_get_uint64(env, argv[1], &size)) {
+    ret = exg_error(env, "exg_get_binary_address: invalid size");
+    goto END;
+  }
+  if (!enif_alloc_binary(size, &out_bin)) {
+    ret = exg_error(env, "Failed to allocate binary");
+    goto END;
+  }
+  memcpy(out_bin.data, address, size);
+  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+END:
+  return ret;
+}
+
 ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
                               const ERL_NIF_TERM argv[]) {
   ERL_NIF_TERM ret = 0;

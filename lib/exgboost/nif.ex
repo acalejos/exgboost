@@ -209,6 +209,9 @@ defmodule EXGBoost.NIF do
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
+  @spec get_binary_from_address(integer(), integer()) :: exgboost_return_type(binary())
+  def get_binary_from_address(_address, _size), do: :erlang.nif_error(:not_implemented)
+
   @doc """
   Gets a field from the DMatrix. Valid fields are:
   * label

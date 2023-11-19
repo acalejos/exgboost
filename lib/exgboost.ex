@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.3"}
+    {:exgboost, "~> 0.4"}
   ]
   end
   ```
@@ -76,7 +76,8 @@ defmodule EXGBoost do
         learning_rates: fn i -> i / 10 end,
         num_boost_round: 10,
         early_stopping_rounds: 3,
-        params: [max_depth: 3, eval_metric: ["rmse", "logloss"]]
+        max_depth: 3,
+        eval_metric: [:rmse, :logloss]
       )
 
   ## Prediction
@@ -336,7 +337,7 @@ defmodule EXGBoost do
 
     case data do
       %Nx.Tensor{} = data ->
-        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
+        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -350,9 +351,9 @@ defmodule EXGBoost do
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = ArrayInterface.array_interface(indptr) |> Jason.encode!()
-        indices_interface = ArrayInterface.array_interface(indices) |> Jason.encode!()
-        values_interface = ArrayInterface.array_interface(values) |> Jason.encode!()
+        indptr_interface = ArrayInterface.from_tensor(indptr) |> Jason.encode!()
+        indices_interface = ArrayInterface.from_tensor(indices) |> Jason.encode!()
+        values_interface = ArrayInterface.from_tensor(values) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_csr(
@@ -370,7 +371,7 @@ defmodule EXGBoost do
 
       data ->
         data = Nx.concatenate(data)
-        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
+        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -385,7 +386,7 @@ defmodule EXGBoost do
     end
   end
 
-  @format_opts = [
+  @format_opts [
     format: [
       type: {:in, [:json, :ubj]},
       default: :json,
@@ -395,7 +396,7 @@ defmodule EXGBoost do
     ]
   ]
 
-  @overwrite_opts = [
+  @overwrite_opts [
     overwrite: [
       type: :boolean,
       default: false,
@@ -405,9 +406,9 @@ defmodule EXGBoost do
     ]
   ]
 
-  @load_opts = [
+  @load_opts [
     booster: [
-      type: {:struct, __MODULE__},
+      type: {:struct, Booster},
       doc: """
       The Booster to load the model into. If a Booster is provided, the model will be loaded into
       that Booster. Otherwise, a new Booster will be created. If a Booster is provided, model parameters
@@ -474,6 +475,9 @@ defmodule EXGBoost do
   end
 
   @doc """
+  Dump a model config to a buffer as a JSON - encoded string.
+
+  ## Options
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_config(Booster.t()) :: binary()
@@ -521,6 +525,7 @@ defmodule EXGBoost do
   @doc """
   Dump a model's trained parameters to a buffer as a JSON-encoded binary.
 
+  ## Options
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_weights(Booster.t()) :: binary()

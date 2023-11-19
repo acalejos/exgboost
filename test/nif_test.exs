@@ -1,7 +1,7 @@
 defmodule NifTest do
   use ExUnit.Case, async: true
   import EXGBoost.Internal
-  import EXGBoost.ArrayInterface, only: [array_interface: 1]
+  import EXGBoost.ArrayInterface, only: [from_tensor: 1]
 
   test "exgboost_version" do
     assert EXGBoost.NIF.xgboost_version() |> unwrap!() != :error
@@ -85,9 +85,9 @@ defmodule NifTest do
       ])
 
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             array_interface(indptr) |> Jason.encode!(),
-             array_interface(indices) |> Jason.encode!(),
-             array_interface(data) |> Jason.encode!(),
+             from_tensor(indptr) |> Jason.encode!(),
+             from_tensor(indices) |> Jason.encode!(),
+             from_tensor(data) |> Jason.encode!(),
              ncols,
              config,
              "csr"
@@ -96,9 +96,9 @@ defmodule NifTest do
              :error
 
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             array_interface(indptr) |> Jason.encode!(),
-             array_interface(indices) |> Jason.encode!(),
-             array_interface(data) |> Jason.encode!(),
+             from_tensor(indptr) |> Jason.encode!(),
+             from_tensor(indices) |> Jason.encode!(),
+             from_tensor(data) |> Jason.encode!(),
              ncols,
              config,
              "csc"
@@ -108,9 +108,9 @@ defmodule NifTest do
 
     {status, _} =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        array_interface(indptr) |> Jason.encode!(),
-        array_interface(indices) |> Jason.encode!(),
-        array_interface(data) |> Jason.encode!(),
+        from_tensor(indptr) |> Jason.encode!(),
+        from_tensor(indices) |> Jason.encode!(),
+        from_tensor(data) |> Jason.encode!(),
         ncols,
         config,
         "csa"
@@ -121,7 +121,7 @@ defmodule NifTest do
 
   test "test_dmatrix_create_from_dense" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -132,7 +132,7 @@ defmodule NifTest do
 
   test "test_dmatrix_set_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -149,7 +149,7 @@ defmodule NifTest do
 
   test "test_dmatrix_get_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -164,7 +164,7 @@ defmodule NifTest do
 
   test "dmatrix_num_row" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -177,7 +177,7 @@ defmodule NifTest do
 
   test "dmatrix_num_col" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -190,7 +190,7 @@ defmodule NifTest do
 
   test "dmatrix_num_non_missing" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -203,7 +203,7 @@ defmodule NifTest do
 
   test "dmatrix_set_info_from_interface" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
     labels = Nx.tensor([1.0, 0.0])
 
     config = Jason.encode!(%{"missing" => -1.0})
@@ -212,7 +212,7 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    label_interface = array_interface(labels) |> Jason.encode!()
+    label_interface = from_tensor(labels) |> Jason.encode!()
 
     assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
@@ -230,7 +230,7 @@ defmodule NifTest do
 
   test "dmatrix_save_binary" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
     labels = Nx.tensor([1.0, 0.0])
 
     config = Jason.encode!(%{"missing" => -1.0})
@@ -239,7 +239,7 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    interface = array_interface(labels) |> Jason.encode!()
+    interface = from_tensor(labels) |> Jason.encode!()
 
     EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
 
@@ -249,7 +249,7 @@ defmodule NifTest do
 
   test "dmatrix_get_float_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
     weights = Nx.tensor([1.0, 0.0])
 
     config = Jason.encode!(%{"missing" => -1.0})
@@ -258,32 +258,16 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    interface = array_interface(weights) |> Jason.encode!()
+    interface = from_tensor(weights) |> Jason.encode!()
     EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'feature_weights', interface)
 
     assert EXGBoost.NIF.dmatrix_get_float_info(dmat, 'feature_weights') |> unwrap!() ==
              Nx.to_list(weights)
   end
 
-  # test "dmatrix_get_uint_info" do
-  #   mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-  #   array_interface = array_interface(mat) |> Jason.encode!()
-  #   groups = Nx.tensor([1])
-
-  #   config = Jason.encode!(%{"missing" => -1.0})
-
-  #   dmat =
-  #     EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
-  #     |> unwrap!()
-
-  #   interface = array_interface(groups) |> Jason.encode!()
-  #   EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'group_ptr', interface)
-  #   assert EXGBoost.NIF.dmatrix_get_uint_info(dmat, 'group_ptr') |> unwrap!() == groups
-  # end
-
   test "dmatrix_get_data_as_csr" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -296,7 +280,7 @@ defmodule NifTest do
 
   test "dmatrix_slice" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -335,8 +319,8 @@ defmodule NifTest do
   test "booster_create" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat2 = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
-    array_interface2 = array_interface(mat2) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
+    array_interface2 = from_tensor(mat2) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -355,7 +339,7 @@ defmodule NifTest do
 
   test "booster_get_num_feature" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -369,7 +353,7 @@ defmodule NifTest do
 
   test "test_booster_set_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -388,7 +372,7 @@ defmodule NifTest do
 
   test "test_booster_get_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -406,7 +390,7 @@ defmodule NifTest do
   test "test_boster_feature_score" do
     # TODO: Make more robust test. This will just return an empty list
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -422,7 +406,7 @@ defmodule NifTest do
 
   test "save model" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -443,7 +427,7 @@ defmodule NifTest do
 
   test "load model" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -464,7 +448,7 @@ defmodule NifTest do
 
   test "booster serialize" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -478,7 +462,7 @@ defmodule NifTest do
 
   test "booster deserialize" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -494,7 +478,7 @@ defmodule NifTest do
 
   test "save booster config" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 
@@ -508,7 +492,7 @@ defmodule NifTest do
 
   test "load booster config" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    array_interface = array_interface(mat) |> Jason.encode!()
+    array_interface = from_tensor(mat) |> Jason.encode!()
 
     config = Jason.encode!(%{"missing" => -1.0})
 

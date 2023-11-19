@@ -22,12 +22,6 @@ EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
 CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -I$(ERTS_INCLUDE_DIR)  -fPIC -O3 --verbose -shared -std=c11
-# TODO: Check CUDA_TOOLKIT_VERSION before setting BUILD_WITH_CUDA_CUB to ON
-ifeq ($(USE_CUDA), true)
-	CMAKE_FLAGS += -DUSE_CUDA=ON -DBUILD_WITH_CUDA_CUB=ON
-else
-	CMAKE_FLAGS += -DUSE_CUDA=OFF -DBUILD_WITH_CUDA_CUB=OFF
-endif
 
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
 

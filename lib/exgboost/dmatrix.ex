@@ -133,7 +133,7 @@ defmodule EXGBoost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = ArrayInterface.array_interface(value) |> Jason.encode!()
+      data_interface = ArrayInterface.from_tensor(value) |> Jason.encode!()
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
@@ -159,6 +159,12 @@ defmodule EXGBoost.DMatrix do
     EXGBoost.NIF.dmatrix_slice(dmat.ref, Nx.to_binary(r_index), allow_groups)
   end
 
+  @doc """
+  Export the quantile cuts used for training histogram-based models like `hist` and `approx`.
+  Useful for model compression.
+
+  Returns a tuple of {indptr, data} representing a CSC matrix of the cuts.
+  """
   def get_quantile_cut(%__MODULE__{} = dmat) do
     # https://xgboost.readthedocs.io/en/stable/c.html#_CPPv423XGDMatrixGetQuantileCutK13DMatrixHandlePKcPPKcPPKc
     # config – JSON configuration string. At the moment it should be an empty document, preserved for future use.
@@ -168,9 +174,17 @@ defmodule EXGBoost.DMatrix do
       EXGBoost.NIF.dmatrix_get_quantile_cut(dmat.ref, config)
       |> Internal.unwrap!()
 
-    indptr = Jason.decode!(indptr) |> IO.inspect(charlists: :as_lists)
-    data = Jason.decode!(data) |> IO.inspect(charlists: :as_lists)
-    # TODO -- Make CSC to dense
+    indptr =
+      Jason.decode!(indptr)
+      |> ArrayInterface.from_map()
+      |> ArrayInterface.get_tensor()
+
+    data =
+      Jason.decode!(data)
+      |> ArrayInterface.from_map()
+      |> ArrayInterface.get_tensor()
+
+    {indptr, data}
   end
 
   defimpl Inspect do
@@ -298,7 +312,7 @@ defmodule EXGBoost.DMatrix do
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(ArrayInterface.array_interface(tensor)),
+        Jason.encode!(ArrayInterface.from_tensor(tensor)),
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -357,9 +371,9 @@ defmodule EXGBoost.DMatrix do
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(ArrayInterface.array_interface(indptr)),
-        Jason.encode!(ArrayInterface.array_interface(indices)),
-        Jason.encode!(ArrayInterface.array_interface(data)),
+        Jason.encode!(ArrayInterface.from_tensor(indptr)),
+        Jason.encode!(ArrayInterface.from_tensor(indices)),
+        Jason.encode!(ArrayInterface.from_tensor(data)),
         n,
         Jason.encode!(config),
         Atom.to_string(format)

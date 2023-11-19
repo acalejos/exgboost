@@ -301,4 +301,13 @@ defmodule EXGBoostTest do
     config = EXGBoost.load_config(buffer)
     assert is_map(config)
   end
+
+  test "array interface get tensor" do
+    tensor = Nx.tensor([[1, 2, 3], [4, 5, 6]])
+    array_interface = EXGBoost.ArrayInterface.from_tensor(tensor)
+    # Set this to nil so we can test the get_tensor reconstruction
+    array_interface = struct(array_interface, tensor: nil)
+
+    assert EXGBoost.ArrayInterface.get_tensor(array_interface) == tensor
+  end
 end
