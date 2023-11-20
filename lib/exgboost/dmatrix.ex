@@ -72,19 +72,13 @@ defmodule EXGBoost.DMatrix do
   ]
   defstruct [
     :ref,
-    :format,
-    :label,
-    :weight,
-    :base_margin,
-    :group,
-    :label_upper_bound,
-    :label_lower_bound,
-    :feature_weights,
-    :missing,
-    :nthread,
-    :feature_names,
-    :feature_types
+    :format
   ]
+
+  @type t :: %__MODULE__{
+          ref: reference(),
+          format: atom()
+        }
 
   def get_float_info(dmatrix, feature)
       when feature in [

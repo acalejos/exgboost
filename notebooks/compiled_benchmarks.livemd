@@ -3,7 +3,7 @@
 ```elixir
 Mix.install([
   {:scidata, "~> 0.1"},
-  {:exgboost, github: "acalejos/exgboost"},
+  {:exgboost, "~> 0.4"},
   {:mockingjay, github: "acalejos/mockingjay"},
   {:nx, "~> 0.5", override: true},
   {:exla, "~> 0.5"},
