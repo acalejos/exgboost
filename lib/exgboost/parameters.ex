@@ -1,4 +1,6 @@
 defmodule EXGBoost.Parameters do
+  import Exterval
+
   @global_params [
     verbosity: [
       type: {:custom, EXGBoost.Parameters, :validate_verbosity, []},
@@ -28,6 +30,20 @@ defmodule EXGBoost.Parameters do
         * `:gbtree` - tree-based models
         * `:gblinear` - linear models
         * `:dart` - tree-based models with dropouts
+      """
+    ],
+    device: [
+      type: {:custom, EXGBoost.Parameters, :validate_device, []},
+      default: :cpu,
+      doc: """
+      Device for XGBoost to run. User can set it to one of the following values:
+        * `:cpu` - Use a CPU.
+        * `:cuda` - Use a GPU (CUDA device).
+        * `{:cuda, ordinal}` -  `ordinal` is an integer that specifies the ordinal of the GPU (which GPU do you want to use if you have more than one devices).
+        * `:gpu` - Default GPU device selection from the list of available and supported devices. Only `cuda` devices are supported currently.
+        * `{:gpu, ordinal}` - Default GPU device selection from the list of available and supported devices. Only `cuda` devices are supported currently.
+
+        For more information about GPU acceleration, see [XGBoost GPU Support](https://xgboost.readthedocs.io/en/stable/gpu/index.html). In distributed environments, ordinal selection is handled by distributed frameworks instead of XGBoost. As a result, using `{:cuda, ordinal}` will result in an error. Use `:cuda` instead.
       """
     ],
     verbosity: [
@@ -81,7 +97,7 @@ defmodule EXGBoost.Parameters do
 
   @tree_booster_params [
     eta: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,1]"]},
+      type: {:in, ~I<[0,1]>},
       default: 0.3,
       doc: """
       Step size shrinkage used in update to prevents overfitting. After each
@@ -91,7 +107,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     gamma: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 0.0,
       doc: ~S"""
       Minimum loss reduction required to make a further partition on a leaf node
@@ -110,7 +126,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     min_child_weight: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 1,
       doc: ~S"""
       Minimum sum of instance weight (hessian) needed in a child. If the tree partition
@@ -122,7 +138,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     max_delta_step: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 0,
       doc: ~S"""
       Maximum delta step we allow each tree's weight estimation to be. If the value is set
@@ -133,7 +149,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     subsample: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1]"]},
+      type: {:in, ~I<(0,1]>},
       default: 1.0,
       doc: """
       Subsample ratio of the training instance. Setting it to `0.5` means that XGBoost
@@ -163,7 +179,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     lambda: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 1,
       doc: ~S"""
       L2 regularization term on weights. Increasing this value will make model more conservative.
@@ -171,7 +187,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     alpha: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 0,
       doc: ~S"""
       L1 regularization term on weights. Increasing this value will make model more conservative.
@@ -307,6 +323,13 @@ defmodule EXGBoost.Parameters do
         * `:one_output_per_tree` - One model for each target.
         * `:multi_output_tree` - Use multi-target trees.
       """
+    ],
+    max_cached_hist_node: [
+      type: :non_neg_integer,
+      default: 65536,
+      doc: """
+      Maximum number of cached nodes for CPU histogram. For most of the cases this parameter should not be set except for growing deep trees on CPU.
+      """
     ]
   ]
 
@@ -335,7 +358,7 @@ defmodule EXGBoost.Parameters do
                              """
                            ],
                            rate_drop: [
-                             type: {:custom, EXGBoost.Parameters, :in_range, ["[0,1]"]},
+                             type: {:in, ~I<[0,1]>},
                              default: 0.0,
                              doc: """
                              Dropout rate (a fraction of previous trees to drop during the dropout). Valid range is [0, 1].
@@ -349,7 +372,7 @@ defmodule EXGBoost.Parameters do
                              """
                            ],
                            skip_drop: [
-                             type: {:custom, EXGBoost.Parameters, :in_range, ["[0,1]"]},
+                             type: {:in, ~I<[0,1]>},
                              default: 0.0,
                              doc: """
                              Probability of skipping the dropout procedure during a boosting iteration. Valid range is [0, 1].
@@ -494,7 +517,7 @@ defmodule EXGBoost.Parameters do
 
   @tweedie_params [
     tweedie_variance_power: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["(1,2)"]},
+      type: {:in, ~I<(1,2)>},
       default: 1.5,
       doc: """
       Parameter that controls the variance of the Tweedie distribution `var(y) ~ E(y)^tweedie_variance_power`.
@@ -507,7 +530,7 @@ defmodule EXGBoost.Parameters do
 
   @pseudohubererror_params [
     huber_slope: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[0,:inf]"]},
+      type: {:in, ~I<[0,:infinity]>},
       default: 1.0,
       doc: """
       A parameter used for Pseudo-Huber loss.
@@ -526,7 +549,7 @@ defmodule EXGBoost.Parameters do
 
   @quantileerror_params [
     quantile_alpha: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["(0,1)"]},
+      type: {:in, ~I<(0,1)>},
       default: 0.5,
       doc: """
       Targeted Quantile.
@@ -555,7 +578,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     lambdarank_num_pair_per_sample: [
-      type: {:custom, EXGBoost.Parameters, :in_range, ["[1,:inf]"]},
+      type: {:in, ~I<[1,:infinity]>},
       doc: ~S"""
            It specifies the number of pairs sampled for each document when pair method is `:mean`, or the truncation level for queries when the pair method is `:topk`. For example, to train with `{:ndcg,6}`, set `:lambdarank_num_pair_per_sample` to `6` and `:lambdarank_pair_method` to `topk`. Valid range is [1, $\infty$].
       """
@@ -607,6 +630,21 @@ defmodule EXGBoost.Parameters do
     end
   end
 
+  def validate_device(x) do
+    case x do
+      {device, ordinal}
+      when device in [:cuda, :gpu] and is_integer(ordinal) and ordinal >= 0 ->
+        {:ok, "#{device}:#{ordinal}"}
+
+      device when device in [:cpu, :gpu, :cuda] ->
+        {:ok, Atom.to_string(device)}
+
+      _ ->
+        {:error,
+         "Parameter `device` must be in [:cpu, :gpu, :cuda, {:cuda, device}, {:gpu, device}], got #{inspect(x)}"}
+    end
+  end
+
   @doc false
   def validate_colsample(x) do
     unless is_list(x) do
@@ -615,7 +653,7 @@ defmodule EXGBoost.Parameters do
       Enum.reduce_while(x, {:ok, []}, fn x, {_status, acc} ->
         case x do
           {key, value} when key in [:tree, :level, :node] and is_number(value) ->
-            if in_range(value, "(0,1]") do
+            if value in ~I<(0,1]> do
               {:cont, {:ok, [{String.to_atom("colsample_by#{key}"), value} | acc]}}
             else
               {:halt, {:error, "Parameter `colsample` must be in (0,1], got #{inspect(x)}"}}
@@ -761,61 +799,6 @@ defmodule EXGBoost.Parameters do
       {:error,
        "Parameter `updater` must only contain values in [:grow_colmaker, :prune, :refresh, :grow_histmaker, :sync, :refresh], got #{inspect(single)}"}
     end
-  end
-
-  @doc false
-  def in_range(value, range_str) do
-    {left_bracket, min, max, right_bracket} =
-      Regex.run(~r/^(\[|\()(-?\d+|:inf|:neg_inf),(-?\d+|:inf|:neg_inf)(]|\))$/, range_str,
-        capture: :all_but_first
-      )
-      |> List.to_tuple()
-
-    in_range? =
-      case {left_bracket, min, max, right_bracket} do
-        {_, ":neg_inf", ":inf", _} ->
-          true
-
-        {_, ":neg_inf", max, "]"} ->
-          {max, _rem} = Float.parse(max)
-          value <= max
-
-        {_, ":neg_inf", max, ")"} ->
-          {max, _rem} = Float.parse(max)
-          value < max
-
-        {"[", min, ":inf", _} ->
-          {min, _rem} = Float.parse(min)
-          value >= min
-
-        {"(", min, ":inf", _} ->
-          value > min
-
-        {"[", min, max, "]"} ->
-          {max, _rem} = Float.parse(max)
-          {min, _rem} = Float.parse(min)
-          value >= min and value <= max
-
-        {"(", min, max, "]"} ->
-          {max, _rem} = Float.parse(max)
-          {min, _rem} = Float.parse(min)
-          value > min and value <= max
-
-        {"[", min, max, ")"} ->
-          {max, _rem} = Float.parse(max)
-          {min, _rem} = Float.parse(min)
-          value >= min and value < max
-
-        {"(", min, max, ")"} ->
-          {max, _rem} = Float.parse(max)
-          {min, _rem} = Float.parse(min)
-          value > min and value < max
-
-        _ ->
-          raise ArgumentError, "Invalid range specification"
-      end
-
-    if in_range?, do: {:ok, value}, else: {:error, "Value #{value} is not in range #{range_str}"}
   end
 
   @global_schema NimbleOptions.new!(@global_params)

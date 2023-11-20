@@ -5,7 +5,8 @@
 TEMP ?= $(HOME)/.cache
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-XGBOOST_GIT_REV ?= 08ce495b5de973033160e7c7b650abf59346a984
+# 2.0.2 Release Commit
+XGBOOST_GIT_REV ?= 41ce8f28b269dbb7efc70e3a120af3c0bb85efe3
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
@@ -13,20 +14,14 @@ XGBOOST_LIB_DIR_FLAG = $(XGBOOST_LIB_DIR)/exgboost.ok
 
 # Private configuration
 PRIV_DIR = $(MIX_APP_PATH)/priv
-EXGBOOST_DIR = c/exgboost
+EXGBOOST_DIR = $(realpath c/exgboost)
 EXGBOOST_CACHE_SO = cache/libexgboost.so
 EXGBOOST_CACHE_LIB_DIR = cache/lib
 EXGBOOST_SO = $(PRIV_DIR)/libexgboost.so
 EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
-CFLAGS = -I$(ERTS_INCLUDE_DIR) -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -fPIC -O3 --verbose -shared -std=c11
-# TODO: Check CUDA_TOOLKIT_VERSION before setting BUILD_WITH_CUDA_CUB to ON
-ifeq ($(USE_CUDA), true)
-	CMAKE_FLAGS += -DUSE_CUDA=ON -DBUILD_WITH_CUDA_CUB=ON
-else
-	CMAKE_FLAGS += -DUSE_CUDA=OFF -DBUILD_WITH_CUDA_CUB=OFF
-endif
+CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -I$(ERTS_INCLUDE_DIR)  -fPIC -O3 --verbose -shared -std=c11
 
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
 

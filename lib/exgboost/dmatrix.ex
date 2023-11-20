@@ -2,7 +2,7 @@ defmodule EXGBoost.DMatrix do
   @moduledoc false
 
   # Internal docs for development only
-  """
+  _docstring = """
   Parameters
   ----------
   data :
@@ -72,19 +72,13 @@ defmodule EXGBoost.DMatrix do
   ]
   defstruct [
     :ref,
-    :format,
-    :label,
-    :weight,
-    :base_margin,
-    :group,
-    :label_upper_bound,
-    :label_lower_bound,
-    :feature_weights,
-    :missing,
-    :nthread,
-    :feature_names,
-    :feature_types
+    :format
   ]
+
+  @type t :: %__MODULE__{
+          ref: reference(),
+          format: atom()
+        }
 
   def get_float_info(dmatrix, feature)
       when feature in [
@@ -133,7 +127,7 @@ defmodule EXGBoost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = ArrayInterface.array_interface(value) |> Jason.encode!()
+      data_interface = ArrayInterface.from_tensor(value) |> Jason.encode!()
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
@@ -157,6 +151,34 @@ defmodule EXGBoost.DMatrix do
     opts = Keyword.validate!(opts, allow_groups: false)
     allow_groups = Keyword.fetch!(opts, :allow_groups)
     EXGBoost.NIF.dmatrix_slice(dmat.ref, Nx.to_binary(r_index), allow_groups)
+  end
+
+  @doc """
+  Export the quantile cuts used for training histogram-based models like `hist` and `approx`.
+  Useful for model compression.
+
+  Returns a tuple of {indptr, data} representing a CSC matrix of the cuts.
+  """
+  def get_quantile_cut(%__MODULE__{} = dmat) do
+    # https://xgboost.readthedocs.io/en/stable/c.html#_CPPv423XGDMatrixGetQuantileCutK13DMatrixHandlePKcPPKcPPKc
+    # config – JSON configuration string. At the moment it should be an empty document, preserved for future use.
+    config = %{} |> Jason.encode!()
+
+    {indptr, data} =
+      EXGBoost.NIF.dmatrix_get_quantile_cut(dmat.ref, config)
+      |> Internal.unwrap!()
+
+    indptr =
+      Jason.decode!(indptr)
+      |> ArrayInterface.from_map()
+      |> ArrayInterface.get_tensor()
+
+    data =
+      Jason.decode!(data)
+      |> ArrayInterface.from_map()
+      |> ArrayInterface.get_tensor()
+
+    {indptr, data}
   end
 
   defimpl Inspect do
@@ -202,7 +224,8 @@ defmodule EXGBoost.DMatrix do
         cacheprefix: nil,
         format: :dense,
         ext: :auto,
-        silent: 1
+        silent: 1,
+        data_split_mode: :row
       )
 
     if not (File.exists?(filepath) and File.regular?(filepath)) do
@@ -214,6 +237,11 @@ defmodule EXGBoost.DMatrix do
     {format, opts} = Keyword.pop!(opts, :format)
     {label_column, opts} = Keyword.pop!(opts, :label_column)
     {cacheprefix, opts} = Keyword.pop!(opts, :cacheprefix)
+    {data_split_mode, opts} = Keyword.pop!(opts, :data_split_mode)
+
+    unless data_split_mode in [:row, :column] do
+      raise ArgumentError, "data_split_mode must be :row or :column"
+    end
 
     ext =
       case file_format do
@@ -227,9 +255,9 @@ defmodule EXGBoost.DMatrix do
 
     if file_format != :csv and not is_nil(label_column) do
       if silent == 1 do
-        IO.warn("label_column only be specified for CSV files -- ignoring...")
+        IO.warn("label_column should only be specified for CSV files -- ignoring...")
       else
-        raise ArgumentError, "label_column only be specified for CSV files"
+        raise ArgumentError, "label_column should only be specified for CSV files"
       end
     end
 
@@ -250,16 +278,15 @@ defmodule EXGBoost.DMatrix do
 
     uri =
       if not is_nil(cacheprefix) and File.exists?(cacheprefix) and File.regular?(cacheprefix) do
-        uri <> "#cacheprefix=#{cacheprefix}"
+        uri <> "##{cacheprefix}"
       else
         uri
       end
 
+    config = %{uri: uri, silent: silent, data_split_mode: data_split_mode} |> Jason.encode!()
+
     dmat =
-      EXGBoost.NIF.dmatrix_create_from_file(
-        uri,
-        silent
-      )
+      EXGBoost.NIF.dmatrix_create_from_uri(config)
       |> Internal.unwrap!()
 
     set_params(%__MODULE__{ref: dmat, format: format}, opts)
@@ -279,7 +306,7 @@ defmodule EXGBoost.DMatrix do
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(ArrayInterface.array_interface(tensor)),
+        Jason.encode!(ArrayInterface.from_tensor(tensor)),
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -338,9 +365,9 @@ defmodule EXGBoost.DMatrix do
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(ArrayInterface.array_interface(indptr)),
-        Jason.encode!(ArrayInterface.array_interface(indices)),
-        Jason.encode!(ArrayInterface.array_interface(data)),
+        Jason.encode!(ArrayInterface.from_tensor(indptr)),
+        Jason.encode!(ArrayInterface.from_tensor(indices)),
+        Jason.encode!(ArrayInterface.from_tensor(data)),
         n,
         Jason.encode!(config),
         Atom.to_string(format)

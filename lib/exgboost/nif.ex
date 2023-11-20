@@ -82,6 +82,7 @@ defmodule EXGBoost.NIF do
   """
   def get_global_config, do: :erlang.nif_error(:not_implemented)
 
+  @deprecated "Since 0.4.0 -- Use `EXGBoost.NIF.dmatrix_create_from_uri/1` instead"
   @spec dmatrix_create_from_file(String.t(), Integer) ::
           exgboost_return_type(reference)
   @doc """
@@ -98,6 +99,9 @@ defmodule EXGBoost.NIF do
   """
   def dmatrix_create_from_file(_file_uri, _silent),
     do: :erlang.nif_error(:not_implemented)
+
+  @since "0.4.0"
+  def dmatrix_create_from_uri(_config), do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::
           exgboost_return_type(dmatrix_reference())
@@ -205,6 +209,9 @@ defmodule EXGBoost.NIF do
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
+  @spec get_binary_from_address(integer(), integer()) :: exgboost_return_type(binary())
+  def get_binary_from_address(_address, _size), do: :erlang.nif_error(:not_implemented)
+
   @doc """
   Gets a field from the DMatrix. Valid fields are:
   * label
@@ -248,6 +255,8 @@ defmodule EXGBoost.NIF do
   """
   @spec dmatrix_slice(dmatrix_reference(), binary(), 0 | 1) :: dmatrix_reference()
   def dmatrix_slice(_handle, _index_set, _allow_groups), do: :erlang.nif_error(:not_implemented)
+
+  def dmatrix_get_quantile_cut(_handle, _config), do: :erlang.nif_error(:not_implemented)
 
   @spec booster_create([dmatrix_reference()]) :: exgboost_return_type(booster_reference())
   def booster_create(_handles), do: :erlang.nif_error(:not_implemented)

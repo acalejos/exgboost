@@ -16,6 +16,7 @@ defmodule ParameterTest do
     num_boost_round = 10
 
     params = [
+      device: :cpu,
       num_boost_rounds: num_boost_round,
       tree_method: :hist,
       obj: :multi_softprob,
@@ -85,7 +86,8 @@ defmodule ParameterTest do
       alpha: 0.1,
       updater: :coord_descent,
       feature_selector: :greedy,
-      top_k: 1
+      top_k: 1,
+      device: {:gpu, 0}
     ]
 
     booster = EXGBoost.train(x, y, params)

@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.3"}
+    {:exgboost, "~> 0.4"}
   ]
   end
   ```
@@ -76,7 +76,8 @@ defmodule EXGBoost do
         learning_rates: fn i -> i / 10 end,
         num_boost_round: 10,
         early_stopping_rounds: 3,
-        params: [max_depth: 3, eval_metric: ["rmse", "logloss"]]
+        max_depth: 3,
+        eval_metric: [:rmse, :logloss]
       )
 
   ## Prediction
@@ -109,9 +110,9 @@ defmodule EXGBoost do
   - `load`/`dump` - Binary buffer.
 
   ### Output Contents
-  - 'config' - Save the configuration only.
-  - 'weights' - Save the model parameters only.
-  - 'model' - Save both the model parameters and the configuration.
+  - `config` - Save the configuration only.
+  - `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
+  - `model` - Save both the model parameters and the configuration.
   """
 
   alias EXGBoost.ArrayInterface
@@ -197,7 +198,7 @@ defmodule EXGBoost do
 
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
 
-  * `:callbacks` - List of EXGBoost.Training.Callback that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Callback` module.
+  * `:callbacks` - List of `EXGBoost.Training.Callback` that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Training.Callback` module.
       Callbacks should be in the form of a keyword list where the only valid keys are `:before_training`, `:after_training`, `:before_iteration`, and `:after_iteration`.
       The value of each key should be a list of functions that accepts a booster and an iteration and returns a booster. The function will be called at the appropriate time with the booster and the iteration
       as the arguments. The function should return the booster. If the function returns a booster with a different memory address, the original booster will be replaced with the new booster.
@@ -336,7 +337,7 @@ defmodule EXGBoost do
 
     case data do
       %Nx.Tensor{} = data ->
-        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
+        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -350,9 +351,9 @@ defmodule EXGBoost do
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = ArrayInterface.array_interface(indptr) |> Jason.encode!()
-        indices_interface = ArrayInterface.array_interface(indices) |> Jason.encode!()
-        values_interface = ArrayInterface.array_interface(values) |> Jason.encode!()
+        indptr_interface = ArrayInterface.from_tensor(indptr) |> Jason.encode!()
+        indices_interface = ArrayInterface.from_tensor(indices) |> Jason.encode!()
+        values_interface = ArrayInterface.from_tensor(values) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_csr(
@@ -370,7 +371,7 @@ defmodule EXGBoost do
 
       data ->
         data = Nx.concatenate(data)
-        data_interface = ArrayInterface.array_interface(data) |> Jason.encode!()
+        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -385,16 +386,52 @@ defmodule EXGBoost do
     end
   end
 
+  @format_opts [
+    format: [
+      type: {:in, [:json, :ubj]},
+      default: :json,
+      doc: """
+      The format to serialize to. Can be either `:json` or `:ubj`.
+      """
+    ]
+  ]
+
+  @overwrite_opts [
+    overwrite: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to overwrite the file if it already exists.
+      """
+    ]
+  ]
+
+  @load_opts [
+    booster: [
+      type: {:struct, Booster},
+      doc: """
+      The Booster to load the model into. If a Booster is provided, the model will be loaded into
+      that Booster. Otherwise, a new Booster will be created. If a Booster is provided, model parameters
+      will be merged with the existing Booster's parameters using Map.merge/2, where the parameters
+      of the provided Booster take precedence.
+      """
+    ]
+  ]
+
+  @write_schema NimbleOptions.new!(@format_opts ++ @overwrite_opts)
+  @dump_schema NimbleOptions.new!(@format_opts)
+  @load_schema NimbleOptions.new!(@load_opts)
+
   @doc """
   Write a model to a file.
 
   ## Options
-  * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
-  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_model(Booster.t(), String.t()) :: :ok | {:error, String.t()}
-  def write_model(%Booster{} = booster, path) do
-    EXGBoost.Booster.save(booster, path: path, serialize: :model)
+  def write_model(%Booster{} = booster, path, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @write_schema)
+    EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :model])
   end
 
   @doc """
@@ -409,11 +446,12 @@ defmodule EXGBoost do
   Dump a model to a binary encoded in the desired format.
 
   ## Options
-  * `:format` - The format to serialize to. Can be either `:json` or `:ubj`. Defaults to `:json`.
+  #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_model(Booster.t()) :: binary()
-  def dump_model(%Booster{} = booster) do
-    EXGBoost.Booster.save(booster, serialize: :model, to: :buffer)
+  def dump_model(%Booster{} = booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @dump_schema)
+    EXGBoost.Booster.save(booster, opts ++ [serialize: :model, to: :buffer])
   end
 
   @doc """
@@ -428,62 +466,72 @@ defmodule EXGBoost do
   Write a model config to a file as a JSON - encoded string.
 
   ## Options
-  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_config(Booster.t(), String.t()) :: :ok | {:error, String.t()}
-  def write_config(%Booster{} = booster, path) do
-    EXGBoost.Booster.save(booster, path: path, serialize: :config)
+  def write_config(%Booster{} = booster, path, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @write_schema)
+    EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :config])
   end
 
   @doc """
-  Dump the model config to a buffer as a JSON-encoded binary.
+  Dump a model config to a buffer as a JSON - encoded string.
+
+  ## Options
+  #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_config(Booster.t()) :: binary()
-  def dump_config(%Booster{} = booster) do
-    EXGBoost.Booster.save(booster, serialize: :config, to: :buffer)
+  def dump_config(%Booster{} = booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @dump_schema)
+    EXGBoost.Booster.save(booster, opts ++ [serialize: :config, to: :buffer])
   end
 
   @doc """
   Create a new Booster from a config file. The config file must be from the output of `write_config/2`.
 
   ## Options
-  * `:booster` - The Booster to load the config into. Defaults to a new Booster.
+  #{NimbleOptions.docs(@load_schema)}
   """
   @spec read_config(String.t()) :: EXGBoost.Booster.t()
-  def read_config(path) do
-    EXGBoost.Booster.load(path, deserialize: :config)
+  def read_config(path, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @load_schema)
+    EXGBoost.Booster.load(path, opts ++ [deserialize: :config])
   end
 
   @doc """
   Create a new Booster from a config buffer. The config buffer must be from the output of `dump_config/2`.
 
   ## Options
-  * `:booster` - The Booster to load the config into. Defaults to a new Booster.
-      If a Booster is passed in, the config will be loaded into that Booster with the config
-      merging using Map.merge/2. The `:booster` parameter's config will take precedence.
+  #{NimbleOptions.docs(@load_schema)}
   """
   @spec load_config(binary()) :: EXGBoost.Booster.t()
-  def load_config(buffer) do
-    EXGBoost.Booster.load(buffer, deserialize: :config, from: :buffer)
+  def load_config(buffer, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @load_schema)
+    EXGBoost.Booster.load(buffer, opts ++ [deserialize: :config, from: :buffer])
   end
 
   @doc """
   Write a model's trained parameters to a file.
 
   ## Options
-  * `:overwrite` - Whether to overwrite existing file. Defaults to `false`.
+  #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_weights(Booster.t(), String.t()) :: :ok | {:error, String.t()}
-  def write_weights(%Booster{} = booster, path) do
-    EXGBoost.Booster.save(booster, path: path, serialize: :weights)
+  def write_weights(%Booster{} = booster, path, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @write_schema)
+    EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :weights])
   end
 
   @doc """
   Dump a model's trained parameters to a buffer as a JSON-encoded binary.
+
+  ## Options
+  #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_weights(Booster.t()) :: binary()
-  def dump_weights(%Booster{} = booster) do
-    EXGBoost.Booster.save(booster, serialize: :weights, to: :buffer)
+  def dump_weights(%Booster{} = booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @dump_schema)
+    EXGBoost.Booster.save(booster, opts ++ [serialize: :weights, to: :buffer])
   end
 
   @doc """

@@ -25,6 +25,9 @@ ERL_NIF_TERM exg_ok(ErlNifEnv *env, ERL_NIF_TERM term);
 ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]);
 
+ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
+                                         const ERL_NIF_TERM argv[]);
+
 ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
                               const ERL_NIF_TERM argv[]);
 
