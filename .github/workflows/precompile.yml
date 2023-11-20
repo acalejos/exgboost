@@ -81,3 +81,6 @@ jobs:
         with:
           files: |
             ${{ matrix.runner == 'macos-latest' && 'cache/*x86_64*.tar.gz' || 'cache/*aarch64*.tar.gz' }}
+      - name: Cleanup # We need this since self-hosted runners are not ephemeral
+        run: |
+          make clean

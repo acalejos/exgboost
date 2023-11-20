@@ -73,3 +73,4 @@ clean:
 	rm -rf $(EXGBOOST_SO)
 	rm -rf $(EXGBOOST_LIB_DIR)
 	rm -rf $(XGBOOST_DIR)
+	rm -rf $(XGBOOST_LIB_DIR_FLAG)
