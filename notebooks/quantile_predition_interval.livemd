@@ -317,8 +317,9 @@ model_opts =
 # Since we're training so many models, we'll implement early stopping.
 opts =
   Keyword.merge(opts,
-    early_stopping_rounds: 2,
-    evals: [{x_test, y_test, "test"}],
+    # TODO: Fix this. It stopped working when EXGBoost went from 0.3 to 0.4.
+    # early_stopping_rounds: 2,
+    # evals: [{x_test, y_test, "test"}],
     num_boost_rounds: 64
   )
 
