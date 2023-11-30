@@ -76,7 +76,7 @@ defmodule EXGBoost.MixProject do
       extras: [
         "notebooks/compiled_benchmarks.livemd",
         "notebooks/iris_classification.livemd",
-        "notebooks/quantile_predition_interval.livemd"
+        "notebooks/quantile_prediction_interval.livemd"
       ],
       groups_for_extras: [
         Notebooks: Path.wildcard("notebooks/*.livemd")
