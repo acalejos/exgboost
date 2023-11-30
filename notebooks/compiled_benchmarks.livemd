@@ -7,6 +7,7 @@ Mix.install([
   {:mockingjay, github: "acalejos/mockingjay"},
   {:nx, "~> 0.5", override: true},
   {:exla, "~> 0.5"},
+  {:scholar, "~> 0.2"},
   {:benchee, "~> 1.0"}
 ])
 ```
@@ -71,10 +72,9 @@ funcs = %{
 ## Run Time Benchmarks
 
 ```elixir
-benches = Enum.reduce(funcs, %{}, fn {k, v}, acc -> Map.put(acc, k, fn -> v.(x_train) end) end)
+benches = Map.new(funcs, fn {k, v} -> {k, v.(x_train)} end)
 
-Benchee.run(
-  benches,
+Benchee.run(benches,
   time: 10,
   memory_time: 2,
   warmup: 5
@@ -89,11 +89,10 @@ Nx.default_backend(Nx.BinaryBackend)
 
 accuracies =
   Enum.reduce(funcs, %{}, fn {name, pred_fn}, acc ->
-
     accuracy =
       pred_fn.(x_test)
       |> Nx.argmax(axis: -1)
-      |> then(&Scholar.Metrics.accuracy(y_test, &1))
+      |> then(&Scholar.Metrics.Classification.accuracy(y_test, &1))
       |> Nx.to_number()
 
     Map.put(acc, name, accuracy)
