@@ -120,9 +120,9 @@ A prediction interval is an interval $[\hat{y}_{\text{lower}}, \hat{y}_{\text{up
 Our goal is to construct a regression model that gives both a prediction and a prediction interval.
 We'll do so by using quantile regression to train 3 separate models on the same data but with the following parameters:
 
-- $\alpha = 0.05$ (5th percentile)
-- $\alpha = 0.50$ (50th percentile -- median)
-- $\alpha = 0.95$ (95th percentile)
+* $\alpha = 0.05$ (5th percentile)
+* $\alpha = 0.50$ (50th percentile -- median)
+* $\alpha = 0.95$ (95th percentile)
 
 The model trained with $\alpha = 0.50$ produces a estimate of the median.
 This will be our actual prediction.
@@ -187,8 +187,8 @@ Tucan.layers([
 Not bad!
 It certainly has the rough shape we want:
 
-- The median (blue) generally lies in the "middle" of the test data.
-- And the prediction interval (the space between the two black lines) contains most of the test data (orange).
+* The median (blue) generally lies in the "middle" of the test data.
+* And the prediction interval (the space between the two black lines) contains most of the test data (orange).
 
 But we can do better.
 For example, notice how the the prediction interval tends to remain flat across the highly concave parts of the sinusoid.
@@ -276,14 +276,14 @@ Basically, we're gonna train many models using the same quantile regression as b
 For this example, since the size of the data is relatively small, we'll do a simple, brute-force search of the parameter space.
 We'll be varying the following parameters:
 
-- `alpha` (Default: 0)
-  - $L_1$ regularization term on weights. Increasing this value will make model more conservative.
-- `eta` (Default: 0.3)
-  - Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and `eta` shrinks the feature weights to make the boosting process more conservative.
-- `lambda` (Default: 0)
-  - $L_2$ regularization term on weights. Increasing this value will make model more conservative.
-- `max_depth` (Default: 6)
-  - Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
+* `alpha` (Default: 0)
+  * $L_1$ regularization term on weights. Increasing this value will make model more conservative.
+* `eta` (Default: 0.3)
+  * Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and `eta` shrinks the feature weights to make the boosting process more conservative.
+* `lambda` (Default: 0)
+  * $L_2$ regularization term on weights. Increasing this value will make model more conservative.
+* `max_depth` (Default: 6)
+  * Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
 
 There are more parameters we could tune, but these suffice for demonstration purposes.
 
@@ -440,13 +440,13 @@ DF.new(
 
 In a vacuum, we might expect that the model was equally as confident in its two predictions:
 
-- $1 \mapsto -0.59$
-- $8 \mapsto 4.58$
+* $1 \mapsto -0.59$
+* $8 \mapsto 4.58$
 
 But with the additional context of a prediction interval, we can see that our model is much more confident in the former than the latter:
 
-- $1 \mapsto -0.59 \in [-0.89, 0.07]$ (width: $0.97$)
-- $8 \mapsto  4.58 \in [ 1.89, 7.40]$ (width: $5.51$)
+* $1 \mapsto -0.59 \in [-0.89, 0.07]$ (width: $0.97$)
+* $8 \mapsto  4.58 \in [ 1.89, 7.40]$ (width: $5.51$)
 
 That additional context can be very helpful for anyone who wishes to make a decision based off a prediction.
 However, it's worth discussing the limitations of this model.
@@ -490,10 +490,10 @@ where
 
 $$
 \texttt{pinball}(\hat{y}_i, y_i, \alpha) =
-  \begin{cases}
-    |\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
-    |\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
-  \end{cases}
+\begin{cases}
+|\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
+|\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
+\end{cases}
 $$
 
 Essentially, the error should be $0$ if the the prediction matches the true value ($\hat{y}_i = y_i$).
