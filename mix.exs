@@ -73,6 +73,14 @@ defmodule EXGBoost.MixProject do
   defp docs do
     [
       main: "EXGBoost",
+      extras: [
+        "notebooks/compiled_benchmarks.livemd",
+        "notebooks/iris_classification.livemd",
+        "notebooks/quantile_predition_interval.livemd"
+      ],
+      groups_for_extras: [
+        Notebooks: Path.wildcard("notebooks/*.livemd")
+      ],
       before_closing_body_tag: &before_closing_body_tag/1
     ]
   end
