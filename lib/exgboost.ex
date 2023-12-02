@@ -121,6 +121,7 @@ defmodule EXGBoost do
   alias EXGBoost.DMatrix
   alias EXGBoost.ProxyDMatrix
   alias EXGBoost.Training
+  alias EXGBoost.Plotting
 
   @doc """
   Check the build information of the xgboost library.
@@ -548,5 +549,22 @@ defmodule EXGBoost do
   @spec load_weights(binary()) :: EXGBoost.Booster.t()
   def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
+  end
+
+  @doc """
+  Plot a tree from a Booster model and save it to a file.
+
+  ## Options
+  * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
+  * `:local_npm_prefix` - a relative path pointing to a local npm project directory where the necessary npm packages are installed. For instance, in Phoenix projects you may want to pass local_npm_prefix: "assets". By default the npm packages are searched for in the current directory and globally.
+  """
+  def plot_tree(booster, path, opts \\ []) when is_binary(path) do
+    vega = Plotting.to_vega(booster)
+
+    if Keyword.get(opts, :path, nil) == nil do
+      :ok = VegaLite.Export.save!(vega, path, opts)
+    end
+
+    vega
   end
 end

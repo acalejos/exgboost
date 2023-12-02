@@ -48,7 +48,11 @@ defmodule EXGBoost.MixProject do
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.29.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
-      {:exterval, "0.1.0"}
+      {:exterval, "0.1.0"},
+      {:exonerate, "~> 1.1", runtime: false},
+      {:httpoison, "~> 2.0", runtime: false},
+      {:vega_lite, "~> 0.1"},
+      {:kino, "~> 0.11"}
     ]
   end
 
