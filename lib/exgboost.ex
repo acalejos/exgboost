@@ -558,13 +558,15 @@ defmodule EXGBoost do
   * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
   * `:local_npm_prefix` - a relative path pointing to a local npm project directory where the necessary npm packages are installed. For instance, in Phoenix projects you may want to pass local_npm_prefix: "assets". By default the npm packages are searched for in the current directory and globally.
   """
-  def plot_tree(booster, path, opts \\ []) when is_binary(path) do
-    vega = Plotting.to_vega(booster)
+  def plot_tree(booster, opts \\ []) do
+    {path, opts} = Keyword.pop(opts, :path)
+    {save_opts, opts} = Keyword.split(opts, [:format, :local_npm_prefix])
+    vega = Plotting.to_vega(booster, opts)
 
-    if Keyword.get(opts, :path, nil) == nil do
-      :ok = VegaLite.Export.save!(vega, path, opts)
+    if path != nil do
+      VegaLite.Export.save!(vega, path, save_opts)
+    else
+      vega
     end
-
-    vega
   end
 end

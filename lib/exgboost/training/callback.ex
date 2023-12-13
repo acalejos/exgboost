@@ -211,7 +211,6 @@ defmodule EXGBoost.Training.Callback do
       |> Map.filter(filter)
 
     {:cont, %{state | metrics: metrics}}
-    {:cont, %{state | metrics: metrics}}
   end
 
   @doc """

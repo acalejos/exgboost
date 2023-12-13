@@ -151,6 +151,20 @@ defmodule EXGBoostTest do
 
     refute is_nil(booster.best_iteration)
     refute is_nil(booster.best_score)
+
+    {booster, _} =
+      ExUnit.CaptureIO.with_io(fn ->
+        EXGBoost.train(x, y,
+          disable_default_eval_metric: true,
+          num_boost_rounds: 10,
+          early_stopping_rounds: 1,
+          evals: [{x, y, "validation"}],
+          tree_method: :hist
+        )
+      end)
+
+    refute is_nil(booster.best_iteration)
+    refute is_nil(booster.best_score)
   end
 
   test "eval with multiple metrics", context do

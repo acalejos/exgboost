@@ -82,6 +82,18 @@ defmodule EXGBoost.Plotting do
           |> ExJsonSchema.Schema.resolve()
 
   @plotting_params [
+    autosize: [
+      doc:
+        "Determines if the visualization should automatically resize when the window size changes",
+      type: {:in, ["fit", "pad", "fit-x", "fit-y", "none"]},
+      default: "fit"
+    ],
+    background: [
+      doc:
+        "The background color of the visualization. Accepts a valid CSS color string. For example: `#f304d3`, `#ccc`, `rgb(253, 12, 134)`, `steelblue.`",
+      type: :string,
+      default: "#f5f5f5"
+    ],
     height: [
       doc: "Height of the plot in pixels",
       type: :pos_integer,
@@ -108,20 +120,71 @@ defmodule EXGBoost.Plotting do
          ]},
       default: 5
     ],
-    leafs: [
+    leaves: [
       doc: "Specifies characteristics of leaf nodes",
       type: :keyword_list,
-      default: [fill: "#ccc", stroke: "black", strokeWidth: 1]
+      keys: [
+        fill: [type: :string, default: "#ccc"],
+        stroke: [type: :string, default: "black"],
+        stroke_width: [type: :pos_integer, default: 1],
+        font_size: [type: :pos_integer, default: 13]
+      ],
+      default: [
+        fill: "#ccc",
+        stroke: "black",
+        stroke_width: 1,
+        font_size: 13
+      ]
     ],
-    inner_nodes: [
+    node_width: [
+      doc: "The width of each node in pixels",
+      type: :pos_integer,
+      default: 100
+    ],
+    node_height: [
+      doc: "The height of each node in pixels",
+      type: :pos_integer,
+      default: 45
+    ],
+    space_between: [
+      type: :keyword_list,
+      keys: [
+        nodes: [type: :pos_integer, default: 10],
+        levels: [type: :pos_integer, default: 100]
+      ],
+      default: [nodes: 10, levels: 100]
+    ],
+    splits: [
       doc: "Specifies characteristics of inner nodes",
-      type: :boolean,
-      default: true
+      type: :keyword_list,
+      keys: [
+        fill: [type: :string, default: "#ccc"],
+        stroke: [type: :string, default: "black"],
+        stroke_width: [type: :pos_integer, default: 1],
+        font_size: [type: :pos_integer, default: 13]
+      ],
+      default: [
+        fill: "#ccc",
+        stroke: "black",
+        stroke_width: 1,
+        font_size: 13
+      ]
     ],
     links: [
       doc: "Specifies characteristics of links between nodes",
       type: :keyword_list,
-      default: [stroke: "#ccc", strokeWidth: 1]
+      keys: [
+        fill: [type: :string, default: "#ccc"],
+        stroke: [type: :string, default: "black"],
+        stroke_width: [type: :pos_integer, default: 1],
+        font_size: [type: :pos_integer, default: 13]
+      ],
+      default: [
+        fill: "#ccc",
+        stroke: "black",
+        stroke_width: 1,
+        font_size: 13
+      ]
     ],
     validate: [
       doc: "Whether to validate the Vega specification against the Vega schema",
@@ -131,8 +194,14 @@ defmodule EXGBoost.Plotting do
     index: [
       doc:
         "The zero-indexed index of the tree to plot. If `nil`, plots all trees using a dropdown selector to switch between trees",
-      type: {:or, [nil, :pos_integer]},
+      type: {:or, [nil, :non_neg_integer]},
       default: 0
+    ],
+    depth: [
+      doc:
+        "The depth of the tree to plot. If `nil`, plots all levels (cick on a node to expand/collapse)",
+      type: {:or, [nil, :non_neg_integer]},
+      default: nil
     ]
   ]
 
@@ -141,13 +210,6 @@ defmodule EXGBoost.Plotting do
   def get_schema(), do: @schema
 
   defp validate_spec(spec) do
-    unless Code.ensure_loaded?(EXJsonSchema) do
-      raise(
-        RuntimeError,
-        "The `ex_json_schema` package must be installed to validate Vega specifications. Please install it by running `mix deps.get`"
-      )
-    end
-
     case ExJsonSchema.Validator.validate(get_schema(), spec) do
       :ok ->
         spec
@@ -163,7 +225,12 @@ defmodule EXGBoost.Plotting do
   defp _to_tabular(idx, node, parent) do
     node = Map.put(node, "tree_id", idx)
     node = if parent, do: Map.put(node, "parentid", parent), else: node
-    node = new_node(node)
+
+    node =
+      new_node(node)
+      |> Map.update("nodeid", nil, &(&1 + 1))
+      |> Map.update("yes", nil, &if(&1, do: &1 + 1))
+      |> Map.update("no", nil, &if(&1, do: &1 + 1))
 
     if Map.has_key?(node, "children") do
       [
@@ -235,49 +302,207 @@ defmodule EXGBoost.Plotting do
     %{
       "$schema" => "https://vega.github.io/schema/vega/v5.json",
       "data" => [
+        %{"name" => "tree", "values" => to_tabular(booster)},
         %{
-          "name" => "tree",
-          "values" => to_tabular(booster),
+          "name" => "treeCalcs",
+          "source" => "tree",
+          "transform" => [
+            %{"expr" => "datum.tree_id === selectedTree", "type" => "filter"},
+            %{"key" => "nodeid", "parentKey" => "parentid", "type" => "stratify"},
+            %{
+              "as" => ["y", "x", "depth", "children"],
+              "method" => "tidy",
+              "separation" => %{"signal" => "false"},
+              "type" => "tree"
+            }
+          ]
+        },
+        %{
+          "name" => "treeChildren",
+          "source" => "treeCalcs",
           "transform" => [
             %{
-              "type" => "stratify",
+              "as" => ["childrenObjects"],
+              "fields" => ["parentid"],
+              "groupby" => ["parentid"],
+              "ops" => ["values"],
+              "type" => "aggregate"
+            },
+            %{
+              "as" => "childrenIds",
+              "expr" => "pluck(datum.childrenObjects,'nodeid')",
+              "type" => "formula"
+            }
+          ]
+        },
+        %{
+          "name" => "treeAncestors",
+          "source" => "treeCalcs",
+          "transform" => [
+            %{
+              "as" => "treeAncestors",
+              "expr" => "treeAncestors('treeCalcs', datum.nodeid, 'root')",
+              "type" => "formula"
+            },
+            %{"fields" => ["treeAncestors"], "type" => "flatten"},
+            %{
+              "as" => "allParents",
+              "expr" => "datum.treeAncestors.parentid",
+              "type" => "formula"
+            }
+          ]
+        },
+        %{
+          "name" => "treeChildrenAll",
+          "source" => "treeAncestors",
+          "transform" => [
+            %{
+              "fields" => [
+                "allParents",
+                "nodeid",
+                "name",
+                "parentid",
+                "x",
+                "y",
+                "depth",
+                "children"
+              ],
+              "type" => "project"
+            },
+            %{
+              "as" => ["allChildrenObjects", "allChildrenCount", "id"],
+              "fields" => ["parentid", "parentid", "nodeid"],
+              "groupby" => ["allParents"],
+              "ops" => ["values", "count", "min"],
+              "type" => "aggregate"
+            },
+            %{
+              "as" => "allChildrenIds",
+              "expr" => "pluck(datum.allChildrenObjects,'nodeid')",
+              "type" => "formula"
+            }
+          ]
+        },
+        %{
+          "name" => "treeClickStoreTemp",
+          "source" => "treeAncestors",
+          "transform" => [
+            %{
+              "expr" =>
+                "startingDepth != -1 ? datum.depth <= startingDepth : node != 0 && !isExpanded ? datum.parentid == node: node != 0 && isExpanded ? datum.allParents == node : false",
+              "type" => "filter"
+            },
+            %{
+              "fields" => ["nodeid", "parentid", "x", "y", "depth", "children"],
+              "type" => "project"
+            },
+            %{
+              "fields" => ["nodeid"],
+              "groupby" => ["nodeid", "parentid", "x", "y", "depth", "children"],
+              "ops" => ["min"],
+              "type" => "aggregate"
+            }
+          ]
+        },
+        %{
+          "name" => "treeClickStorePerm",
+          "on" => [
+            %{"insert" => "data('treeClickStoreTemp')", "trigger" => "startingDepth >= 0"},
+            %{
+              "insert" => "!isExpanded ? data('treeClickStoreTemp'): false",
+              "trigger" => "node"
+            },
+            %{"remove" => "isExpanded ? data('treeClickStoreTemp'): false", "trigger" => "node"}
+          ],
+          "values" => []
+        },
+        %{
+          "name" => "treeLayout",
+          "source" => "tree",
+          "transform" => [
+            %{"expr" => "datum.tree_id === selectedTree", "type" => "filter"},
+            %{
+              "expr" => "indata('treeClickStorePerm', 'nodeid', datum.nodeid)",
+              "type" => "filter"
+            },
+            %{"key" => "nodeid", "parentKey" => "parentid", "type" => "stratify"},
+            %{
+              "as" => ["x", "y", "depth", "children"],
+              "method" => "tidy",
+              "nodeSize" => [
+                %{"signal" => "nodeWidth + spaceBetweenNodes"},
+                %{"signal" => "nodeHeight+ spaceBetweenLevels"}
+              ],
+              "separation" => %{"signal" => "false"},
+              "type" => "tree"
+            },
+            %{"as" => "y", "expr" => "datum.y+(height/10)", "type" => "formula"},
+            %{"as" => "x", "expr" => "datum.x+(width/2)", "type" => "formula"},
+            %{"as" => "xscaled", "expr" => "scale('xscale',datum.x)", "type" => "formula"},
+            %{"as" => "parent", "expr" => "datum.parentid", "type" => "formula"}
+          ]
+        },
+        %{
+          "name" => "fullTreeLayout",
+          "source" => "treeLayout",
+          "transform" => [
+            %{
+              "fields" => ["nodeid"],
+              "from" => "treeChildren",
+              "key" => "parentid",
+              "type" => "lookup",
+              "values" => ["childrenObjects", "childrenIds"]
+            },
+            %{
+              "fields" => ["nodeid"],
+              "from" => "treeChildrenAll",
+              "key" => "allParents",
+              "type" => "lookup",
+              "values" => ["allChildrenIds", "allChildrenObjects"]
+            },
+            %{
+              "fields" => ["nodeid"],
+              "from" => "treeCalcs",
               "key" => "nodeid",
-              "parentKey" => "parentid"
+              "type" => "lookup",
+              "values" => ["children"]
             },
             %{
-              "type" => "tree",
-              "size" => [%{"signal" => "width"}, %{"signal" => "height"}],
-              "as" => ["x", "y", "depth", "children"]
+              "as" => "treeParent",
+              "expr" => "reverse(pluck(treeAncestors('treeCalcs', datum.nodeid), 'nodeid'))[1]",
+              "type" => "formula"
             },
+            %{"as" => "isLeaf", "expr" => "datum.leaf == null", "type" => "formula"}
+          ]
+        },
+        %{
+          "name" => "visibleNodes",
+          "source" => "fullTreeLayout",
+          "transform" => [
             %{
-              "type" => "filter",
-              "expr" => "datum.tree_id === selectedTree"
+              "expr" => "indata('treeClickStorePerm', 'nodeid', datum.nodeid)",
+              "type" => "filter"
             }
           ]
         },
         %{
           "name" => "links",
-          "source" => "tree",
+          "source" => "treeLayout",
           "transform" => [
             %{"type" => "treelinks"},
             %{
-              "type" => "linkpath",
-              "shape" => "line"
+              "orient" => "vertical",
+              "shape" => "line",
+              "sourceX" => %{"expr" => "scale('xscale', datum.source.x)"},
+              "sourceY" => %{"expr" => "scale('yscale', datum.source.y)"},
+              "targetX" => %{"expr" => "scale('xscale', datum.target.x)"},
+              "targetY" => %{"expr" => "scale('yscale', datum.target.y) - scaledNodeHeight"},
+              "type" => "linkpath"
+            },
+            %{
+              "expr" => " indata('treeClickStorePerm', 'nodeid', datum.target.nodeid)",
+              "type" => "filter"
             }
-          ]
-        },
-        %{
-          "name" => "innerNodes",
-          "source" => "tree",
-          "transform" => [
-            %{"type" => "filter", "expr" => "datum.leaf == null"}
-          ]
-        },
-        %{
-          "name" => "leafNodes",
-          "source" => "tree",
-          "transform" => [
-            %{"type" => "filter", "expr" => "datum.leaf != null"}
           ]
         }
       ]
@@ -285,18 +510,148 @@ defmodule EXGBoost.Plotting do
   end
 
   def to_vega(booster, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @plotting_schema) |> opts_to_vl_props()
+    opts = NimbleOptions.validate!(opts, @plotting_schema)
     spec = get_data_spec(booster)
-    spec = Map.merge(spec, opts)
 
-    spec = %{
-      spec
-      | "scales" => [
+    [%{"$ref" => root} | [%{"properties" => properties}]] =
+      EXGBoost.Plotting.get_schema().schema |> Map.get("allOf")
+
+    top_level_keys =
+      (ExJsonSchema.Schema.get_fragment!(EXGBoost.Plotting.get_schema(), root)
+       |> Map.get("properties")
+       |> Map.keys()) ++ Map.keys(properties)
+
+    tlk = opts |> opts_to_vl_props() |> Map.take(top_level_keys)
+
+    spec =
+      Map.merge(spec, %{
+        "$schema" => "https://vega.github.io/schema/vega/v5.json",
+        "marks" => [
           %{
-            "name" => "color",
-            "type" => "ordinal",
-            "domain" => %{"data" => "tree", "field" => "depth"},
-            "range" => %{"scheme" => "category10"}
+            "encode" => %{
+              "update" => %{
+                "path" => %{"field" => "path"},
+                "stroke" => %{
+                  "signal" => "datum.source.yes === datum.target.nodeid ? 'red' : 'black'"
+                },
+                "strokeWidth" => %{
+                  "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
+                }
+              }
+            },
+            "from" => %{"data" => "links"},
+            "interactive" => false,
+            "type" => "path"
+          },
+          %{
+            "encode" => %{
+              "update" => %{
+                "align" => %{"value" => "center"},
+                "baseline" => %{"value" => "middle"},
+                "fontSize" => %{"signal" => "linksFontSize"},
+                "text" => %{"signal" => "datum.source.yes === datum.target.nodeid ? 'yes' : 'no'"},
+                "x" => %{
+                  "signal" =>
+                    "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                },
+                "y" => %{
+                  "signal" =>
+                    "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
+                }
+              }
+            },
+            "from" => %{"data" => "links"},
+            "type" => "text"
+          },
+          %{
+            "clip" => false,
+            "description" => "The parent node",
+            "encode" => %{
+              "update" => %{
+                "cornerRadius" => %{"value" => 2},
+                "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
+                "fill" => %{"signal" => "datum.isLeaf ? leafColor : splitColor"},
+                "height" => %{"signal" => "scaledNodeHeight"},
+                "opacity" => %{"value" => 0},
+                "tooltip" => %{"signal" => ""},
+                "width" => %{"signal" => "scaledNodeWidth"},
+                "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
+                "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
+              }
+            },
+            "from" => %{"data" => "visibleNodes"},
+            "marks" => [
+              %{
+                "description" =>
+                  "highlight (seems like a Vega bug as this doens't work on the group element)",
+                "encode" => %{
+                  "update" => %{
+                    "fill" => %{"signal" => "parent.isLeaf ? leafColor : splitColor"},
+                    "height" => %{"signal" => "item.mark.group.height"},
+                    "width" => %{"signal" => "item.mark.group.width"},
+                    "x" => %{"signal" => "item.mark.group.x1"},
+                    "y" => %{"signal" => "0"}
+                  }
+                },
+                "interactive" => false,
+                "name" => "highlight",
+                "type" => "rect"
+              },
+              %{
+                "encode" => %{
+                  "update" => %{
+                    "align" => %{"value" => "center"},
+                    "baseline" => %{"value" => "middle"},
+                    "fill" => %{"signal" => "'black'"},
+                    "font" => %{"value" => "Calibri"},
+                    "fontSize" => %{"signal" => "parent.split ? splitsFontSize : leavesFontSize"},
+                    "limit" => %{"signal" => "scaledNodeWidth-scaledLimit"},
+                    "text" => %{
+                      "signal" =>
+                        "parent.split ? parent.split + ' <= ' + format(parent.split_condition, '.2f') : 'leaf = ' + format(parent.leaf, '.2f')"
+                    },
+                    "x" => %{"signal" => "(scaledNodeWidth / 2)"},
+                    "y" => %{"signal" => "scaledNodeHeight / 2"}
+                  }
+                },
+                "interactive" => false,
+                "name" => "title",
+                "type" => "text"
+              },
+              %{
+                "encode" => %{
+                  "update" => %{
+                    "align" => %{"value" => "right"},
+                    "baseline" => %{"value" => "middle"},
+                    "fill" => %{"signal" => "childrenColor"},
+                    "font" => %{"value" => "Calibri"},
+                    "fontSize" => %{"signal" => "splitsFontSize"},
+                    "text" => %{"signal" => "parent.children > 0 ? parent.children :''"},
+                    "x" => %{"signal" => "item.mark.group.width - (9/ span(xdom))*width"},
+                    "y" => %{"signal" => "item.mark.group.height/2"}
+                  }
+                },
+                "interactive" => false,
+                "name" => "node children",
+                "type" => "text"
+              }
+            ],
+            "name" => "node",
+            "type" => "group"
+          }
+        ],
+        "scales" => [
+          %{
+            "domain" => %{"signal" => "xdom"},
+            "name" => "xscale",
+            "range" => %{"signal" => "xrange"},
+            "zero" => false
+          },
+          %{
+            "domain" => %{"signal" => "ydom"},
+            "name" => "yscale",
+            "range" => %{"signal" => "yrange"},
+            "zero" => false
           }
         ],
         "signals" => [
@@ -320,116 +675,164 @@ defmodule EXGBoost.Plotting do
                 }
               }
             )
-          )
-        ],
-        "marks" => [
+          ),
+          %{"name" => "childrenColor", "value" => "black"},
+          %{"name" => "leafColor", "value" => opts[:leaves][:fill]},
+          %{"name" => "splitColor", "value" => opts[:splits][:fill]},
+          %{"name" => "spaceBetweenLevels", "value" => opts[:space_between][:levels]},
+          %{"name" => "spaceBetweenNodes", "value" => opts[:space_between][:nodes]},
+          %{"name" => "nodeWidth", "value" => opts[:node_width]},
+          %{"name" => "nodeHeight", "value" => opts[:node_height]},
           %{
-            "type" => "path",
-            "from" => %{"data" => "links"},
-            "encode" => %{
-              "update" => %{
-                "path" => %{"field" => "path"},
-                "stroke" => %{"value" => "#ccc"}
-              }
-            }
+            "name" => "startingDepth",
+            "on" => [%{"events" => %{"throttle" => 0, "type" => "timer"}, "update" => "-1"}],
+            "value" =>
+              opts[:depth] ||
+                to_tabular(booster)
+                |> Enum.map(&Map.get(&1, "depth"))
+                |> Enum.filter(& &1)
+                |> Enum.max()
           },
           %{
-            "type" => "text",
-            "from" => %{"data" => "tree"},
-            "encode" => %{
-              "enter" => %{
-                "text" => %{
-                  "signal" =>
-                    "datum.split ? datum.split + ' <= ' + format(datum.split_condition, '.2f') : ''"
-                },
-                "fontSize" => %{"value" => 10},
-                "baseline" => %{"value" => "middle"},
-                "align" => %{"value" => "center"},
-                "dx" => %{"value" => 0},
-                "dy" => %{"value" => 0}
+            "name" => "node",
+            "on" => [
+              %{
+                "events" => %{"markname" => "node", "type" => "click"},
+                "update" => "datum.nodeid"
+              }
+            ],
+            "value" => 0
+          },
+          %{
+            "name" => "nodeHighlight",
+            "on" => [
+              %{
+                "events" => %{"markname" => "node", "type" => "mouseover"},
+                "update" => "pluck(treeAncestors('treeCalcs', datum.nodeid), 'nodeid')"
               },
-              "update" => %{
-                "x" => %{"field" => "x"},
-                "y" => %{"field" => "y"},
-                "fill" => %{"value" => "black"}
-              }
-            }
+              %{"events" => %{"type" => "mouseout"}, "update" => "[0]"}
+            ],
+            "value" => "[0]"
           },
           %{
-            "type" => "symbol",
-            "from" => %{"data" => "innerNodes"},
-            "encode" => %{
-              "enter" => %{
-                "fill" => %{"value" => "none"},
-                "shape" => %{"value" => "circle"},
-                "x" => %{"field" => "x"},
-                "y" => %{"field" => "y"},
-                "size" => %{"value" => 800}
+            "name" => "isExpanded",
+            "on" => [
+              %{
+                "events" => %{"markname" => "node", "type" => "click"},
+                "update" =>
+                  "datum.children > 0 && indata('treeClickStorePerm', 'nodeid', datum.childrenIds[0]) ? true : false"
+              }
+            ],
+            "value" => 0
+          },
+          %{"name" => "xrange", "update" => "[0, width]"},
+          %{"name" => "yrange", "update" => "[0, height]"},
+          %{
+            "name" => "down",
+            "on" => [%{"events" => "mousedown", "update" => "xy()"}],
+            "value" => nil
+          },
+          %{
+            "name" => "xcur",
+            "on" => [%{"events" => "mousedown", "update" => "slice(xdom)"}],
+            "value" => nil
+          },
+          %{
+            "name" => "ycur",
+            "on" => [%{"events" => "mousedown", "update" => "slice(ydom)"}],
+            "value" => nil
+          },
+          %{
+            "name" => "delta",
+            "on" => [
+              %{
+                "events" => [
+                  %{
+                    "between" => [
+                      %{"type" => "mousedown"},
+                      %{"source" => "window", "type" => "mouseup"}
+                    ],
+                    "consume" => true,
+                    "source" => "window",
+                    "type" => "mousemove"
+                  }
+                ],
+                "update" => "down ? [down[0]-x(), down[1]-y()] : [0,0]"
+              }
+            ],
+            "value" => [0, 0]
+          },
+          %{
+            "name" => "anchor",
+            "on" => [
+              %{"events" => "wheel", "update" => "[invert('xscale', x()), invert('yscale', y())]"}
+            ],
+            "value" => [0, 0]
+          },
+          %{"name" => "xext", "update" => "[0,width]"},
+          %{"name" => "yext", "update" => "[0,height]"},
+          %{
+            "name" => "zoom",
+            "on" => [
+              %{
+                "events" => "wheel!",
+                "force" => true,
+                "update" => "pow(1.001, event.deltaY * pow(16, event.deltaMode))"
+              }
+            ],
+            "value" => 1
+          },
+          %{
+            "name" => "xdom",
+            "on" => [
+              %{
+                "events" => %{"signal" => "delta"},
+                "update" =>
+                  "[xcur[0] + span(xcur) * delta[0] / width, xcur[1] + span(xcur) * delta[0] / width]"
               },
-              "update" => %{
-                "fill" => %{"scale" => "color", "field" => "depth"},
-                "opacity" => %{"value" => 1},
-                "stroke" => %{"value" => "black"},
-                "strokeWidth" => %{"value" => 1},
-                "fillOpacity" => %{"value" => 0},
-                "strokeOpacity" => %{"value" => 1}
+              %{
+                "events" => %{"signal" => "zoom"},
+                "update" =>
+                  "[anchor[0] + (xdom[0] - anchor[0]) * zoom, anchor[0] + (xdom[1] - anchor[0]) * zoom]"
               }
-            }
+            ],
+            "update" => "slice(xext)"
           },
           %{
-            "type" => "rect",
-            "from" => %{"data" => "leafNodes"},
-            "encode" => %{
-              "enter" => %{
-                "x" => %{"signal" => "datum.x - 20"},
-                "y" => %{"signal" => "datum.y - 10"},
-                "width" => %{"value" => 40},
-                "height" => %{"value" => 20},
-                "stroke" => %{"value" => "black"},
-                "fill" => %{"value" => "transparent"}
-              }
-            }
-          },
-          %{
-            "type" => "text",
-            "from" => %{"data" => "tree"},
-            "encode" => %{
-              "enter" => %{
-                "text" => %{
-                  "signal" => "format(datum.leaf, '.2f')"
-                },
-                "fontSize" => %{"value" => 10},
-                "baseline" => %{"value" => "middle"},
-                "align" => %{"value" => "center"},
-                "dx" => %{"value" => 0},
-                "dy" => %{"value" => 0}
+            "name" => "ydom",
+            "on" => [
+              %{
+                "events" => %{"signal" => "delta"},
+                "update" =>
+                  "[ycur[0] + span(ycur) * delta[1] / height, ycur[1] + span(ycur) * delta[1] / height]"
               },
-              "update" => %{
-                "x" => %{"field" => "x"},
-                "y" => %{"field" => "y"},
-                "fill" => %{"value" => "black"},
-                "opacity" => %{"signal" => "datum.leaf != null ? 1 : 0"}
+              %{
+                "events" => %{"signal" => "zoom"},
+                "update" =>
+                  "[anchor[1] + (ydom[0] - anchor[1]) * zoom, anchor[1] + (ydom[1] - anchor[1]) * zoom]"
               }
-            }
+            ],
+            "update" => "slice(yext)"
+          },
+          %{"name" => "scaledNodeWidth", "update" => "(nodeWidth/ span(xdom))*width"},
+          %{"name" => "scaledNodeHeight", "update" => "abs(nodeHeight/ span(ydom))*height"},
+          %{"name" => "scaledLimit", "update" => "(20/ span(xdom))*width"},
+          %{
+            "name" => "leavesFontSize",
+            "update" => "(#{opts[:leaves][:font_size]}/ span(xdom))*width"
           },
           %{
-            "type" => "text",
-            "from" => %{"data" => "links"},
-            "encode" => %{
-              "enter" => %{
-                "x" => %{"signal" => "(datum.source.x + datum.target.x) / 2"},
-                "y" => %{"signal" => "(datum.source.y + datum.target.y) / 2"},
-                "text" => %{
-                  "signal" => "datum.source.yes === datum.target.nodeid ? 'yes' : 'no'"
-                },
-                "align" => %{"value" => "center"},
-                "baseline" => %{"value" => "middle"}
-              }
-            }
+            "name" => "splitsFontSize",
+            "update" => "(#{opts[:splits][:font_size]}/ span(xdom))*width"
+          },
+          %{
+            "name" => "linksFontSize",
+            "update" => "(#{opts[:links][:font_size]}/ span(xdom))*width"
           }
         ]
-    }
+      })
 
+    spec = Map.merge(spec, tlk)
     spec = (opts[:validate] && validate_spec(spec)) || spec
 
     Jason.encode!(spec) |> VegaLite.from_json()
@@ -480,6 +883,6 @@ end
 
 defimpl Kino.Render, for: EXGBoost.Booster do
   def to_livebook(booster) do
-    Kino.Render.to_livebook(EXGBoost.Plotting.to_vega(booster) |> Kino.Render.to_livebook())
+    EXGBoost.Plotting.to_vega(booster) |> Kino.Render.to_livebook()
   end
 end

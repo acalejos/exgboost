@@ -91,14 +91,30 @@ defmodule EXGBoost.Training do
     callbacks =
       unless is_nil(opts[:early_stopping_rounds]) do
         unless evals_dmats == [] do
+          # TODO This currently works due a 1-line addition made to XGBoost that
+          # is done within a sed command in the Makefile.
+          # This is necessary because the default metrics are not serialized
+          # with the booster config, so if we didn't do this we would have to
+          # run 1 iteration of evaluation before we could get the default
+
+          # TODO: This is a hack to get around the aforementioned issue
           [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
-          # Default to the last metric
-          [%{"name" => metric_name} | _tail] =
-            EXGBoost.dump_config(bst)
-            |> Jason.decode!()
-            |> get_in(["learner", "metrics"])
-            |> Enum.reverse()
+          %{"learner" => %{"metrics" => metrics, "default_metric" => default_metric}} =
+            EXGBoost.dump_config(bst) |> Jason.decode!()
+
+          metric_name =
+            cond do
+              Enum.empty?(metrics) && opts[:disable_default_eval_metric] ->
+                raise ArgumentError,
+                      "`:early_stopping_rounds` requires at least one evaluation set. This means you have likely set `disable_default_eval_metric: true` and have not set any explicit evalutation metrics. Please supply at least one metric in the `:eval_metric` option or set `disable_default_eval_metric: false` (default option)"
+
+              Enum.empty?(metrics) ->
+                default_metric
+
+              true ->
+                metrics |> Enum.reverse() |> hd() |> Map.fetch!("name")
+            end
 
           [
             %Callback{
