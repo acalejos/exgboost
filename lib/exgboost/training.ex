@@ -58,11 +58,13 @@ defmodule EXGBoost.Training do
         booster_params
       )
 
-    callbacks =
-      callbacks ++
-        default_callbacks(bst, learning_rates, verbose_eval, evals_dmats, early_stopping_rounds)
+    defaults =
+      default_callbacks(bst, learning_rates, verbose_eval, evals_dmats, early_stopping_rounds)
 
-    callbacks = Enum.map(callbacks, &wrap_callback/1)
+    callbacks =
+      Enum.map(callbacks ++ defaults, fn %Callback{fun: fun} = callback ->
+        %{callback | fun: fn state -> state |> fun.() |> State.validate!() end}
+      end)
 
     state = %State{
       booster: bst,
@@ -71,46 +73,45 @@ defmodule EXGBoost.Training do
       meta_vars: Map.new(callbacks, &{&1.name, &1.init_state})
     }
 
-    callbacks_by_event = Enum.group_by(callbacks, & &1.event, & &1.fun)
-
-    state = run_callbacks(state, callbacks_by_event, :before_training)
+    callbacks = Enum.group_by(callbacks, & &1.event, & &1.fun)
 
     state =
-      if state.status == :halt do
-        state
-      else
-        Enum.reduce_while(1..state.max_iteration, state, fn iter, iter_state ->
-          iter_state = run_callbacks(iter_state, callbacks_by_event, :before_iteration)
+      state
+      |> run_callbacks(callbacks, :before_training)
+      |> run_training(callbacks, dmat, objective)
+      |> run_callbacks(callbacks, :after_training)
 
-          iter_state =
-            if iter_state.status == :halt do
-              iter_state
-            else
-              :ok = Booster.update(iter_state.booster, dmat, iter, objective)
-              run_callbacks(%{iter_state | iteration: iter}, callbacks_by_event, :after_iteration)
-            end
-
-          {iter_state.status, iter_state}
-        end)
-      end
-
-    if state.status == :halt do
-      state.booster
-    else
-      final_state = run_callbacks(state, callbacks_by_event, :after_training)
-      final_state.booster
-    end
+    state.booster
   end
 
-  defp wrap_callback(%Callback{fun: fun} = callback) do
-    %{callback | fun: fn state -> state |> fun.() |> State.validate!() end}
-  end
+  defp run_callbacks(%{status: :halt} = state, _callbacks, _event), do: state
 
-  defp run_callbacks(state, callbacks_by_event, event) do
-    Enum.reduce_while(callbacks_by_event[event] || [], state, fn callback, state ->
+  defp run_callbacks(%{status: :cont} = state, callbacks, event) do
+    Enum.reduce_while(callbacks[event] || [], state, fn callback, state ->
       state = callback.(state)
       {state.status, state}
     end)
+  end
+
+  defp run_training(%{status: :halt} = state, _callbacks, _dmat, _objective), do: state
+
+  defp run_training(%{status: :cont} = state, callbacks, dmat, objective) do
+    Enum.reduce_while(1..state.max_iteration, state, fn iter, state ->
+      state =
+        state
+        |> run_callbacks(callbacks, :before_iteration)
+        |> run_iteration(dmat, iter, objective)
+        |> run_callbacks(callbacks, :after_iteration)
+
+      {state.status, state}
+    end)
+  end
+
+  defp run_iteration(%{status: :halt} = state, _dmat, _iter, _objective), do: state
+
+  defp run_iteration(%{status: :cont} = state, dmat, iter, objective) do
+    :ok = Booster.update(state.booster, dmat, iter, objective)
+    %{state | iteration: iter}
   end
 
   defp default_callbacks(bst, learning_rates, verbose_eval, evals_dmats, early_stopping_rounds) do
