@@ -3,9 +3,18 @@ defmodule EXGBoost.Training.State do
   @enforce_keys [:booster]
   defstruct [
     :booster,
-    meta_vars: %{},
     iteration: 0,
     max_iteration: -1,
-    metrics: %{}
+    meta_vars: %{},
+    metrics: %{},
+    status: :cont
   ]
+
+  def validate!(%__MODULE__{} = state) do
+    unless state.status in [:cont, :halt] do
+      raise ArgumentError, "`status` must be `:cont` or `:halt`, found: #{state.status}."
+    end
+
+    state
+  end
 end
