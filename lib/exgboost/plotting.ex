@@ -81,6 +81,8 @@ defmodule EXGBoost.Plotting do
           |> Jason.decode!()
           |> ExJsonSchema.Schema.resolve()
 
+  @mark_params []
+
   @plotting_params [
     autosize: [
       doc:
@@ -124,16 +126,12 @@ defmodule EXGBoost.Plotting do
       doc: "Specifies characteristics of leaf nodes",
       type: :keyword_list,
       keys: [
-        fill: [type: :string, default: "#ccc"],
-        stroke: [type: :string, default: "black"],
-        stroke_width: [type: :pos_integer, default: 1],
-        font_size: [type: :pos_integer, default: 13]
+        text: [],
+        rect: []
       ],
       default: [
-        fill: "#ccc",
-        stroke: "black",
-        stroke_width: 1,
-        font_size: 13
+        text: [],
+        rect: []
       ]
     ],
     node_width: [
@@ -174,16 +172,8 @@ defmodule EXGBoost.Plotting do
       doc: "Specifies characteristics of links between nodes",
       type: :keyword_list,
       keys: [
-        fill: [type: :string, default: "#ccc"],
-        stroke: [type: :string, default: "black"],
-        stroke_width: [type: :pos_integer, default: 1],
-        font_size: [type: :pos_integer, default: 13]
-      ],
-      default: [
-        fill: "#ccc",
-        stroke: "black",
-        stroke_width: 1,
-        font_size: 13
+        yes: [],
+        no: []
       ]
     ],
     validate: [
@@ -486,6 +476,26 @@ defmodule EXGBoost.Plotting do
           ]
         },
         %{
+          "name" => "splitNodes",
+          "source" => "visibleNodes",
+          "transform" => [
+            %{
+              "type" => "filter",
+              "expr" => "datum.isLeaf"
+            }
+          ]
+        },
+        %{
+          "name" => "leafNodes",
+          "source" => "visibleNodes",
+          "transform" => [
+            %{
+              "type" => "filter",
+              "expr" => "!datum.isLeaf"
+            }
+          ]
+        },
+        %{
           "name" => "links",
           "source" => "treeLayout",
           "transform" => [
@@ -502,6 +512,26 @@ defmodule EXGBoost.Plotting do
             %{
               "expr" => " indata('treeClickStorePerm', 'nodeid', datum.target.nodeid)",
               "type" => "filter"
+            }
+          ]
+        },
+        %{
+          "name" => "yesPaths",
+          "source" => "links",
+          "transform" => [
+            %{
+              "type" => "filter",
+              "expr" => "datum.source.yes === datum.target.nodeid "
+            }
+          ]
+        },
+        %{
+          "name" => "noPaths",
+          "source" => "links",
+          "transform" => [
+            %{
+              "type" => "filter",
+              "expr" => "datum.source.yes !== datum.target.nodeid "
             }
           ]
         }
@@ -539,7 +569,23 @@ defmodule EXGBoost.Plotting do
                 }
               }
             },
-            "from" => %{"data" => "links"},
+            "from" => %{"data" => "yesPaths"},
+            "interactive" => false,
+            "type" => "path"
+          },
+          %{
+            "encode" => %{
+              "update" => %{
+                "path" => %{"field" => "path"},
+                "stroke" => %{
+                  "signal" => "datum.source.yes === datum.target.nodeid ? 'red' : 'black'"
+                },
+                "strokeWidth" => %{
+                  "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
+                }
+              }
+            },
+            "from" => %{"data" => "noPaths"},
             "interactive" => false,
             "type" => "path"
           },
@@ -560,43 +606,47 @@ defmodule EXGBoost.Plotting do
                 }
               }
             },
-            "from" => %{"data" => "links"},
+            "from" => %{"data" => "yesPaths"},
+            "type" => "text"
+          },
+          %{
+            "encode" => %{
+              "update" => %{
+                "align" => %{"value" => "center"},
+                "baseline" => %{"value" => "middle"},
+                "fontSize" => %{"signal" => "linksFontSize"},
+                "text" => %{"signal" => "datum.source.yes === datum.target.nodeid ? 'yes' : 'no'"},
+                "x" => %{
+                  "signal" =>
+                    "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                },
+                "y" => %{
+                  "signal" =>
+                    "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
+                }
+              }
+            },
+            "from" => %{"data" => "noPaths"},
             "type" => "text"
           },
           %{
             "clip" => false,
-            "description" => "The parent node",
             "encode" => %{
               "update" => %{
                 "cornerRadius" => %{"value" => 2},
                 "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
                 "fill" => %{"signal" => "datum.isLeaf ? leafColor : splitColor"},
                 "height" => %{"signal" => "scaledNodeHeight"},
-                "opacity" => %{"value" => 0},
+                "opacity" => %{"value" => 1},
                 "tooltip" => %{"signal" => ""},
                 "width" => %{"signal" => "scaledNodeWidth"},
                 "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
                 "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
               }
             },
-            "from" => %{"data" => "visibleNodes"},
+            "from" => %{"data" => "splitNodes"},
+            "name" => "splitNode",
             "marks" => [
-              %{
-                "description" =>
-                  "highlight (seems like a Vega bug as this doens't work on the group element)",
-                "encode" => %{
-                  "update" => %{
-                    "fill" => %{"signal" => "parent.isLeaf ? leafColor : splitColor"},
-                    "height" => %{"signal" => "item.mark.group.height"},
-                    "width" => %{"signal" => "item.mark.group.width"},
-                    "x" => %{"signal" => "item.mark.group.x1"},
-                    "y" => %{"signal" => "0"}
-                  }
-                },
-                "interactive" => false,
-                "name" => "highlight",
-                "type" => "rect"
-              },
               %{
                 "encode" => %{
                   "update" => %{
@@ -632,11 +682,56 @@ defmodule EXGBoost.Plotting do
                   }
                 },
                 "interactive" => false,
-                "name" => "node children",
                 "type" => "text"
               }
             ],
-            "name" => "node",
+            "type" => "group"
+          },
+          %{
+            "clip" => false,
+            "encode" => %{
+              "update" => %{
+                "cornerRadius" => %{"value" => 2},
+                "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
+                "fill" => %{"signal" => "datum.isLeaf ? leafColor : splitColor"},
+                "height" => %{"signal" => "scaledNodeHeight"},
+                "opacity" => %{"value" => 1},
+                "tooltip" => %{"signal" => ""},
+                "width" => %{"signal" => "scaledNodeWidth"},
+                "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
+                "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
+              }
+            },
+            "from" => %{"data" => "leafNodes"},
+            "name" => "leafNode",
+            "marks" => [
+              %{
+                "encode" => %{
+                  "update" =>
+                    Map.merge(
+                      %{
+                        # "align" => %{"value" => "center"},
+                        # "baseline" => %{"value" => "middle"},
+                        # "fill" => %{"signal" => "'black'"},
+                        # "font" => %{"value" => "Calibri"},
+                        # "fontSize" => %{
+                        #   "signal" => "parent.split ? splitsFontSize : leavesFontSize"
+                        # },
+                        "limit" => %{"signal" => "scaledNodeWidth-scaledLimit"},
+                        "text" => %{
+                          "signal" => "'leaf = ' + format(parent.leaf, '.2f')"
+                        },
+                        "x" => %{"signal" => "(scaledNodeWidth / 2)"},
+                        "y" => %{"signal" => "scaledNodeHeight / 2"}
+                      },
+                      format_mark(opts[:leaves])
+                    )
+                },
+                "interactive" => false,
+                "name" => "title",
+                "type" => "text"
+              }
+            ],
             "type" => "group"
           }
         ],
@@ -697,7 +792,7 @@ defmodule EXGBoost.Plotting do
             "name" => "node",
             "on" => [
               %{
-                "events" => %{"markname" => "node", "type" => "click"},
+                "events" => %{"markname" => "splitNode", "type" => "click"},
                 "update" => "datum.nodeid"
               }
             ],
@@ -707,7 +802,10 @@ defmodule EXGBoost.Plotting do
             "name" => "nodeHighlight",
             "on" => [
               %{
-                "events" => %{"markname" => "node", "type" => "mouseover"},
+                "events" => [
+                  %{"markname" => "splitNode", "type" => "mouseover"},
+                  %{"markname" => "leafNode", "type" => "mouseover"}
+                ],
                 "update" => "pluck(treeAncestors('treeCalcs', datum.nodeid), 'nodeid')"
               },
               %{"events" => %{"type" => "mouseout"}, "update" => "[0]"}
@@ -718,7 +816,7 @@ defmodule EXGBoost.Plotting do
             "name" => "isExpanded",
             "on" => [
               %{
-                "events" => %{"markname" => "node", "type" => "click"},
+                "events" => %{"markname" => "splitNode", "type" => "click"},
                 "update" =>
                   "datum.children > 0 && indata('treeClickStorePerm', 'nodeid', datum.childrenIds[0]) ? true : false"
               }
@@ -870,6 +968,20 @@ defmodule EXGBoost.Plotting do
 
   defp to_vl_key(key) when is_atom(key) do
     key |> to_string() |> snake_to_camel()
+  end
+
+  defp format_mark(opts) do
+    opts
+    |> opts_to_vl_props()
+    |> Enum.into(%{}, fn {key, value} ->
+      case key do
+        "fontSize" ->
+          {"fontSize", %{"signal" => "(#{value}/ span(xdom))*width"}}
+
+        other ->
+          {other, %{"value" => value}}
+      end
+    end)
   end
 
   defp snake_to_camel(string) do
