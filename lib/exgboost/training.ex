@@ -36,10 +36,6 @@ defmodule EXGBoost.Training do
       raise ArgumentError, "early_stopping_rounds requires at least one evaluation set"
     end
 
-    for callback <- callbacks do
-      Callback.validate!(callback)
-    end
-
     verbose_eval =
       case verbose_eval do
         true -> 1
@@ -65,6 +61,15 @@ defmodule EXGBoost.Training do
       Enum.map(callbacks ++ defaults, fn %Callback{fun: fun} = callback ->
         %{callback | fun: fn state -> state |> fun.() |> State.validate!() end}
       end)
+
+    # Validate callbacks and ensure all names are unique.
+    Enum.each(callbacks, &Callback.validate!/1)
+    name_counts = Enum.frequencies_by(callbacks, & &1.name)
+
+    if Enum.any?(name_counts, &(elem(&1, 1) > 1)) do
+      str = name_counts |> Enum.sort() |> Enum.map_join("\n\n", &"  * #{inspect(&1)}")
+      raise ArgumentError, "Found duplicate callback names.\n\nName counts:\n\n#{str}\n"
+    end
 
     state = %State{
       booster: bst,
