@@ -12,7 +12,8 @@ defmodule EXGBoost.Training.State do
 
   def validate!(%__MODULE__{} = state) do
     unless state.status in [:cont, :halt] do
-      raise ArgumentError, "`status` must be `:cont` or `:halt`, found: #{state.status}."
+      raise ArgumentError,
+            "`status` must be `:cont` or `:halt`, found: `#{inspect(state.status)}`."
     end
 
     state

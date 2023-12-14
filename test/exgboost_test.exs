@@ -341,5 +341,14 @@ defmodule EXGBoostTest do
                      )
                    end
     end
+
+    test "callback with bad function results in helpful error", %{x: x, y: y} do
+      bad_fun = fn state -> %{state | status: :bad_status} end
+      bad_callback = EXGBoost.Training.Callback.new(:before_training, bad_fun, :bad_callback)
+
+      assert_raise ArgumentError,
+                   "`status` must be `:cont` or `:halt`, found: `:bad_status`.",
+                   fn -> EXGBoost.train(x, y, callbacks: [bad_callback]) end
+    end
   end
 end
