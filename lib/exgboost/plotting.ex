@@ -81,7 +81,78 @@ defmodule EXGBoost.Plotting do
           |> Jason.decode!()
           |> ExJsonSchema.Schema.resolve()
 
-  @mark_params []
+  @mark_text_doc "Accepts a keyword list of Vega `text` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/text/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
+  @mark_rect_doc "Accepts a keyword list of Vega `rect` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/rect/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
+  @mark_path_doc "Accepts a keyword list of Vega `path` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/path/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
+
+  @mark_opts [
+    type: :keyword_list,
+    keys: [
+      *: [type: {:or, [:string, :atom, :integer, :boolean, nil]}]
+    ]
+  ]
+
+  @default_leaf_text [
+    align: :center,
+    baseline: :middle,
+    font_size: 13,
+    font: "Calibri",
+    fill: :black
+  ]
+
+  @default_leaf_rect [
+    corner_radius: 2,
+    fill: :teal,
+    opacity: 1
+  ]
+
+  @default_split_text [
+    align: :center,
+    baseline: :middle,
+    font_size: 13,
+    font: "Calibri",
+    fill: :black
+  ]
+
+  @default_split_rect [
+    corner_radius: 2,
+    fill: :teal,
+    opacity: 1
+  ]
+
+  @default_split_children [
+    align: :right,
+    baseline: :middle,
+    fill: :black,
+    font: "Calibri",
+    font_size: 13
+  ]
+
+  @default_yes_path [
+    stroke: :red
+  ]
+
+  @default_yes_text [
+    align: :center,
+    baseline: :middle,
+    font_size: 13,
+    font: "Calibri",
+    fill: :black,
+    text: "yes"
+  ]
+
+  @default_no_path [
+    stroke: :black
+  ]
+
+  @default_no_text [
+    align: :center,
+    baseline: :middle,
+    font_size: 13,
+    font: "Calibri",
+    fill: :black,
+    text: "yes"
+  ]
 
   @plotting_params [
     autosize: [
@@ -126,12 +197,51 @@ defmodule EXGBoost.Plotting do
       doc: "Specifies characteristics of leaf nodes",
       type: :keyword_list,
       keys: [
-        text: [],
-        rect: []
+        text:
+          @mark_opts ++
+            [
+              doc: @mark_text_doc,
+              default: @default_leaf_text
+            ],
+        rect:
+          @mark_opts ++
+            [
+              doc: @mark_rect_doc,
+              default: @default_leaf_rect
+            ]
       ],
       default: [
-        text: [],
-        rect: []
+        text: @default_leaf_text,
+        rect: @default_leaf_rect
+      ]
+    ],
+    splits: [
+      doc: "Specifies characteristics of split nodes",
+      type: :keyword_list,
+      keys: [
+        text:
+          @mark_opts ++
+            [
+              doc: @mark_text_doc,
+              default: @default_split_text
+            ],
+        rect:
+          @mark_opts ++
+            [
+              doc: @mark_rect_doc,
+              default: @default_split_rect
+            ],
+        children:
+          @mark_opts ++
+            [
+              doc: @mark_text_doc,
+              default: @default_split_children
+            ]
+      ],
+      default: [
+        text: @default_split_text,
+        rect: @default_split_rect,
+        children: @default_split_children
       ]
     ],
     node_width: [
@@ -152,28 +262,48 @@ defmodule EXGBoost.Plotting do
       ],
       default: [nodes: 10, levels: 100]
     ],
-    splits: [
-      doc: "Specifies characteristics of inner nodes",
+    yes: [
+      doc: "Specifies characteristics of links between nodes where the split condition is true",
       type: :keyword_list,
       keys: [
-        fill: [type: :string, default: "#ccc"],
-        stroke: [type: :string, default: "black"],
-        stroke_width: [type: :pos_integer, default: 1],
-        font_size: [type: :pos_integer, default: 13]
+        path:
+          @mark_opts ++
+            [
+              doc: @mark_path_doc,
+              default: @default_yes_path
+            ],
+        text:
+          @mark_opts ++
+            [
+              doc: @mark_text_doc,
+              default: @default_yes_text
+            ]
       ],
       default: [
-        fill: "#ccc",
-        stroke: "black",
-        stroke_width: 1,
-        font_size: 13
+        path: @default_yes_path,
+        text: @default_yes_text
       ]
     ],
-    links: [
-      doc: "Specifies characteristics of links between nodes",
+    no: [
+      doc: "Specifies characteristics of links between nodes where the split condition is false",
       type: :keyword_list,
       keys: [
-        yes: [],
-        no: []
+        path:
+          @mark_opts ++
+            [
+              doc: @mark_path_doc,
+              default: @default_no_path
+            ],
+        text:
+          @mark_opts ++
+            [
+              doc: @mark_text_doc,
+              default: @default_no_text
+            ]
+      ],
+      default: [
+        path: @default_no_path,
+        text: @default_no_text
       ]
     ],
     validate: [
@@ -466,32 +596,22 @@ defmodule EXGBoost.Plotting do
           ]
         },
         %{
-          "name" => "visibleNodes",
+          "name" => "splitNodes",
           "source" => "fullTreeLayout",
           "transform" => [
             %{
-              "expr" => "indata('treeClickStorePerm', 'nodeid', datum.nodeid)",
-              "type" => "filter"
-            }
-          ]
-        },
-        %{
-          "name" => "splitNodes",
-          "source" => "visibleNodes",
-          "transform" => [
-            %{
               "type" => "filter",
-              "expr" => "datum.isLeaf"
+              "expr" => "indata('treeClickStorePerm', 'nodeid', datum.nodeid) && datum.isLeaf"
             }
           ]
         },
         %{
           "name" => "leafNodes",
-          "source" => "visibleNodes",
+          "source" => "fullTreeLayout",
           "transform" => [
             %{
               "type" => "filter",
-              "expr" => "!datum.isLeaf"
+              "expr" => "indata('treeClickStorePerm', 'nodeid', datum.nodeid) && !datum.isLeaf"
             }
           ]
         },
@@ -558,32 +678,34 @@ defmodule EXGBoost.Plotting do
         "$schema" => "https://vega.github.io/schema/vega/v5.json",
         "marks" => [
           %{
-            "encode" => %{
-              "update" => %{
-                "path" => %{"field" => "path"},
-                "stroke" => %{
-                  "signal" => "datum.source.yes === datum.target.nodeid ? 'red' : 'black'"
+            "encode" =>
+              Map.merge(
+                %{
+                  "update" => %{
+                    "path" => %{"field" => "path"},
+                    "strokeWidth" => %{
+                      "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
+                    }
+                  }
                 },
-                "strokeWidth" => %{
-                  "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
-                }
-              }
-            },
+                format_mark(opts[:yes][:path])
+              ),
             "from" => %{"data" => "yesPaths"},
             "interactive" => false,
             "type" => "path"
           },
           %{
             "encode" => %{
-              "update" => %{
-                "path" => %{"field" => "path"},
-                "stroke" => %{
-                  "signal" => "datum.source.yes === datum.target.nodeid ? 'red' : 'black'"
-                },
-                "strokeWidth" => %{
-                  "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
-                }
-              }
+              "update" =>
+                Map.merge(
+                  %{
+                    "path" => %{"field" => "path"},
+                    "strokeWidth" => %{
+                      "signal" => "indexof(nodeHighlight, datum.target.nodeid)> -1? 2:1"
+                    }
+                  },
+                  format_mark(opts[:no][:path])
+                )
             },
             "from" => %{"data" => "noPaths"},
             "interactive" => false,
@@ -591,40 +713,40 @@ defmodule EXGBoost.Plotting do
           },
           %{
             "encode" => %{
-              "update" => %{
-                "align" => %{"value" => "center"},
-                "baseline" => %{"value" => "middle"},
-                "fontSize" => %{"signal" => "linksFontSize"},
-                "text" => %{"signal" => "datum.source.yes === datum.target.nodeid ? 'yes' : 'no'"},
-                "x" => %{
-                  "signal" =>
-                    "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
-                },
-                "y" => %{
-                  "signal" =>
-                    "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
-                }
-              }
+              "update" =>
+                Map.merge(
+                  %{
+                    "x" => %{
+                      "signal" =>
+                        "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                    },
+                    "y" => %{
+                      "signal" =>
+                        "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
+                    }
+                  },
+                  format_mark(opts[:yes][:text])
+                )
             },
             "from" => %{"data" => "yesPaths"},
             "type" => "text"
           },
           %{
             "encode" => %{
-              "update" => %{
-                "align" => %{"value" => "center"},
-                "baseline" => %{"value" => "middle"},
-                "fontSize" => %{"signal" => "linksFontSize"},
-                "text" => %{"signal" => "datum.source.yes === datum.target.nodeid ? 'yes' : 'no'"},
-                "x" => %{
-                  "signal" =>
-                    "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
-                },
-                "y" => %{
-                  "signal" =>
-                    "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
-                }
-              }
+              "update" =>
+                Map.merge(
+                  %{
+                    "x" => %{
+                      "signal" =>
+                        "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                    },
+                    "y" => %{
+                      "signal" =>
+                        "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
+                    }
+                  },
+                  format_mark(opts[:no][:text])
+                )
             },
             "from" => %{"data" => "noPaths"},
             "type" => "text"
@@ -632,37 +754,37 @@ defmodule EXGBoost.Plotting do
           %{
             "clip" => false,
             "encode" => %{
-              "update" => %{
-                "cornerRadius" => %{"value" => 2},
-                "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
-                "fill" => %{"signal" => "datum.isLeaf ? leafColor : splitColor"},
-                "height" => %{"signal" => "scaledNodeHeight"},
-                "opacity" => %{"value" => 1},
-                "tooltip" => %{"signal" => ""},
-                "width" => %{"signal" => "scaledNodeWidth"},
-                "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
-                "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
-              }
+              "update" =>
+                Map.merge(
+                  %{
+                    "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
+                    "height" => %{"signal" => "scaledNodeHeight"},
+                    "tooltip" => %{"signal" => ""},
+                    "width" => %{"signal" => "scaledNodeWidth"},
+                    "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
+                    "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
+                  },
+                  format_mark(opts[:splits][:rect])
+                )
             },
             "from" => %{"data" => "splitNodes"},
             "name" => "splitNode",
             "marks" => [
               %{
                 "encode" => %{
-                  "update" => %{
-                    "align" => %{"value" => "center"},
-                    "baseline" => %{"value" => "middle"},
-                    "fill" => %{"signal" => "'black'"},
-                    "font" => %{"value" => "Calibri"},
-                    "fontSize" => %{"signal" => "parent.split ? splitsFontSize : leavesFontSize"},
-                    "limit" => %{"signal" => "scaledNodeWidth-scaledLimit"},
-                    "text" => %{
-                      "signal" =>
-                        "parent.split ? parent.split + ' <= ' + format(parent.split_condition, '.2f') : 'leaf = ' + format(parent.leaf, '.2f')"
-                    },
-                    "x" => %{"signal" => "(scaledNodeWidth / 2)"},
-                    "y" => %{"signal" => "scaledNodeHeight / 2"}
-                  }
+                  "update" =>
+                    Map.merge(
+                      %{
+                        "limit" => %{"signal" => "scaledNodeWidth-scaledLimit"},
+                        "text" => %{
+                          "signal" =>
+                            "parent.split + ' <= ' + format(parent.split_condition, '.2f')"
+                        },
+                        "x" => %{"signal" => "(scaledNodeWidth / 2)"},
+                        "y" => %{"signal" => "scaledNodeHeight / 2"}
+                      },
+                      format_mark(opts[:splits][:text])
+                    )
                 },
                 "interactive" => false,
                 "name" => "title",
@@ -670,16 +792,15 @@ defmodule EXGBoost.Plotting do
               },
               %{
                 "encode" => %{
-                  "update" => %{
-                    "align" => %{"value" => "right"},
-                    "baseline" => %{"value" => "middle"},
-                    "fill" => %{"signal" => "childrenColor"},
-                    "font" => %{"value" => "Calibri"},
-                    "fontSize" => %{"signal" => "splitsFontSize"},
-                    "text" => %{"signal" => "parent.children > 0 ? parent.children :''"},
-                    "x" => %{"signal" => "item.mark.group.width - (9/ span(xdom))*width"},
-                    "y" => %{"signal" => "item.mark.group.height/2"}
-                  }
+                  "update" =>
+                    Map.merge(
+                      %{
+                        "text" => %{"signal" => "parent.children"},
+                        "x" => %{"signal" => "item.mark.group.width - (9/ span(xdom))*width"},
+                        "y" => %{"signal" => "item.mark.group.height/2"}
+                      },
+                      format_mark(opts[:splits][:children])
+                    )
                 },
                 "interactive" => false,
                 "type" => "text"
@@ -690,17 +811,18 @@ defmodule EXGBoost.Plotting do
           %{
             "clip" => false,
             "encode" => %{
-              "update" => %{
-                "cornerRadius" => %{"value" => 2},
-                "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
-                "fill" => %{"signal" => "datum.isLeaf ? leafColor : splitColor"},
-                "height" => %{"signal" => "scaledNodeHeight"},
-                "opacity" => %{"value" => 1},
-                "tooltip" => %{"signal" => ""},
-                "width" => %{"signal" => "scaledNodeWidth"},
-                "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
-                "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
-              }
+              "update" =>
+                Map.merge(
+                  %{
+                    "cursor" => %{"signal" => "datum.children > 0 ? 'pointer' : '' "},
+                    "height" => %{"signal" => "scaledNodeHeight"},
+                    "tooltip" => %{"signal" => ""},
+                    "width" => %{"signal" => "scaledNodeWidth"},
+                    "x" => %{"signal" => "datum.xscaled - (scaledNodeWidth / 2)"},
+                    "yc" => %{"signal" => "scale('yscale',datum.y) - (scaledNodeHeight/2)"}
+                  },
+                  format_mark(opts[:leaves][:rect])
+                )
             },
             "from" => %{"data" => "leafNodes"},
             "name" => "leafNode",
@@ -710,13 +832,6 @@ defmodule EXGBoost.Plotting do
                   "update" =>
                     Map.merge(
                       %{
-                        # "align" => %{"value" => "center"},
-                        # "baseline" => %{"value" => "middle"},
-                        # "fill" => %{"signal" => "'black'"},
-                        # "font" => %{"value" => "Calibri"},
-                        # "fontSize" => %{
-                        #   "signal" => "parent.split ? splitsFontSize : leavesFontSize"
-                        # },
                         "limit" => %{"signal" => "scaledNodeWidth-scaledLimit"},
                         "text" => %{
                           "signal" => "'leaf = ' + format(parent.leaf, '.2f')"
@@ -724,7 +839,7 @@ defmodule EXGBoost.Plotting do
                         "x" => %{"signal" => "(scaledNodeWidth / 2)"},
                         "y" => %{"signal" => "scaledNodeHeight / 2"}
                       },
-                      format_mark(opts[:leaves])
+                      format_mark(opts[:leaves][:text])
                     )
                 },
                 "interactive" => false,
@@ -771,23 +886,6 @@ defmodule EXGBoost.Plotting do
               }
             )
           ),
-          %{"name" => "childrenColor", "value" => "black"},
-          %{"name" => "leafColor", "value" => opts[:leaves][:fill]},
-          %{"name" => "splitColor", "value" => opts[:splits][:fill]},
-          %{"name" => "spaceBetweenLevels", "value" => opts[:space_between][:levels]},
-          %{"name" => "spaceBetweenNodes", "value" => opts[:space_between][:nodes]},
-          %{"name" => "nodeWidth", "value" => opts[:node_width]},
-          %{"name" => "nodeHeight", "value" => opts[:node_height]},
-          %{
-            "name" => "startingDepth",
-            "on" => [%{"events" => %{"throttle" => 0, "type" => "timer"}, "update" => "-1"}],
-            "value" =>
-              opts[:depth] ||
-                to_tabular(booster)
-                |> Enum.map(&Map.get(&1, "depth"))
-                |> Enum.filter(& &1)
-                |> Enum.max()
-          },
           %{
             "name" => "node",
             "on" => [
@@ -915,17 +1013,19 @@ defmodule EXGBoost.Plotting do
           %{"name" => "scaledNodeWidth", "update" => "(nodeWidth/ span(xdom))*width"},
           %{"name" => "scaledNodeHeight", "update" => "abs(nodeHeight/ span(ydom))*height"},
           %{"name" => "scaledLimit", "update" => "(20/ span(xdom))*width"},
+          %{"name" => "spaceBetweenLevels", "value" => opts[:space_between][:levels]},
+          %{"name" => "spaceBetweenNodes", "value" => opts[:space_between][:nodes]},
+          %{"name" => "nodeWidth", "value" => opts[:node_width]},
+          %{"name" => "nodeHeight", "value" => opts[:node_height]},
           %{
-            "name" => "leavesFontSize",
-            "update" => "(#{opts[:leaves][:font_size]}/ span(xdom))*width"
-          },
-          %{
-            "name" => "splitsFontSize",
-            "update" => "(#{opts[:splits][:font_size]}/ span(xdom))*width"
-          },
-          %{
-            "name" => "linksFontSize",
-            "update" => "(#{opts[:links][:font_size]}/ span(xdom))*width"
+            "name" => "startingDepth",
+            "on" => [%{"events" => %{"throttle" => 0, "type" => "timer"}, "update" => "-1"}],
+            "value" =>
+              opts[:depth] ||
+                to_tabular(booster)
+                |> Enum.map(&Map.get(&1, "depth"))
+                |> Enum.filter(& &1)
+                |> Enum.max()
           }
         ]
       })
