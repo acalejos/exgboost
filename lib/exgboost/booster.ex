@@ -163,9 +163,15 @@ defmodule EXGBoost.Booster do
   def booster(dmats, opts \\ [])
 
   def booster(dmats, opts) when is_list(dmats) do
+    {str_opts, opts} = Keyword.split(opts, Internal.dmatrix_str_feature_opts())
     opts = EXGBoost.Parameters.validate!(opts)
     refs = Enum.map(dmats, & &1.ref)
     booster_ref = EXGBoost.NIF.booster_create(refs) |> Internal.unwrap!()
+
+    Enum.each(str_opts, fn {key, value} ->
+      EXGBoost.NIF.booster_set_str_feature_info(booster_ref, Atom.to_string(key), value)
+    end)
+
     set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 
@@ -174,9 +180,15 @@ defmodule EXGBoost.Booster do
   end
 
   def booster(%__MODULE__{} = bst, opts) do
+    {str_opts, opts} = Keyword.split(opts, Internal.dmatrix_str_feature_opts())
     opts = EXGBoost.Parameters.validate!(opts)
     boostr_bytes = EXGBoost.NIF.booster_serialize_to_buffer(bst.ref) |> Internal.unwrap!()
     booster_ref = EXGBoost.NIF.booster_deserialize_from_buffer(boostr_bytes) |> Internal.unwrap!()
+
+    Enum.each(str_opts, fn {key, value} ->
+      EXGBoost.NIF.booster_set_str_feature_info(booster_ref, Atom.to_string(key), value)
+    end)
+
     set_params(%__MODULE__{ref: booster_ref}, opts)
   end
 

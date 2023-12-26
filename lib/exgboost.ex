@@ -212,7 +212,7 @@ defmodule EXGBoost do
   def train(x, y, opts \\ []) do
     x = Nx.concatenate(x)
     y = Nx.concatenate(y)
-    {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
+    dmat_opts = Keyword.take(opts, Internal.dmatrix_feature_opts())
     dmat = DMatrix.from_tensor(x, y, Keyword.put_new(dmat_opts, :format, :dense))
     Training.train(dmat, opts)
   end

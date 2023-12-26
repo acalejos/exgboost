@@ -1,22 +1,3 @@
-# defmodule EXGBoost.Plotting.Schema do
-#   @moduledoc false
-#   Code.ensure_compiled!(ExJsonSchema)
-
-#   defmacro __before_compile__(_env) do
-#     HTTPoison.start()
-
-#     schema =
-#       HTTPoison.get!("https://vega.github.io/schema/vega/v5.json").body
-#       |> Jason.decode!()
-#       |> ExJsonSchema.Schema.resolve()
-#       |> Macro.escape()
-
-#     quote do
-#       def get_schema(), do: unquote(schema)
-#     end
-#   end
-# end
-
 defmodule EXGBoost.Plotting do
   @moduledoc """
   Functions for plotting EXGBoost `Booster` models using [Vega](https://vega.github.io/vega/)
@@ -151,10 +132,15 @@ defmodule EXGBoost.Plotting do
     font_size: 13,
     font: "Calibri",
     fill: :black,
-    text: "yes"
+    text: "no"
   ]
 
   @plotting_params [
+    rankdir: [
+      doc: "Determines the direction of the graph.",
+      type: {:in, [:tb, :lr]},
+      default: :tb
+    ],
     autosize: [
       doc:
         "Determines if the visualization should automatically resize when the window size changes",
@@ -327,7 +313,11 @@ defmodule EXGBoost.Plotting do
 
   @plotting_schema NimbleOptions.new!(@plotting_params)
 
+  @defaults NimbleOptions.validate!([], @plotting_schema)
+
   def get_schema(), do: @schema
+
+  def get_defaults(), do: @defaults
 
   defp validate_spec(spec) do
     case ExJsonSchema.Validator.validate(get_schema(), spec) do
@@ -418,7 +408,9 @@ defmodule EXGBoost.Plotting do
   This function is useful if you want to create a custom Vega specification, but still want to use the data transformation
   provided by the default specification.
   """
-  def get_data_spec(booster) do
+  def get_data_spec(booster, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @plotting_schema)
+
     %{
       "$schema" => "https://vega.github.io/schema/vega/v5.json",
       "data" => [
@@ -430,7 +422,14 @@ defmodule EXGBoost.Plotting do
             %{"expr" => "datum.tree_id === selectedTree", "type" => "filter"},
             %{"key" => "nodeid", "parentKey" => "parentid", "type" => "stratify"},
             %{
-              "as" => ["y", "x", "depth", "children"],
+              "as" =>
+                case opts[:rankdir] do
+                  :tb ->
+                    ["x", "y", "depth", "children"]
+
+                  :lr ->
+                    ["y", "x", "depth", "children"]
+                end,
               "method" => "tidy",
               "separation" => %{"signal" => "false"},
               "type" => "tree"
@@ -547,7 +546,14 @@ defmodule EXGBoost.Plotting do
             },
             %{"key" => "nodeid", "parentKey" => "parentid", "type" => "stratify"},
             %{
-              "as" => ["x", "y", "depth", "children"],
+              "as" =>
+                case opts[:rankdir] do
+                  :tb ->
+                    ["x", "y", "depth", "children"]
+
+                  :lr ->
+                    ["y", "x", "depth", "children"]
+                end,
               "method" => "tidy",
               "nodeSize" => [
                 %{"signal" => "nodeWidth + spaceBetweenNodes"},
@@ -621,12 +627,55 @@ defmodule EXGBoost.Plotting do
           "transform" => [
             %{"type" => "treelinks"},
             %{
-              "orient" => "vertical",
+              "orient" =>
+                case opts[:rankdir] do
+                  vertical when vertical in [:tb, :bt] ->
+                    "vertical"
+
+                  horizontal when horizontal in [:lr, :rl] ->
+                    "horizontal"
+                end,
               "shape" => "line",
-              "sourceX" => %{"expr" => "scale('xscale', datum.source.x)"},
-              "sourceY" => %{"expr" => "scale('yscale', datum.source.y)"},
-              "targetX" => %{"expr" => "scale('xscale', datum.target.x)"},
-              "targetY" => %{"expr" => "scale('yscale', datum.target.y) - scaledNodeHeight"},
+              "sourceX" => %{
+                "expr" =>
+                  case opts[:rankdir] do
+                    :tb ->
+                      "scale('xscale', datum.source.x)"
+
+                    :lr ->
+                      "scale('xscale', datum.source.x) + scaledNodeWidth/2"
+                  end
+              },
+              "sourceY" => %{
+                "expr" =>
+                  case opts[:rankdir] do
+                    :tb ->
+                      "scale('yscale', datum.source.y)"
+
+                    :lr ->
+                      "scale('yscale', datum.source.y) - scaledNodeHeight/2"
+                  end
+              },
+              "targetX" => %{
+                "expr" =>
+                  case opts[:rankdir] do
+                    :tb ->
+                      "scale('xscale', datum.target.x)"
+
+                    :lr ->
+                      "scale('xscale', datum.target.x) - scaledNodeWidth/2"
+                  end
+              },
+              "targetY" => %{
+                "expr" =>
+                  case opts[:rankdir] do
+                    :tb ->
+                      "scale('yscale', datum.target.y) - scaledNodeHeight"
+
+                    :lr ->
+                      "scale('yscale', datum.target.y) - scaledNodeHeight/2"
+                  end
+              },
               "type" => "linkpath"
             },
             %{
@@ -660,8 +709,52 @@ defmodule EXGBoost.Plotting do
   end
 
   def to_vega(booster, opts \\ []) do
+    spec = get_data_spec(booster, opts)
     opts = NimbleOptions.validate!(opts, @plotting_schema)
-    spec = get_data_spec(booster)
+    defaults = get_defaults()
+
+    # Try to account for non-default node height / width to adjust spacing
+    # between nodes and levels as a quality of life improvement
+    # If they provide their own spacing, don't adjust it
+    opts =
+      cond do
+        opts[:rankdir] == :lr and
+            opts[:space_between][:levels] == defaults[:space_between][:levels] ->
+          put_in(
+            opts[:space_between][:levels],
+            defaults[:space_between][:levels] + (opts[:node_width] - defaults[:node_width])
+          )
+
+        opts[:rankdir] == :tb and
+            opts[:space_between][:levels] == defaults[:space_between][:levels] ->
+          put_in(
+            opts[:space_between][:levels],
+            defaults[:space_between][:levels] + (opts[:node_height] - defaults[:node_height])
+          )
+
+        true ->
+          opts
+      end
+
+    opts =
+      cond do
+        opts[:rankdir] == :lr and
+            opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
+          put_in(
+            opts[:space_between][:nodes],
+            defaults[:space_between][:nodes] + (opts[:node_height] - defaults[:node_height])
+          )
+
+        opts[:rankdir] == :tb and
+            opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
+          put_in(
+            opts[:space_between][:nodes],
+            defaults[:space_between][:nodes] + (opts[:node_width] - defaults[:node_width])
+          )
+
+        true ->
+          opts
+      end
 
     [%{"$ref" => root} | [%{"properties" => properties}]] =
       EXGBoost.Plotting.get_schema().schema |> Map.get("allOf")

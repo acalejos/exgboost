@@ -6,6 +6,8 @@ defmodule EXGBoost.Training do
 
   @spec train(DMatrix.t(), Keyword.t()) :: Booster.t()
   def train(%DMatrix{} = dmat, opts \\ []) do
+    dmat_opts = Keyword.take(opts, EXGBoost.Internal.dmatrix_feature_opts())
+
     {opts, booster_params} =
       Keyword.split(opts, [
         :obj,
@@ -40,7 +42,7 @@ defmodule EXGBoost.Training do
 
     evals_dmats =
       Enum.map(evals, fn {%Nx.Tensor{} = x, %Nx.Tensor{} = y, name} ->
-        {DMatrix.from_tensor(x, y, format: :dense), name}
+        {DMatrix.from_tensor(x, y, Keyword.put_new(dmat_opts, :format, :dense)), name}
       end)
 
     bst =
