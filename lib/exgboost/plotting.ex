@@ -138,7 +138,7 @@ defmodule EXGBoost.Plotting do
   @plotting_params [
     rankdir: [
       doc: "Determines the direction of the graph.",
-      type: {:in, [:tb, :lr]},
+      type: {:in, [:tb, :lr, :bt, :rl]},
       default: :tb
     ],
     autosize: [
@@ -424,10 +424,10 @@ defmodule EXGBoost.Plotting do
             %{
               "as" =>
                 case opts[:rankdir] do
-                  :tb ->
+                  vertical when vertical in [:tb, :bt] ->
                     ["x", "y", "depth", "children"]
 
-                  :lr ->
+                  horizontal when horizontal in [:lr, :rl] ->
                     ["y", "x", "depth", "children"]
                 end,
               "method" => "tidy",
@@ -548,10 +548,10 @@ defmodule EXGBoost.Plotting do
             %{
               "as" =>
                 case opts[:rankdir] do
-                  :tb ->
+                  vertical when vertical in [:tb, :bt] ->
                     ["x", "y", "depth", "children"]
 
-                  :lr ->
+                  horizontal when horizontal in [:lr, :rl] ->
                     ["y", "x", "depth", "children"]
                 end,
               "method" => "tidy",
@@ -562,8 +562,16 @@ defmodule EXGBoost.Plotting do
               "separation" => %{"signal" => "false"},
               "type" => "tree"
             },
-            %{"as" => "y", "expr" => "datum.y+(height/10)", "type" => "formula"},
-            %{"as" => "x", "expr" => "datum.x+(width/2)", "type" => "formula"},
+            %{
+              "as" => "y",
+              "expr" => "#{if opts[:rankdir] == :bt, do: -1, else: 1}*(datum.y+(height/10))",
+              "type" => "formula"
+            },
+            %{
+              "as" => "x",
+              "expr" => "#{if opts[:rankdir] == :rl, do: -1, else: 1}*(datum.x+(width/2))",
+              "type" => "formula"
+            },
             %{"as" => "xscaled", "expr" => "scale('xscale',datum.x)", "type" => "formula"},
             %{"as" => "parent", "expr" => "datum.parentid", "type" => "formula"}
           ]
@@ -639,40 +647,40 @@ defmodule EXGBoost.Plotting do
               "sourceX" => %{
                 "expr" =>
                   case opts[:rankdir] do
-                    :tb ->
+                    vertical when vertical in [:tb, :bt] ->
                       "scale('xscale', datum.source.x)"
 
-                    :lr ->
+                    horizontal when horizontal in [:lr, :rl] ->
                       "scale('xscale', datum.source.x) + scaledNodeWidth/2"
                   end
               },
               "sourceY" => %{
                 "expr" =>
                   case opts[:rankdir] do
-                    :tb ->
+                    vertical when vertical in [:tb, :bt] ->
                       "scale('yscale', datum.source.y)"
 
-                    :lr ->
+                    horizontal when horizontal in [:lr, :rl] ->
                       "scale('yscale', datum.source.y) - scaledNodeHeight/2"
                   end
               },
               "targetX" => %{
                 "expr" =>
                   case opts[:rankdir] do
-                    :tb ->
+                    vertical when vertical in [:tb, :bt] ->
                       "scale('xscale', datum.target.x)"
 
-                    :lr ->
+                    horizontal when horizontal in [:lr, :rl] ->
                       "scale('xscale', datum.target.x) - scaledNodeWidth/2"
                   end
               },
               "targetY" => %{
                 "expr" =>
                   case opts[:rankdir] do
-                    :tb ->
+                    vertical when vertical in [:tb, :bt] ->
                       "scale('yscale', datum.target.y) - scaledNodeHeight"
 
-                    :lr ->
+                    horizontal when horizontal in [:lr, :rl] ->
                       "scale('yscale', datum.target.y) - scaledNodeHeight/2"
                   end
               },
