@@ -7,7 +7,7 @@ Mix.install([
   {:kino_explorer, "~> 0.1.8"},
   {:kino_vega_lite, "~> 0.1.8"},
   {:nx, "~> 0.6"},
-  {:tucan, "~> 0.2"}
+  {:tucan, "~> 0.3"}
 ])
 ```
 
@@ -30,44 +30,10 @@ y_expected = x |> Nx.sin() |> Nx.multiply(x)
 :ok
 ```
 
-Now let's plot the data.
-
-We'll be building a number of plots throughout this Livebook using the `Tucan` library, so we'll create a small plotting module for convenience.
-It's just a small wrapper around `Tucan`, but with conveniences for passing in `Nx.Tensor`s.
+Now let's plot the data. We'll be building a number of plots throughout this Livebook using the `Tucan` library.
 
 ```elixir
-defmodule NxTucan do
-  @moduledoc "Convenience for plotting `Nx.Tensor`s using the Tucan library"
-  @plot_types [:lineplot, :scatter]
-
-  for plot_type <- @plot_types do
-    def unquote(plot_type)(data, opts), do: plot(unquote(plot_type), data, opts)
-  end
-
-  def plot(plot_type, data, opts) do
-    {cols, rows} = to_tabular(data)
-    apply(Tucan, plot_type, [rows] ++ cols ++ [opts])
-  end
-
-  def to_tabular(data) do
-    {cols, rows} = Enum.unzip(data)
-    cols = Enum.map(cols, &to_string/1)
-
-    rows =
-      rows
-      |> Enum.map(&Nx.to_list/1)
-      |> Enum.zip()
-      |> Enum.map(fn tuple -> cols |> Enum.zip(Tuple.to_list(tuple)) |> Map.new() end)
-
-    {cols, rows}
-  end
-end
-```
-
-Now we can use our new module to do the actual plot:
-
-```elixir
-NxTucan.scatter([x: x, y_expected: y_expected], filled: true)
+Tucan.scatter([x: x, y_expected: y_expected], "x", "y_expected", filled: true)
 |> Tucan.set_width(750)
 ```
 
@@ -83,8 +49,8 @@ noise = noise |> Nx.stack() |> Nx.subtract(sigma |> Nx.pow(2) |> Nx.divide(2) |>
 y = Nx.add(y_expected, noise)
 
 Tucan.layers([
-  NxTucan.scatter([x: x, y: y], filled: true, fill_opacity: 0.75),
-  NxTucan.lineplot([x: x, y_expected: y_expected], line_color: "red")
+  Tucan.scatter([x: x, y: y], "x", "y", filled: true, fill_opacity: 0.75),
+  Tucan.lineplot([x: x, y_expected: y_expected], "x", "y_expected", line_color: "red")
 ])
 |> Tucan.set_width(750)
 ```
@@ -102,8 +68,11 @@ shuffle_key = key
 [x_train, x_test, y_train, y_test] |> Enum.map(&Nx.size/1)
 
 Tucan.layers([
-  NxTucan.scatter([x_train: x_train, y_train: y_train], filled: true),
-  NxTucan.scatter([x_test: x_test, y_test: y_test], filled: true, point_color: "orange")
+  Tucan.scatter([x_train: x_train, y_train: y_train], "x_train", "y_train", filled: true),
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
+    filled: true,
+    point_color: "orange"
+  )
 ])
 |> Tucan.set_width(750)
 ```
@@ -168,13 +137,13 @@ y_val_p05 = EXGBoost.predict(model.p05, x_val)
 y_val_p50 = EXGBoost.predict(model.p50, x_val)
 y_val_p95 = EXGBoost.predict(model.p95, x_val)
 
-{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_val_p05, p50: y_val_p50, p95: y_val_p95)
+plot_data = [x: x_val, p05: y_val_p05, p50: y_val_p50, p95: y_val_p95]
 
 Tucan.layers([
   Tucan.step(plot_data, "x", "p05", line_color: "black"),
   Tucan.step(plot_data, "x", "p50", line_color: "blue"),
   Tucan.step(plot_data, "x", "p95", line_color: "black"),
-  NxTucan.scatter([x_test: x_test, y_test: y_test],
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
     point_color: "orange",
     fill_opacity: 0.75,
     filled: true
@@ -363,13 +332,13 @@ Now let's plot our new model to see if it improved:
 y_lo = EXGBoost.predict(best_model_lo, x_val)
 y_hi = EXGBoost.predict(best_model_hi, x_val)
 
-{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_lo, p50: y_val_p50, p95: y_hi)
+plot_data = [x: x_val, p05: y_lo, p50: y_val_p50, p95: y_hi]
 
 Tucan.layers([
   Tucan.step(plot_data, "x", "p05", line_color: "black"),
   Tucan.step(plot_data, "x", "p50", line_color: "blue"),
   Tucan.step(plot_data, "x", "p95", line_color: "black"),
-  NxTucan.scatter([x_test: x_test, y_test: y_test],
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
     point_color: "orange",
     fill_opacity: 0.75,
     filled: true
