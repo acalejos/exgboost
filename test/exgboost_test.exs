@@ -310,4 +310,45 @@ defmodule EXGBoostTest do
 
     assert EXGBoost.ArrayInterface.get_tensor(array_interface) == tensor
   end
+
+  describe "errors" do
+    setup %{key: key0} do
+      {nrows, ncols} = {10, 10}
+      {x, key1} = Nx.Random.normal(key0, 0, 1, shape: {nrows, ncols})
+      {y, _key2} = Nx.Random.normal(key1, 0, 1, shape: {nrows})
+      %{x: x, y: y}
+    end
+
+    test "duplicate callback names result in an error", %{x: x, y: y} do
+      # This callback's name is the same as one of the default callbacks.
+      custom_callback = EXGBoost.Training.Callback.new(:before_training, & &1, :monitor_metrics)
+
+      assert_raise ArgumentError,
+                   """
+                   Found duplicate callback names.
+
+                   Name counts:
+
+                     * {:eval_metrics, 1}
+
+                     * {:monitor_metrics, 2}
+                   """,
+                   fn ->
+                     EXGBoost.train(x, y,
+                       callbacks: [custom_callback],
+                       eval_metric: [:rmse, :logloss],
+                       evals: [{x, y, "validation"}]
+                     )
+                   end
+    end
+
+    test "callback with bad function results in helpful error", %{x: x, y: y} do
+      bad_fun = fn state -> %{state | status: :bad_status} end
+      bad_callback = EXGBoost.Training.Callback.new(:before_training, bad_fun, :bad_callback)
+
+      assert_raise ArgumentError,
+                   "`status` must be `:cont` or `:halt`, found: `:bad_status`.",
+                   fn -> EXGBoost.train(x, y, callbacks: [bad_callback]) end
+    end
+  end
 end
