@@ -55,7 +55,6 @@ defmodule EXGBoost.Plotting do
 
 
   """
-
   HTTPoison.start()
 
   @schema HTTPoison.get!("https://vega.github.io/schema/vega/v5.json").body
@@ -69,7 +68,7 @@ defmodule EXGBoost.Plotting do
   @mark_opts [
     type: :keyword_list,
     keys: [
-      *: [type: {:or, [:string, :atom, :integer, :boolean, nil]}]
+      *: [type: {:or, [:string, :atom, :integer, :boolean, nil, {:list, :any}]}]
     ]
   ]
 
@@ -136,6 +135,27 @@ defmodule EXGBoost.Plotting do
   ]
 
   @plotting_params [
+    style: [
+      doc: "The style to use for the visualization.",
+      default: :solarized_light,
+      type:
+        {:in,
+         [
+           :solarized_light,
+           :solarized_dark,
+           :playful_light,
+           :playful_dark,
+           :dark,
+           :light,
+           :nord,
+           :dracula,
+           :gruvbox,
+           :high_contrast,
+           :monokai,
+           :material,
+           :one_dark
+         ]}
+    ],
     rankdir: [
       doc: "Determines the direction of the graph.",
       type: {:in, [:tb, :lr, :bt, :rl]},
@@ -241,10 +261,19 @@ defmodule EXGBoost.Plotting do
       default: 45
     ],
     space_between: [
+      doc: "The space between the rectangular marks in pixels.",
       type: :keyword_list,
       keys: [
-        nodes: [type: :pos_integer, default: 10],
-        levels: [type: :pos_integer, default: 100]
+        nodes: [
+          doc: "Space between marks within the same depth of the tree.",
+          type: :pos_integer,
+          default: 10
+        ],
+        levels: [
+          doc: "Space between each rank / depth of the tree.",
+          type: :pos_integer,
+          default: 100
+        ]
       ],
       default: [nodes: 10, levels: 100]
     ],
@@ -354,6 +383,16 @@ defmodule EXGBoost.Plotting do
     end
   end
 
+  def deep_merge_kw(a, b) do
+    Keyword.merge(a, b, fn
+      _key, val_a, val_b when is_list(val_a) and is_list(val_b) ->
+        deep_merge_kw(val_a, val_b)
+
+      _key, _val_a, val_b ->
+        val_b
+    end)
+  end
+
   defp new_node(params = %{}) do
     Map.merge(
       %{
@@ -386,7 +425,7 @@ defmodule EXGBoost.Plotting do
   - yes: The node id of the left child
   - no: The node id of the right child
   - missing: The node id of the missing child
-  - depth: The depth of the node
+  - depth: The depth of the node (root node is depth 1)
   - leaf: The leaf value if it is a leaf node
   """
   def to_tabular(booster) do
@@ -407,9 +446,27 @@ defmodule EXGBoost.Plotting do
 
   This function is useful if you want to create a custom Vega specification, but still want to use the data transformation
   provided by the default specification.
+
+  ## Options
+
+  * `:rankdir` - Determines the direction of the graph. Accepts one of `:tb`, `:lr`, `:bt`, or `:rl`. Defaults to `:tb`
+
   """
   def get_data_spec(booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @plotting_schema)
+
+    opts =
+      unless opts[:style] in [nil, false] do
+        style =
+          NimbleOptions.validate!(
+            apply(EXGBoost.Plotting.Styles, opts[:style], []),
+            @plotting_schema
+          )
+
+        deep_merge_kw(opts, style)
+      else
+        opts
+      end
 
     %{
       "$schema" => "https://vega.github.io/schema/vega/v5.json",
@@ -650,8 +707,11 @@ defmodule EXGBoost.Plotting do
                     vertical when vertical in [:tb, :bt] ->
                       "scale('xscale', datum.source.x)"
 
-                    horizontal when horizontal in [:lr, :rl] ->
+                    :lr ->
                       "scale('xscale', datum.source.x) + scaledNodeWidth/2"
+
+                    :rl ->
+                      "scale('xscale', datum.source.x) - scaledNodeWidth/2"
                   end
               },
               "sourceY" => %{
@@ -670,8 +730,11 @@ defmodule EXGBoost.Plotting do
                     vertical when vertical in [:tb, :bt] ->
                       "scale('xscale', datum.target.x)"
 
-                    horizontal when horizontal in [:lr, :rl] ->
+                    :lr ->
                       "scale('xscale', datum.target.x) - scaledNodeWidth/2"
+
+                    :rl ->
+                      "scale('xscale', datum.target.x) + scaledNodeWidth/2"
                   end
               },
               "targetY" => %{
@@ -719,6 +782,20 @@ defmodule EXGBoost.Plotting do
   def to_vega(booster, opts \\ []) do
     spec = get_data_spec(booster, opts)
     opts = NimbleOptions.validate!(opts, @plotting_schema)
+
+    opts =
+      unless opts[:style] in [nil, false] do
+        style =
+          NimbleOptions.validate!(
+            apply(EXGBoost.Plotting.Styles, opts[:style], []),
+            @plotting_schema
+          )
+
+        deep_merge_kw(opts, style)
+      else
+        opts
+      end
+
     defaults = get_defaults()
 
     # Try to account for non-default node height / width to adjust spacing
@@ -726,14 +803,14 @@ defmodule EXGBoost.Plotting do
     # If they provide their own spacing, don't adjust it
     opts =
       cond do
-        opts[:rankdir] == :lr and
+        opts[:rankdir] in [:lr, :rl] and
             opts[:space_between][:levels] == defaults[:space_between][:levels] ->
           put_in(
             opts[:space_between][:levels],
             defaults[:space_between][:levels] + (opts[:node_width] - defaults[:node_width])
           )
 
-        opts[:rankdir] == :tb and
+        opts[:rankdir] in [:tb, :bt] and
             opts[:space_between][:levels] == defaults[:space_between][:levels] ->
           put_in(
             opts[:space_between][:levels],
@@ -746,14 +823,14 @@ defmodule EXGBoost.Plotting do
 
     opts =
       cond do
-        opts[:rankdir] == :lr and
+        opts[:rankdir] in [:lr, :rl] and
             opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
           put_in(
             opts[:space_between][:nodes],
             defaults[:space_between][:nodes] + (opts[:node_height] - defaults[:node_height])
           )
 
-        opts[:rankdir] == :tb and
+        opts[:rankdir] in [:tb, :bt] and
             opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
           put_in(
             opts[:space_between][:nodes],
@@ -937,7 +1014,7 @@ defmodule EXGBoost.Plotting do
                         "text" => %{
                           "signal" => "'leaf = ' + format(parent.leaf, '.2f')"
                         },
-                        "x" => %{"signal" => "(scaledNodeWidth / 2)"},
+                        "x" => %{"signal" => "scaledNodeWidth / 2"},
                         "y" => %{"signal" => "scaledNodeHeight / 2"}
                       },
                       format_mark(opts[:leaves][:text])
@@ -1131,8 +1208,9 @@ defmodule EXGBoost.Plotting do
         ]
       })
 
-    spec = Map.merge(spec, tlk)
-    spec = (opts[:validate] && validate_spec(spec)) || spec
+    spec = Map.merge(spec, tlk) |> Map.delete("style")
+    File.write!("/Users/andres/Documents/exgboost/spec.json", Jason.encode!(spec))
+    spec = if opts[:validate], do: validate_spec(spec), else: spec
 
     Jason.encode!(spec) |> VegaLite.from_json()
   end
