@@ -7,7 +7,7 @@ Mix.install([
   {:kino_explorer, "~> 0.1.8"},
   {:kino_vega_lite, "~> 0.1.8"},
   {:nx, "~> 0.6"},
-  {:tucan, "~> 0.2"}
+  {:tucan, "~> 0.3"}
 ])
 ```
 
@@ -30,44 +30,10 @@ y_expected = x |> Nx.sin() |> Nx.multiply(x)
 :ok
 ```
 
-Now let's plot the data.
-
-We'll be building a number of plots throughout this Livebook using the `Tucan` library, so we'll create a small plotting module for convenience.
-It's just a small wrapper around `Tucan`, but with conveniences for passing in `Nx.Tensor`s.
+Now let's plot the data. We'll be building a number of plots throughout this Livebook using the `Tucan` library.
 
 ```elixir
-defmodule NxTucan do
-  @moduledoc "Convenience for plotting `Nx.Tensor`s using the Tucan library"
-  @plot_types [:lineplot, :scatter]
-
-  for plot_type <- @plot_types do
-    def unquote(plot_type)(data, opts), do: plot(unquote(plot_type), data, opts)
-  end
-
-  def plot(plot_type, data, opts) do
-    {cols, rows} = to_tabular(data)
-    apply(Tucan, plot_type, [rows] ++ cols ++ [opts])
-  end
-
-  def to_tabular(data) do
-    {cols, rows} = Enum.unzip(data)
-    cols = Enum.map(cols, &to_string/1)
-
-    rows =
-      rows
-      |> Enum.map(&Nx.to_list/1)
-      |> Enum.zip()
-      |> Enum.map(fn tuple -> cols |> Enum.zip(Tuple.to_list(tuple)) |> Map.new() end)
-
-    {cols, rows}
-  end
-end
-```
-
-Now we can use our new module to do the actual plot:
-
-```elixir
-NxTucan.scatter([x: x, y_expected: y_expected], filled: true)
+Tucan.scatter([x: x, y_expected: y_expected], "x", "y_expected", filled: true)
 |> Tucan.set_width(750)
 ```
 
@@ -83,8 +49,8 @@ noise = noise |> Nx.stack() |> Nx.subtract(sigma |> Nx.pow(2) |> Nx.divide(2) |>
 y = Nx.add(y_expected, noise)
 
 Tucan.layers([
-  NxTucan.scatter([x: x, y: y], filled: true, fill_opacity: 0.75),
-  NxTucan.lineplot([x: x, y_expected: y_expected], line_color: "red")
+  Tucan.scatter([x: x, y: y], "x", "y", filled: true, fill_opacity: 0.75),
+  Tucan.lineplot([x: x, y_expected: y_expected], "x", "y_expected", line_color: "red")
 ])
 |> Tucan.set_width(750)
 ```
@@ -102,8 +68,11 @@ shuffle_key = key
 [x_train, x_test, y_train, y_test] |> Enum.map(&Nx.size/1)
 
 Tucan.layers([
-  NxTucan.scatter([x_train: x_train, y_train: y_train], filled: true),
-  NxTucan.scatter([x_test: x_test, y_test: y_test], filled: true, point_color: "orange")
+  Tucan.scatter([x_train: x_train, y_train: y_train], "x_train", "y_train", filled: true),
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
+    filled: true,
+    point_color: "orange"
+  )
 ])
 |> Tucan.set_width(750)
 ```
@@ -120,9 +89,9 @@ A prediction interval is an interval $[\hat{y}_{\text{lower}}, \hat{y}_{\text{up
 Our goal is to construct a regression model that gives both a prediction and a prediction interval.
 We'll do so by using quantile regression to train 3 separate models on the same data but with the following parameters:
 
-- $\alpha = 0.05$ (5th percentile)
-- $\alpha = 0.50$ (50th percentile -- median)
-- $\alpha = 0.95$ (95th percentile)
+* $\alpha = 0.05$ (5th percentile)
+* $\alpha = 0.50$ (50th percentile -- median)
+* $\alpha = 0.95$ (95th percentile)
 
 The model trained with $\alpha = 0.50$ produces a estimate of the median.
 This will be our actual prediction.
@@ -168,13 +137,13 @@ y_val_p05 = EXGBoost.predict(model.p05, x_val)
 y_val_p50 = EXGBoost.predict(model.p50, x_val)
 y_val_p95 = EXGBoost.predict(model.p95, x_val)
 
-{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_val_p05, p50: y_val_p50, p95: y_val_p95)
+plot_data = [x: x_val, p05: y_val_p05, p50: y_val_p50, p95: y_val_p95]
 
 Tucan.layers([
   Tucan.step(plot_data, "x", "p05", line_color: "black"),
   Tucan.step(plot_data, "x", "p50", line_color: "blue"),
   Tucan.step(plot_data, "x", "p95", line_color: "black"),
-  NxTucan.scatter([x_test: x_test, y_test: y_test],
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
     point_color: "orange",
     fill_opacity: 0.75,
     filled: true
@@ -187,8 +156,8 @@ Tucan.layers([
 Not bad!
 It certainly has the rough shape we want:
 
-- The median (blue) generally lies in the "middle" of the test data.
-- And the prediction interval (the space between the two black lines) contains most of the test data (orange).
+* The median (blue) generally lies in the "middle" of the test data.
+* And the prediction interval (the space between the two black lines) contains most of the test data (orange).
 
 But we can do better.
 For example, notice how the the prediction interval tends to remain flat across the highly concave parts of the sinusoid.
@@ -276,14 +245,14 @@ Basically, we're gonna train many models using the same quantile regression as b
 For this example, since the size of the data is relatively small, we'll do a simple, brute-force search of the parameter space.
 We'll be varying the following parameters:
 
-- `alpha` (Default: 0)
-  - $L_1$ regularization term on weights. Increasing this value will make model more conservative.
-- `eta` (Default: 0.3)
-  - Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and `eta` shrinks the feature weights to make the boosting process more conservative.
-- `lambda` (Default: 0)
-  - $L_2$ regularization term on weights. Increasing this value will make model more conservative.
-- `max_depth` (Default: 6)
-  - Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
+* `alpha` (Default: 0)
+  * $L_1$ regularization term on weights. Increasing this value will make model more conservative.
+* `eta` (Default: 0.3)
+  * Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and `eta` shrinks the feature weights to make the boosting process more conservative.
+* `lambda` (Default: 0)
+  * $L_2$ regularization term on weights. Increasing this value will make model more conservative.
+* `max_depth` (Default: 6)
+  * Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
 
 There are more parameters we could tune, but these suffice for demonstration purposes.
 
@@ -318,6 +287,7 @@ model_opts =
 opts =
   Keyword.merge(opts,
     early_stopping_rounds: 2,
+    eval_metric: [:rmse],
     evals: [{x_test, y_test, "test"}],
     num_boost_rounds: 64
   )
@@ -362,13 +332,13 @@ Now let's plot our new model to see if it improved:
 y_lo = EXGBoost.predict(best_model_lo, x_val)
 y_hi = EXGBoost.predict(best_model_hi, x_val)
 
-{_, plot_data} = NxTucan.to_tabular(x: x_val, p05: y_lo, p50: y_val_p50, p95: y_hi)
+plot_data = [x: x_val, p05: y_lo, p50: y_val_p50, p95: y_hi]
 
 Tucan.layers([
   Tucan.step(plot_data, "x", "p05", line_color: "black"),
   Tucan.step(plot_data, "x", "p50", line_color: "blue"),
   Tucan.step(plot_data, "x", "p95", line_color: "black"),
-  NxTucan.scatter([x_test: x_test, y_test: y_test],
+  Tucan.scatter([x_test: x_test, y_test: y_test], "x_test", "y_test",
     point_color: "orange",
     fill_opacity: 0.75,
     filled: true
@@ -439,13 +409,13 @@ DF.new(
 
 In a vacuum, we might expect that the model was equally as confident in its two predictions:
 
-- $1 \mapsto -0.59$
-- $8 \mapsto 4.58$
+* $1 \mapsto -0.59$
+* $8 \mapsto 4.58$
 
 But with the additional context of a prediction interval, we can see that our model is much more confident in the former than the latter:
 
-- $1 \mapsto -0.59 \in [-0.89, 0.07]$ (width: $0.97$)
-- $8 \mapsto  4.58 \in [ 1.89, 7.40]$ (width: $5.51$)
+* $1 \mapsto -0.59 \in [-0.89, 0.07]$ (width: $0.97$)
+* $8 \mapsto  4.58 \in [ 1.89, 7.40]$ (width: $5.51$)
 
 That additional context can be very helpful for anyone who wishes to make a decision based off a prediction.
 However, it's worth discussing the limitations of this model.
@@ -489,10 +459,10 @@ where
 
 $$
 \texttt{pinball}(\hat{y}_i, y_i, \alpha) =
-  \begin{cases}
-    |\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
-    |\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
-  \end{cases}
+\begin{cases}
+|\hat{y}_i - y_i| \cdot (1 - \alpha) &\text{if ~ } \hat{y}_i \leq y_i\\
+|\hat{y}_i - y_i| \cdot       \alpha &\text{if ~ } \hat{y}_i \gt  y_i
+\end{cases}
 $$
 
 Essentially, the error should be $0$ if the the prediction matches the true value ($\hat{y}_i = y_i$).

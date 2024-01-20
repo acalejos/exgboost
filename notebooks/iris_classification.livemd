@@ -71,7 +71,7 @@ To get predictions from a trained booster, we can just call `EXGBoost.predict/2`
 
 ```elixir
 preds = EXGBoost.predict(booster, x_test) |> Nx.argmax(axis: -1)
-Scholar.Metrics.accuracy(y_test, preds)
+Scholar.Metrics.Classification.accuracy(y_test, preds)
 ```
 
 And that's it! We've successfully trained a booster on the Iris dataset with `EXGBoost`.
