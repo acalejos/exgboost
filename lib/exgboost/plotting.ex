@@ -387,7 +387,7 @@ defmodule EXGBoost.Plotting do
 
   def deep_merge_kw(a, b) do
     Keyword.merge(a, b, fn
-      key, val_a, val_b when is_list(val_a) and is_list(val_b) ->
+      _key, val_a, val_b when is_list(val_a) and is_list(val_b) ->
         deep_merge_kw(val_a, val_b)
 
       key, val_a, val_b ->

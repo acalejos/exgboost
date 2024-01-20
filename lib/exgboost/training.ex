@@ -13,13 +13,15 @@ defmodule EXGBoost.Training do
       learning_rates: nil,
       num_boost_rounds: 10,
       obj: nil,
-      verbose_eval: true
+      verbose_eval: true,
+      disable_default_eval_metric: false
     ]
 
     {opts, booster_params} = Keyword.split(opts, Keyword.keys(valid_opts))
 
     [
       callbacks: callbacks,
+      disable_default_eval_metric: disable_default_eval_metric,
       early_stopping_rounds: early_stopping_rounds,
       evals: evals,
       learning_rates: learning_rates,
@@ -55,7 +57,14 @@ defmodule EXGBoost.Training do
       )
 
     defaults =
-      default_callbacks(bst, learning_rates, verbose_eval, evals_dmats, early_stopping_rounds)
+      default_callbacks(
+        bst,
+        learning_rates,
+        verbose_eval,
+        evals_dmats,
+        early_stopping_rounds,
+        disable_default_eval_metric
+      )
 
     callbacks =
       Enum.map(callbacks ++ defaults, fn %Callback{fun: fun} = callback ->
@@ -119,7 +128,14 @@ defmodule EXGBoost.Training do
     %{state | iteration: iter}
   end
 
-  defp default_callbacks(bst, learning_rates, verbose_eval, evals_dmats, early_stopping_rounds) do
+  defp default_callbacks(
+         bst,
+         learning_rates,
+         verbose_eval,
+         evals_dmats,
+         early_stopping_rounds,
+         disable_default_eval_metric
+       ) do
     default_callbacks = []
 
     default_callbacks =
@@ -154,12 +170,15 @@ defmodule EXGBoost.Training do
       if early_stopping_rounds && evals_dmats != [] do
         [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
+        # This is still somewhat hacky and relies on a modification made to
+        # XGBoost in the Makefile to dump the config to JSON.
+        #
         %{"learner" => %{"metrics" => metrics, "default_metric" => default_metric}} =
-          EXGBoost.dump_config(bst) |> Jason.decode!()
+          EXGBoost.dump_config(bst) |> Jason.decode!() |> dbg()
 
         metric_name =
           cond do
-            Enum.empty?(metrics) && opts[:disable_default_eval_metric] ->
+            Enum.empty?(metrics) && disable_default_eval_metric ->
               raise ArgumentError,
                     "`:early_stopping_rounds` requires at least one evaluation set. This means you have likely set `disable_default_eval_metric: true` and have not set any explicit evalutation metrics. Please supply at least one metric in the `:eval_metric` option or set `disable_default_eval_metric: false` (default option)"
 
