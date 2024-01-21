@@ -199,7 +199,7 @@ defmodule EXGBoost.Plotting do
              bottom: [type: :pos_integer]
            ]
          ]},
-      default: 5
+      default: 30
     ],
     leaves: [
       doc: "Specifies characteristics of leaf nodes",
@@ -631,6 +631,8 @@ defmodule EXGBoost.Plotting do
               "expr" => "#{if opts[:rankdir] == :rl, do: -1, else: 1}*(datum.x+(width/2))",
               "type" => "formula"
             },
+            %{"type" => "extent", "field" => "x", "signal" => "x_extent"},
+            %{"type" => "extent", "field" => "y", "signal" => "y_extent"},
             %{"as" => "xscaled", "expr" => "scale('xscale',datum.x)", "type" => "formula"},
             %{"as" => "parent", "expr" => "datum.parentid", "type" => "formula"}
           ]
@@ -1168,7 +1170,7 @@ defmodule EXGBoost.Plotting do
                   "[anchor[0] + (xdom[0] - anchor[0]) * zoom, anchor[0] + (xdom[1] - anchor[0]) * zoom]"
               }
             ],
-            "update" => "slice(xext)"
+            "update" => "[x_extent[0] - nodeWidth/ 2, x_extent[1] + nodeWidth / 2]"
           },
           %{
             "name" => "ydom",
@@ -1184,7 +1186,7 @@ defmodule EXGBoost.Plotting do
                   "[anchor[1] + (ydom[0] - anchor[1]) * zoom, anchor[1] + (ydom[1] - anchor[1]) * zoom]"
               }
             ],
-            "update" => "slice(yext)"
+            "update" => "[y_extent[0] - nodeHeight, y_extent[1] + nodeHeight/3]"
           },
           %{"name" => "scaledNodeWidth", "update" => "(nodeWidth/ span(xdom))*width"},
           %{"name" => "scaledNodeHeight", "update" => "abs(nodeHeight/ span(ydom))*height"},

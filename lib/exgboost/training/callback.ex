@@ -166,6 +166,9 @@ defmodule EXGBoost.Training.Callback do
 
       true ->
         early_stop = Map.update!(early_stop, :since_last_improvement, &(&1 + 1))
+        # TODO: Should this actually update the best iteration and score?
+        # This iteration is not the best, but it is the last one, so do we want
+        # another way to track last iteration?
         bst = struct(bst, best_iteration: state.iteration, best_score: score)
         %{state | booster: bst, meta_vars: %{meta_vars | early_stop: early_stop}, status: :halt}
     end
