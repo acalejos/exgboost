@@ -126,6 +126,38 @@ defmodule EXGBoost.MixProject do
         }
       });
     </script>
+
+    <!-- Render Vega-Lite charts -->
+      <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.1"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
+      <style>
+        .vega-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Create as many columns as can fit items of at least 200px */
+          column-gap: 200px; /* Add a gap between the grid items */
+        }
+
+        .vega-item {
+          width: 100%; /* Make the items take up the full width of the grid cell */
+        }
+      </style>
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          for (const codeEl of document.querySelectorAll("pre code.vega-lite")) {
+            try {
+              const preEl = codeEl.parentElement;
+              const spec = JSON.parse(codeEl.textContent);
+              const plotEl = document.createElement("div");
+              preEl.insertAdjacentElement("afterend", plotEl);
+              vegaEmbed(plotEl, spec);
+              preEl.remove();
+            } catch (error) {
+              console.log("Failed to render Vega-Lite plot: " + error)
+            }
+          }
+        });
+      </script>
     """
   end
 
