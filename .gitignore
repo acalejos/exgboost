@@ -12,3 +12,4 @@ erl_crash.dump
 .tool-versions
 .vscode/
 checksum.exs
+.DS_Store

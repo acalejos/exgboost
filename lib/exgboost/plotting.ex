@@ -475,35 +475,35 @@ defmodule EXGBoost.Plotting do
     style: [
       doc:
         "The style to use for the visualization. Refer to `EXGBoost.Plotting.Styles` for a list of available styles.",
-      default: :solarized_light,
-      type: {:in, Keyword.keys(@styles)}
+      default: Application.compile_env(:exgboost, [:plotting, :style], :solarized_light),
+      type: {:or, [{:in, Keyword.keys(@styles)}, {:in, [nil, false]}, :keyword_list]}
     ],
     rankdir: [
       doc: "Determines the direction of the graph.",
       type: {:in, [:tb, :lr, :bt, :rl]},
-      default: :tb
+      default: Application.compile_env(:exgboost, [:plotting, :rankdir], :tb)
     ],
     autosize: [
       doc:
         "Determines if the visualization should automatically resize when the window size changes",
       type: {:in, ["fit", "pad", "fit-x", "fit-y", "none"]},
-      default: "fit"
+      default: Application.compile_env(:exgboost, [:plotting, :autosize], "fit")
     ],
     background: [
       doc:
         "The background color of the visualization. Accepts a valid CSS color string. For example: `#f304d3`, `#ccc`, `rgb(253, 12, 134)`, `steelblue.`",
       type: :string,
-      default: "#f5f5f5"
+      default: Application.compile_env(:exgboost, [:plotting, :background], "#f5f5f5")
     ],
     height: [
       doc: "Height of the plot in pixels",
       type: :pos_integer,
-      default: 400
+      default: Application.compile_env(:exgboost, [:plotting, :height], 400)
     ],
     width: [
       doc: "Width of the plot in pixels",
       type: :pos_integer,
-      default: 600
+      default: Application.compile_env(:exgboost, [:plotting, :width], 600)
     ],
     padding: [
       doc:
@@ -519,7 +519,7 @@ defmodule EXGBoost.Plotting do
              bottom: [type: :pos_integer]
            ]
          ]},
-      default: 30
+      default: Application.compile_env(:exgboost, [:plotting, :padding], 30)
     ],
     leaves: [
       doc: "Specifies characteristics of leaf nodes",
@@ -529,18 +529,42 @@ defmodule EXGBoost.Plotting do
           @mark_opts ++
             [
               doc: @mark_text_doc,
-              default: @default_leaf_text
+              default:
+                deep_merge_kw(
+                  @default_leaf_text,
+                  Application.compile_env(
+                    :exgboost,
+                    [:plotting, :leaves, :text],
+                    []
+                  )
+                )
             ],
         rect:
           @mark_opts ++
             [
               doc: @mark_rect_doc,
-              default: @default_leaf_rect
+              default:
+                deep_merge_kw(
+                  @default_leaf_rect,
+                  Application.compile_env(
+                    :exgboost,
+                    [:plotting, :leaves, :rect],
+                    []
+                  )
+                )
             ]
       ],
       default: [
-        text: @default_leaf_text,
-        rect: @default_leaf_rect
+        text:
+          deep_merge_kw(
+            @default_leaf_text,
+            Application.compile_env(:exgboost, [:plotting, :leaves, :text], [])
+          ),
+        rect:
+          deep_merge_kw(
+            @default_leaf_rect,
+            Application.compile_env(:exgboost, [:plotting, :leaves, :rect], [])
+          )
       ]
     ],
     splits: [
@@ -551,36 +575,76 @@ defmodule EXGBoost.Plotting do
           @mark_opts ++
             [
               doc: @mark_text_doc,
-              default: @default_split_text
+              default:
+                deep_merge_kw(
+                  @default_split_text,
+                  Application.compile_env(
+                    :exgboost,
+                    [:plotting, :splits, :text],
+                    []
+                  )
+                )
             ],
         rect:
           @mark_opts ++
             [
               doc: @mark_rect_doc,
-              default: @default_split_rect
+              default:
+                deep_merge_kw(
+                  @default_split_rect,
+                  Application.compile_env(
+                    :exgboost,
+                    [:plotting, :splits, :rect],
+                    []
+                  )
+                )
             ],
         children:
           @mark_opts ++
             [
               doc: @mark_text_doc,
-              default: @default_split_children
+              default:
+                deep_merge_kw(
+                  @default_split_children,
+                  Application.compile_env(
+                    :exgboost,
+                    [:plotting, :splits, :children],
+                    []
+                  )
+                )
             ]
       ],
       default: [
-        text: @default_split_text,
-        rect: @default_split_rect,
-        children: @default_split_children
+        text:
+          deep_merge_kw(
+            @default_split_text,
+            Application.compile_env(:exgboost, [:plotting, :splits, :text], [])
+          ),
+        rect:
+          deep_merge_kw(
+            @default_split_rect,
+            Application.compile_env(:exgboost, [:plotting, :splits, :rect], [])
+          ),
+        children:
+          deep_merge_kw(
+            @default_split_children,
+            Application.compile_env(
+              :exgboost,
+              [:plotting, :splits, :children],
+              []
+            )
+          )
       ]
     ],
     node_width: [
       doc: "The width of each node in pixels",
       type: :pos_integer,
-      default: 100
+      default: Application.compile_env(:exgboost, [:plotting, :node_width], 100)
     ],
     node_height: [
       doc: "The height of each node in pixels",
       type: :pos_integer,
-      default: 45
+      default: Application.compile_env(:exgboost, [:plotting, :node_heigh], 45)
     ],
     space_between: [
       doc: "The space between the rectangular marks in pixels.",
@@ -589,15 +653,18 @@ defmodule EXGBoost.Plotting do
         nodes: [
           doc: "Space between marks within the same depth of the tree.",
           type: :pos_integer,
-          default: 10
+          default: Application.compile_env(:exgboost, [:plotting, :space_between, :nodes], 10)
         ],
         levels: [
           doc: "Space between each rank / depth of the tree.",
           type: :pos_integer,
-          default: 100
+          default: Application.compile_env(:exgboost, [:plotting, :space_between, :levels], 100)
         ]
       ],
-      default: [nodes: 10, levels: 100]
+      default: [
+        nodes: Application.compile_env(:exgboost, [:plotting, :space_between, :nodes], 10),
+        levels: Application.compile_env(:exgboost, [:plotting, :space_between, :levels], 100)
+      ]
     ],
     yes: [
       doc: "Specifies characteristics of links between nodes where the split condition is true",
@@ -607,18 +674,34 @@ defmodule EXGBoost.Plotting do
           @mark_opts ++
             [
               doc: @mark_path_doc,
-              default: @default_yes_path
+              default:
+                deep_merge_kw(
+                  @default_yes_path,
+                  Application.compile_env(:exgboost, [:plotting, :yes, :path], [])
+                )
             ],
         text:
           @mark_opts ++
             [
               doc: @mark_text_doc,
-              default: @default_yes_text
+              default:
+                deep_merge_kw(
+                  @default_yes_text,
+                  Application.compile_env(:exgboost, [:plotting, :yes, :text], [])
+                )
             ]
       ],
       default: [
-        path: @default_yes_path,
-        text: @default_yes_text
+        path:
+          deep_merge_kw(
+            @default_yes_path,
+            Application.compile_env(:exgboost, [:plotting, :yes, :path], [])
+          ),
+        text:
+          deep_merge_kw(
+            @default_yes_text,
+            Application.compile_env(:exgboost, [:plotting, :yes, :text], [])
+          )
       ]
     ],
     no: [
@@ -629,36 +712,52 @@ defmodule EXGBoost.Plotting do
           @mark_opts ++
             [
               doc: @mark_path_doc,
-              default: @default_no_path
+              default:
+                deep_merge_kw(
+                  @default_no_path,
+                  Application.compile_env(:exgboost, [:plotting, :no, :path], [])
+                )
             ],
         text:
           @mark_opts ++
             [
               doc: @mark_text_doc,
-              default: @default_no_text
+              default:
+                deep_merge_kw(
+                  @default_no_text,
+                  Application.compile_env(:exgboost, [:plotting, :no, :path], [])
+                )
             ]
       ],
       default: [
-        path: @default_no_path,
-        text: @default_no_text
+        path:
+          deep_merge_kw(
+            @default_no_path,
+            Application.compile_env(:exgboost, [:plotting, :no, :path], [])
+          ),
+        text:
+          deep_merge_kw(
+            @default_no_text,
+            Application.compile_env(:exgboost, [:plotting, :no, :path], [])
+          )
       ]
     ],
     validate: [
       doc: "Whether to validate the Vega specification against the Vega schema",
       type: :boolean,
-      default: true
+      default: Application.compile_env(:exgboost, [:plotting, :validate], true)
     ],
     index: [
       doc:
         "The zero-indexed index of the tree to plot. If `nil`, plots all trees using a dropdown selector to switch between trees",
       type: {:or, [nil, :non_neg_integer]},
-      default: 0
+      default: Application.compile_env(:exgboost, [:plotting, :index], 0)
     ],
     depth: [
       doc:
         "The depth of the tree to plot. If `nil`, plots all levels (cick on a node to expand/collapse)",
       type: {:or, [nil, :non_neg_integer]},
-      default: nil
+      default: Application.compile_env(:exgboost, [:plotting, :depth], nil)
     ]
   ]
 
@@ -672,13 +771,13 @@ defmodule EXGBoost.Plotting do
   ingested by Vega, and apply some default configuations that only account for a subset of the configurations
   that can be set by a Vega spec directly. The functions provided in this module are designed to have opinionated
   defaults that can be used to quickly visualize a model, but the full power of Vega is available by using the
-  `to_tabular/1` function to convert the model into a tabular format, and then using the `to_vega/2` function
+  `to_tabular/1` function to convert the model into a tabular format, and then using the `plot/2` function
   to convert the tabular format into a Vega specification.
 
   ## Default Vega Specification
 
   The default Vega specification is designed to be a good starting point for visualizing a model, but it is
-  possible to customize the specification by passing in a map of Vega properties to the `to_vega/2` function.
+  possible to customize the specification by passing in a map of Vega properties to the `plot/2` function.
   Refer to `Custom Vega Specifications` for more details on how to do this.
 
   By default, the Vega specification includes the following entities to use for rendering the model:
@@ -692,19 +791,19 @@ defmodule EXGBoost.Plotting do
   ## Custom Vega Specifications
 
   The default Vega specification is designed to be a good starting point for visualizing a model, but it is
-  possible to customize the specification by passing in a map of Vega properties to the `to_vega/2` function.
+  possible to customize the specification by passing in a map of Vega properties to the `plot/2` function.
   You can find the full list of Vega properties [here](https://vega.github.io/vega/docs/specification/).
 
   It is suggested that you use the data attributes provided by the default specification as a starting point, since they
   provide the necessary data transformation to convert the model into a tree structure that can be visualized by Vega.
-  If you would like to customize the default specification, you can use `EXGBoost.Plotting.to_vega/1` to get the default
+  If you would like to customize the default specification, you can use `EXGBoost.Plotting.plot/1` to get the default
   specification, and then modify it as needed.
 
   Once you have a custom specification, you can pass it to `VegaLite.from_json/1` to create a new `VegaLite` struct, after which
   you can use the functions provided by the `VegaLite` module to render the model.
 
   ## Specification Validation
-  You can optionally validate your specification against the Vega schema by passing the `validate: true` option to `to_vega/2`.
+  You can optionally validate your specification against the Vega schema by passing the `validate: true` option to `plot/2`.
   This will raise an error if the specification is invalid. This is useful if you are creating a custom specification and want
   to ensure that it is valid. Note that this will only validate the specification against the Vega schema, and not against the
   VegaLite schema. This requires the [`ex_json_schema`] package to be installed.
@@ -781,20 +880,6 @@ defmodule EXGBoost.Plotting do
     end
   end
 
-  defp deep_merge_kw(a, b) do
-    Keyword.merge(a, b, fn
-      _key, val_a, val_b when is_list(val_a) and is_list(val_b) ->
-        deep_merge_kw(val_a, val_b)
-
-      key, val_a, val_b ->
-        if Keyword.has_key?(b, key) do
-          val_b
-        else
-          val_a
-        end
-    end)
-  end
-
   defp new_node(params = %{}) do
     Map.merge(
       %{
@@ -858,12 +943,16 @@ defmodule EXGBoost.Plotting do
     opts = NimbleOptions.validate!(opts, @plotting_schema)
 
     opts =
-      unless opts[:style] in [nil, false] do
-        style = apply(__MODULE__, opts[:style], [])
+      cond do
+        opts[:style] in [nil, false] ->
+          opts
 
-        deep_merge_kw(opts, style)
-      else
-        opts
+        Keyword.keyword?(opts[:style]) ->
+          deep_merge_kw(opts, opts[:style])
+
+        true ->
+          style = apply(__MODULE__, opts[:style], [])
+          deep_merge_kw(opts, style)
       end
 
     %{
@@ -1179,17 +1268,21 @@ defmodule EXGBoost.Plotting do
     }
   end
 
-  def to_vega(booster, opts \\ []) do
+  def plot(booster, opts \\ []) do
     spec = get_data_spec(booster, opts)
     opts = NimbleOptions.validate!(opts, @plotting_schema)
 
     opts =
-      unless opts[:style] in [nil, false] do
-        style = apply(__MODULE__, opts[:style], [])
+      cond do
+        opts[:style] in [nil, false] ->
+          opts
 
-        deep_merge_kw(opts, style)
-      else
-        opts
+        Keyword.keyword?(opts[:style]) ->
+          deep_merge_kw(opts, opts[:style])
+
+        true ->
+          style = apply(__MODULE__, opts[:style], [])
+          deep_merge_kw(opts, style)
       end
 
     defaults = get_defaults()
@@ -1673,6 +1766,6 @@ end
 
 defimpl Kino.Render, for: EXGBoost.Booster do
   def to_livebook(booster) do
-    EXGBoost.Plotting.to_vega(booster) |> Kino.Render.to_livebook()
+    EXGBoost.Plotting.plot(booster) |> Kino.Render.to_livebook()
   end
 end

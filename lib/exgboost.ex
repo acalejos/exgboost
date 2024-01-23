@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.4"}
+    {:exgboost, "~> 0.5"}
   ]
   end
   ```
@@ -92,7 +92,7 @@ defmodule EXGBoost do
   preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   ```
 
-  ## Serliaztion
+  ## Serialization
 
   A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
   using `EXGBoost.read_*`. The file format can be specified using the `:format` option
@@ -557,11 +557,13 @@ defmodule EXGBoost do
   ## Options
   * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
   * `:local_npm_prefix` - a relative path pointing to a local npm project directory where the necessary npm packages are installed. For instance, in Phoenix projects you may want to pass local_npm_prefix: "assets". By default the npm packages are searched for in the current directory and globally.
+  * `:path` - the path to save the graphic to. If not provided, the graphic is returned as a VegaLite spec.
+  * `:opts` - additional options to pass to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
   """
   def plot_tree(booster, opts \\ []) do
     {path, opts} = Keyword.pop(opts, :path)
     {save_opts, opts} = Keyword.split(opts, [:format, :local_npm_prefix])
-    vega = Plotting.to_vega(booster, opts)
+    vega = Plotting.plot(booster, opts)
 
     if path != nil do
       VegaLite.Export.save!(vega, path, save_opts)

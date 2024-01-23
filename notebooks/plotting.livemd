@@ -1,0 +1,230 @@
+# Plotting in EXGBoost
+
+```elixir
+# Mix.install([
+#   {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
+# ],
+#   lockfile: :exgboost)
+
+Mix.install([
+  {:exgboost, path: "/Users/andres/Documents/exgboost"},
+  {:nx, "~> 0.5"},
+  {:scidata, "~> 0.1"},
+  {:scholar, "~> 0.1"},
+  {:kino_vega_lite, "~> 0.1.9"}
+])
+
+# This assumed you launch this livebook from its location in the exgboost/notebooks folder
+```
+
+## Introduction
+
+Much of the utility from decision trees come from their intuitiveness and ability to inform dcisions outside of the confines of a black-box model. A decision tree can be easily translated to a series of actions that can be taken on behalf of the stakeholder to achieve the desired outcome. This makes them especially useful in business decisions, where people might still want to have the final say but be as informed as possible. Additionally, tabular data is still quite popular in the business domain, which conforms to the required input for decision trees.
+
+Decision trees can be used for both regression and classification tasks, but classification tends to be what is most associated with decision trees.
+
+<!-- livebook:{"break_markdown":true} -->
+
+This notebook will go over some of the details of the `EXGBoost.Plotting` module, including using preconfiged styles, custom styling, as well as customizing the entire vidualization.
+
+## Plotting APIs
+
+There are 2 main APIs exposed to control plotting in `EXGBoost`:
+
+* Top-level API (`EXGBoost.plot_tree/2`)
+
+  * Using predefined styles
+  * Defining custom styles
+  * Mix of the first 2
+
+* `EXBoost.Plotting` module API
+
+  * Use the Vega `data` spec defined in `EXGBoost.get_data_spec/2`
+  * Define your own Vega spec using the data from either `EXGBoost.Plotting.to_tabular/1` or some other means
+
+  We will walk through each of these in detail.
+
+Regardless of which API you choose to use, it is helpful to understand how the plotting module works (althought the higher-level API you choose to work with the less important it becomes).
+
+## Implementation Details
+
+The plotting functionality provided in `EXGBoost` is powered by the [Vega](https://vega.github.io/vega/) JavaScript library and the Elixir [`VegaLite`](https://hexdocs.pm/vega_lite/VegaLite.html) library which provides the piping to interop with the JavaScript libraries.  **We do not actually much use the Elixir API provided by the Elixir VegaLite library. It is mainly used for the purposes of rendering.**
+
+Vega is a plotting library built on top of the very powerful [D3](https://d3js.org/) JavaScript library. Vega visualizations are defined according to the respective JSON Schema specification. Vega-Lite offers a [reduced schema](https://vega.github.io/schema/vega-lite/v5.json) compared to the [full Vega spec](https://vega.github.io/schema/vega/v5.json). `EXGBoost.Plotting` leverages several transforms which are not available in the reduced Vega-Lite schema, which is the reason for targeting the lower-level API.
+
+For these reasons, unfortunately we could not just implement plotting for `EXGBoost` as a composable Vega-Lite pipeline. This makes working synamically with the spec a bit more unwieldly, but much care was taken to still make the high-level plotting API extensible, and if needed you can go straight to defining your own JSON spec.
+
+## Setup Data
+
+We will still be using the Iris dataset for this notebook, but if you want more details about the process of training and evaluating a model please check out the `Iris Classification with Gradient Boosting` notebook.
+
+So let's proceed by setting up the Iris dataset.
+
+```elixir
+{x, y} = Scidata.Iris.download()
+data = Enum.zip(x, y) |> Enum.shuffle()
+{train, test} = Enum.split(data, ceil(length(data) * 0.8))
+{x_train, y_train} = Enum.unzip(train)
+{x_test, y_test} = Enum.unzip(test)
+
+x_train = Nx.tensor(x_train)
+y_train = Nx.tensor(y_train)
+
+x_test = Nx.tensor(x_test)
+y_test = Nx.tensor(y_test)
+```
+
+## Train Your Booster
+
+Now go ahead and train your booster. We will use `early_stopping_rounds: 1` because we're not interested in the accuracy of the booster for this demonstration (*Note that we need to set `evals` to use early stopping*).
+
+You will notice that `EXGBoost` also provides an implementation for `Kino.Render` so that `EXGBoost.Booster`s are rendered as a plot by default.
+
+```elixir
+booster =
+  EXGBoost.train(
+    x_train,
+    y_train,
+    num_class: 3,
+    objective: :multi_softprob,
+    num_boost_rounds: 10,
+    evals: [{x_train, y_train, "training"}],
+    verbose_eval: false,
+    early_stopping_rounds: 1
+  )
+```
+
+You'll notice that the plot doesn't display any labels to the features in the splits, and instead only shows features labelled as "f2" etc. If you provide feature labels during training, your plot will show the splits using the feature labels.
+
+```elixir
+booster =
+  EXGBoost.train(x_train, y_train,
+    num_class: 3,
+    objective: :multi_softprob,
+    num_boost_rounds: 10,
+    evals: [{x_train, y_train, "training"}],
+    verbose_eval: false,
+    feature_name: ["sepal length", "sepal width", "petal length", "petal width"],
+    early_stopping_rounds: 1
+  )
+```
+
+## Top-Level API
+
+`EXGBoost.plot_tree/2` is the quickest way to customize the output of the plot.
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Styles
+
+There are a set of provided pre-configured settings for the top-level API that you may optionally use. You can refer to the `EXGBoost.Plottings.Styles` docs to see a gallery of each style in action. You can specify a style with the `:style` option in `EXGBoost.plot_tree/2`.
+
+You can still specify custom settings along with using a style. Most styles only specify a subset of the total possible settings, so you are free to specify any other allowed keys and they will be merged with the style. However, any options set by the style **do** take precedence over options.
+
+For example, let's look at the `:solarized_dark` style:
+
+```elixir
+EXGBoost.Plotting.solarized_dark() |> Keyword.take([:background, :height]) |> IO.inspect()
+EXGBoost.plot_tree(booster, style: :solarized_dark)
+```
+
+You can see that it defines a background color of `#002b36` but does not restrict what the height must be.
+
+```elixir
+EXGBoost.plot_tree(booster, style: :solarized_dark, background: "white", height: 200)
+```
+
+We specified both `:background` and `:height` here, but only `:height` was changed because it was not specified in the style.
+
+If you want to leverage a style but have the flexibility to change something it defines, you can always get the style specification as a `Keyword` which can be passed to `EXGBoost.plot_tree/2` manually, making any needed changes yourself, like so:
+
+```elixir
+custom_style = EXGBoost.Plotting.solarized_dark() |> Keyword.put(:background, "white")
+EXGBoost.plot_tree(booster, style: custom_style)
+```
+
+The benefits of using a style is you still get to leverage all of the defaults provided by the API. Look at the difference between changing the background as we just did by specifying the style versus using the style as the new `opts` argument:
+
+```elixir
+custom_style = EXGBoost.Plotting.solarized_dark() |> Keyword.put(:background, "white")
+EXGBoost.plot_tree(booster, [style: nil] ++ custom_style)
+```
+
+As you can see, it maintained the pieces that were **EXPLICITLY** set by the style, but lost some of the defaults that improve the plot appearance.
+
+Obviously, if you wish to specify all parameters yourself, this shouldn't be an issue.
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Configuration
+
+You can also set defaults for the top-level API using an `Application` configuration for `EXGBoost` under the `:plotting` key. Since the defaults are collected from your configuration file at compile-time, anything you set during runtime, even if you set it to the Application environment, will not be registered as defaults.
+
+For example, if you just want to change the default pre-configured style you can do:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+Mix.install([
+  {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
+],
+  config: 
+  [
+    exgboost: [
+      plotting: [
+          style: :solarized_dark,
+        ]]
+      ],
+  lockfile: :exgboost)
+```
+
+You can also make one-off changes to any of the settings with this method. In effect, this turns into a default custom style. **Just make sure to set `style: nil` to ensure that the `style` option doesn't supercede any of your settings.** Here's an example of that:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+  default_style = 
+  [
+    style: nil,
+    background: "#3f3f3f",
+    leaves: [
+      # Foreground
+      text: [fill: "#dcdccc", font_size: 12, font_style: "normal", font_weight: "normal"],
+      # Comment
+      rect: [fill: "#7f9f7f", stroke: "#7f9f7f"]
+    ],
+    splits: [
+      # Foreground
+      text: [fill: "#dcdccc", font_size: 12, font_style: "normal", font_weight: "bold"],
+      # Comment
+      rect: [fill: "#7f9f7f", stroke: "#7f9f7f"],
+      # Selection
+      children: [fill: "#2b2b2b", stroke: "#2b2b2b"]
+    ],
+    yes: [
+      # Green
+      text: [fill: "#7f9f7f"],
+      # Selection
+      path: [stroke: "#2b2b2b"]
+    ],
+    no: [
+      # Red
+      text: [fill: "#cc9393"],
+      # Selection
+      path: [stroke: "#2b2b2b"]
+    ]
+  ]
+
+Mix.install([
+  {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
+],
+config: 
+  [
+    exgboost: [
+      plotting: default_style,
+    ]
+  ]
+)
+```
+
+**NOTE:  When you specify a parameter in the configuration, it is merged with the defaults which is different from runtime behavior.**
