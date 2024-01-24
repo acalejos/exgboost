@@ -413,13 +413,11 @@ defmodule EXGBoost.Plotting do
     align: :center,
     baseline: :middle,
     font_size: 13,
-    font: "Calibri",
-    fill: :black
+    font: "Calibri"
   ]
 
   @default_leaf_rect [
     corner_radius: 2,
-    fill: :teal,
     opacity: 1
   ]
 
@@ -427,47 +425,38 @@ defmodule EXGBoost.Plotting do
     align: :center,
     baseline: :middle,
     font_size: 13,
-    font: "Calibri",
-    fill: :black
+    font: "Calibri"
   ]
 
   @default_split_rect [
     corner_radius: 2,
-    fill: :teal,
     opacity: 1
   ]
 
   @default_split_children [
     align: :right,
     baseline: :middle,
-    fill: :black,
     font: "Calibri",
     font_size: 13
   ]
 
-  @default_yes_path [
-    stroke: :red
-  ]
+  @default_yes_path []
 
   @default_yes_text [
     align: :center,
     baseline: :middle,
     font_size: 13,
     font: "Calibri",
-    fill: :black,
     text: "yes"
   ]
 
-  @default_no_path [
-    stroke: :black
-  ]
+  @default_no_path []
 
   @default_no_text [
     align: :center,
     baseline: :middle,
     font_size: 13,
     font: "Calibri",
-    fill: :black,
     text: "no"
   ]
 
@@ -475,7 +464,7 @@ defmodule EXGBoost.Plotting do
     style: [
       doc:
         "The style to use for the visualization. Refer to `EXGBoost.Plotting.Styles` for a list of available styles.",
-      default: Application.compile_env(:exgboost, [:plotting, :style], :solarized_light),
+      default: Application.compile_env(:exgboost, [:plotting, :style], :dracula),
       type: {:or, [{:in, Keyword.keys(@styles)}, {:in, [nil, false]}, :keyword_list]}
     ],
     rankdir: [
@@ -948,12 +937,13 @@ defmodule EXGBoost.Plotting do
           opts
 
         Keyword.keyword?(opts[:style]) ->
-          deep_merge_kw(opts, opts[:style])
+          deep_merge_kw(opts[:style], opts, @defaults)
 
         true ->
           style = apply(__MODULE__, opts[:style], [])
-          deep_merge_kw(opts, style)
+          deep_merge_kw(style, opts, @defaults)
       end
+      |> then(&deep_merge_kw(@defaults, &1))
 
     %{
       "$schema" => "https://vega.github.io/schema/vega/v5.json",
@@ -1278,14 +1268,13 @@ defmodule EXGBoost.Plotting do
           opts
 
         Keyword.keyword?(opts[:style]) ->
-          deep_merge_kw(opts, opts[:style])
+          deep_merge_kw(opts[:style], opts, @defaults)
 
         true ->
           style = apply(__MODULE__, opts[:style], [])
-          deep_merge_kw(opts, style)
+          deep_merge_kw(style, opts, @defaults)
       end
-
-    defaults = get_defaults()
+      |> then(&deep_merge_kw(@defaults, &1))
 
     # Try to account for non-default node height / width to adjust spacing
     # between nodes and levels as a quality of life improvement
@@ -1293,17 +1282,17 @@ defmodule EXGBoost.Plotting do
     opts =
       cond do
         opts[:rankdir] in [:lr, :rl] and
-            opts[:space_between][:levels] == defaults[:space_between][:levels] ->
+            opts[:space_between][:levels] == @defaults[:space_between][:levels] ->
           put_in(
             opts[:space_between][:levels],
-            defaults[:space_between][:levels] + (opts[:node_width] - defaults[:node_width])
+            @defaults[:space_between][:levels] + (opts[:node_width] - @defaults[:node_width])
           )
 
         opts[:rankdir] in [:tb, :bt] and
-            opts[:space_between][:levels] == defaults[:space_between][:levels] ->
+            opts[:space_between][:levels] == @defaults[:space_between][:levels] ->
           put_in(
             opts[:space_between][:levels],
-            defaults[:space_between][:levels] + (opts[:node_height] - defaults[:node_height])
+            @defaults[:space_between][:levels] + (opts[:node_height] - @defaults[:node_height])
           )
 
         true ->
@@ -1313,17 +1302,17 @@ defmodule EXGBoost.Plotting do
     opts =
       cond do
         opts[:rankdir] in [:lr, :rl] and
-            opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
+            opts[:space_between][:nodes] == @defaults[:space_between][:nodes] ->
           put_in(
             opts[:space_between][:nodes],
-            defaults[:space_between][:nodes] + (opts[:node_height] - defaults[:node_height])
+            @defaults[:space_between][:nodes] + (opts[:node_height] - @defaults[:node_height])
           )
 
         opts[:rankdir] in [:tb, :bt] and
-            opts[:space_between][:nodes] == defaults[:space_between][:nodes] ->
+            opts[:space_between][:nodes] == @defaults[:space_between][:nodes] ->
           put_in(
             opts[:space_between][:nodes],
-            defaults[:space_between][:nodes] + (opts[:node_width] - defaults[:node_width])
+            @defaults[:space_between][:nodes] + (opts[:node_width] - @defaults[:node_width])
           )
 
         true ->
@@ -1381,15 +1370,19 @@ defmodule EXGBoost.Plotting do
           %{
             "encode" => %{
               "update" =>
-                Map.merge(
+                deep_merge_maps(
                   %{
                     "x" => %{
                       "signal" =>
-                        "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                        "(scale('xscale', datum.source.x#{cond do
+                          opts[:rankdir] in [:tb, :bt, :lr] -> ~c"-nodeWidth/4"
+                          opts[:rankdir] in [:rl] -> ~c"+nodeWidth/4"
+                          true -> ~c""
+                        end}) + scale('xscale', datum.target.x)) / 2"
                     },
                     "y" => %{
                       "signal" =>
-                        "(scale('yscale', datum.source.y) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
+                        "(scale('yscale', datum.source.y#{if opts[:rankdir] in [:lr, :rl], do: ~c"-nodeWidth/3", else: ~c""}) + scale('yscale', datum.target.y)) / 2 - (scaledNodeHeight/2)"
                     }
                   },
                   format_mark(opts[:yes][:text])
@@ -1405,7 +1398,11 @@ defmodule EXGBoost.Plotting do
                   %{
                     "x" => %{
                       "signal" =>
-                        "(scale('xscale', datum.source.x+(nodeWidth/3)) + scale('xscale', datum.target.x)) / 2"
+                        "(scale('xscale', datum.source.x#{cond do
+                          opts[:rankdir] in [:tb, :bt, :lr] -> ~c"-nodeWidth/4"
+                          opts[:rankdir] in [:rl] -> ~c"+nodeWidth/4"
+                          true -> ~c""
+                        end}) + scale('xscale', datum.target.x)) / 2"
                     },
                     "y" => %{
                       "signal" =>
