@@ -91,6 +91,21 @@ defmodule EXGBoost.MixProject do
       groups_for_extras: [
         Notebooks: Path.wildcard("notebooks/*.livemd")
       ],
+      groups_for_functions: [
+        "System / Native Config": &(&1[:type] == :system),
+        "Training & Prediction": &(&1[:type] == :train_pred),
+        Serialization: &(&1[:type] == :serialization),
+        Plotting: &(&1[:type] == :plotting)
+      ],
+      groups_for_modules: [
+        Plotting: [EXGBoost.Plotting, EXGBoost.Plotting.Styles],
+        Training: [
+          EXGBoost.Training,
+          EXGBoost.Training.Callback,
+          EXGBoost.Booster,
+          EXGBoost.Parameters
+        ]
+      ],
       before_closing_body_tag: &before_closing_body_tag/1
     ]
   end

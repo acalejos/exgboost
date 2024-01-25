@@ -157,6 +157,7 @@ defmodule EXGBoost do
   Returns a map containing information about the build.
   """
   @spec xgboost_build_info() :: map()
+  @doc type: :system
   def xgboost_build_info,
     do: EXGBoost.NIF.xgboost_build_info() |> Internal.unwrap!() |> Jason.decode!()
 
@@ -166,6 +167,7 @@ defmodule EXGBoost do
   Returns a 3-tuple in the form of `{major, minor, patch}`.
   """
   @spec xgboost_version() :: {integer(), integer(), integer()} | {:error, String.t()}
+  @doc type: :system
   def xgboost_version, do: EXGBoost.NIF.xgboost_version() |> Internal.unwrap!()
 
   @doc """
@@ -176,6 +178,7 @@ defmodule EXGBoost do
   for the full list of parameters supported in the global configuration.
   """
   @spec set_config(map()) :: :ok | {:error, String.t()}
+  @doc type: :system
   def set_config(%{} = config) do
     config = EXGBoost.Parameters.validate_global!(config)
     EXGBoost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
@@ -189,6 +192,7 @@ defmodule EXGBoost do
   for the full list of parameters supported in the global configuration.
   """
   @spec get_config() :: map()
+  @doc type: :system
   def get_config do
     EXGBoost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
   end
@@ -237,6 +241,7 @@ defmodule EXGBoost do
   * `opts` - Refer to `EXGBoost.Parameters` for the full list of options.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
+  @doc type: :train_pred
   def train(x, y, opts \\ []) do
     x = Nx.concatenate(x)
     y = Nx.concatenate(y)
@@ -301,6 +306,7 @@ defmodule EXGBoost do
 
   Returns an Nx.Tensor containing the predictions.
   """
+  @doc type: :train_pred
   def predict(%Booster{} = bst, x, opts \\ []) do
     x = Nx.concatenate(x)
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
@@ -331,6 +337,7 @@ defmodule EXGBoost do
 
   Returns an Nx.Tensor containing the predictions.
   """
+  @doc type: :train_pred
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
     opts =
       Keyword.validate!(opts,
@@ -457,6 +464,7 @@ defmodule EXGBoost do
   ## Options
   #{NimbleOptions.docs(@write_schema)}
   """
+  @doc type: :serialization
   @spec write_model(Booster.t(), String.t()) :: :ok | {:error, String.t()}
   def write_model(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
@@ -466,6 +474,7 @@ defmodule EXGBoost do
   @doc """
   Read a model from a file and return the Booster.
   """
+  @doc type: :serialization
   @spec read_model(String.t()) :: EXGBoost.Booster.t()
   def read_model(path) do
     EXGBoost.Booster.load(path, deserialize: :model)
@@ -478,6 +487,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_model(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_model(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :model, to: :buffer])
@@ -487,6 +497,7 @@ defmodule EXGBoost do
   Read a model from a buffer and return the Booster.
   """
   @spec load_model(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_model(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
   end
@@ -498,6 +509,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_config(Booster.t(), String.t()) :: :ok | {:error, String.t()}
+  @doc type: :serialization
   def write_config(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
     EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :config])
@@ -510,6 +522,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_config(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_config(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :config, to: :buffer])
@@ -522,6 +535,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@load_schema)}
   """
   @spec read_config(String.t()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def read_config(path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @load_schema)
     EXGBoost.Booster.load(path, opts ++ [deserialize: :config])
@@ -534,6 +548,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@load_schema)}
   """
   @spec load_config(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_config(buffer, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @load_schema)
     EXGBoost.Booster.load(buffer, opts ++ [deserialize: :config, from: :buffer])
@@ -546,6 +561,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_weights(Booster.t(), String.t()) :: :ok | {:error, String.t()}
+  @doc type: :serialization
   def write_weights(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
     EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :weights])
@@ -558,6 +574,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_weights(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_weights(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :weights, to: :buffer])
@@ -567,6 +584,7 @@ defmodule EXGBoost do
   Read a model's trained parameters from a file and return the Booster.
   """
   @spec read_weights(String.t()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def read_weights(path) do
     EXGBoost.Booster.load(path, deserialize: :weights)
   end
@@ -575,6 +593,7 @@ defmodule EXGBoost do
   Read a model's trained parameters from a buffer and return the Booster.
   """
   @spec load_weights(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
   end
@@ -588,6 +607,7 @@ defmodule EXGBoost do
   * `:path` - the path to save the graphic to. If not provided, the graphic is returned as a VegaLite spec.
   * `:opts` - additional options to pass to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
   """
+  @doc type: :plotting
   def plot_tree(booster, opts \\ []) do
     {path, opts} = Keyword.pop(opts, :path)
     {save_opts, opts} = Keyword.split(opts, [:format, :local_npm_prefix])
