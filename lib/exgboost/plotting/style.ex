@@ -2,6 +2,7 @@ defmodule EXGBoost.Plotting.Style do
   @moduledoc false
   defmacro __using__(_opts) do
     quote do
+      @type style :: Keyword.t()
       import EXGBoost.Plotting.Style
       Module.register_attribute(__MODULE__, :styles, accumulate: true)
     end
@@ -41,6 +42,7 @@ defmodule EXGBoost.Plotting.Style do
 
   defmacro style(style_name, do: body) do
     quote do
+      @spec unquote(style_name)() :: style
       def unquote(style_name)(), do: unquote(body)
       Module.put_attribute(__MODULE__, :styles, {unquote(style_name), unquote(body)})
     end

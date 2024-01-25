@@ -113,6 +113,34 @@ defmodule EXGBoost do
   - `config` - Save the configuration only.
   - `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
   - `model` - Save both the model parameters and the configuration.
+
+  ## Plotting
+
+  `EXGBoost.plot_tree/2` is the primary entry point for plotting a tree from a trained model.
+  It accepts an `EXGBoost.Booster` struct (which is the output of `EXGBoost.train/2`).
+  `EXGBoost.plot_tree/2` returns a VegaLite spec that can be rendered in a notebook or saved to a file.
+  `EXGBoost.plot_tree/2` also accepts a keyword list of options that can be used to configure the plotting process.
+
+  See `EXGBoost.Plotting` for more detail on plotting.
+
+  You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
+  documentation for a gallery of the styles.
+
+  ## Kino & Livebook Integration
+
+  `EXGBoost` integrates with [Kino](https://hexdocs.pm/kino/Kino.html) and [Livebook](https://livebook.dev/)
+  to provide a rich interactive experience for data scientists.
+
+  EXGBoost implements the `Kino.Render` protocol for `EXGBoost.Booster` structs. This allows you to render
+  a Booster in a Livebook notebook.  Under the hood, `EXGBoost` uses [Vega-Lite](https://vega.github.io/vega-lite/)
+  and [Kino Vega-Lite](https://hexdocs.pm/kino_vega_lite/Kino.VegaLite.html) to render the Booster.
+
+  See the [`Plotting in EXGBoost`](notebooks/plotting.livemd) Notebook for an example of how to use `EXGBoost` with `Kino` and `Livebook`.
+
+  ## Examples
+
+  See the example Notebooks in the left sidebar (under the `Pages` tab) for more examples and tutorials
+  on how to use EXGBoost.
   """
 
   alias EXGBoost.ArrayInterface

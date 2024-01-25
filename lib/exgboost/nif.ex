@@ -100,7 +100,6 @@ defmodule EXGBoost.NIF do
   def dmatrix_create_from_file(_file_uri, _silent),
     do: :erlang.nif_error(:not_implemented)
 
-  @since "0.4.0"
   def dmatrix_create_from_uri(_config), do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::

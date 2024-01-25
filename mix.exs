@@ -19,6 +19,9 @@ defmodule EXGBoost.MixProject do
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
       deps: deps(),
+      name: "EXGBoost",
+      source_url: "https://github.com/acalejos/exgboost",
+      homepage_url: "https://github.com/acalejos/exgboost",
       docs: docs(),
       package: package(),
       preferred_cli_env: [
@@ -46,7 +49,7 @@ defmodule EXGBoost.MixProject do
       {:nimble_options, "~> 1.0"},
       {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
-      {:ex_doc, "~> 0.29.0", only: :docs},
+      {:ex_doc, "~> 0.31.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
       {:exterval, "0.1.0"},
       {:ex_json_schema, "~> 0.10.2"},
@@ -82,7 +85,8 @@ defmodule EXGBoost.MixProject do
       extras: [
         "notebooks/compiled_benchmarks.livemd",
         "notebooks/iris_classification.livemd",
-        "notebooks/quantile_prediction_interval.livemd"
+        "notebooks/quantile_prediction_interval.livemd",
+        "notebooks/plotting.livemd"
       ],
       groups_for_extras: [
         Notebooks: Path.wildcard("notebooks/*.livemd")

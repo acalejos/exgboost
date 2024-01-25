@@ -828,10 +828,13 @@ defmodule EXGBoost.Plotting do
   `:background` as an option, the `:background` option will be ignored since the `:solarized_light` style defines its own value for `:background`.
   """
 
+  @spec get_schema() :: ExJsonSchema.Schema.Root.t()
   def get_schema(), do: @schema
 
+  @spec get_defaults() :: Keyword.t()
   def get_defaults(), do: @defaults
 
+  @spec get_styles() :: [{atom(), [style(), ...]}, ...]
   def get_styles(), do: @styles
 
   defp validate_spec(spec) do
@@ -904,6 +907,7 @@ defmodule EXGBoost.Plotting do
   - depth: The depth of the node (root node is depth 1)
   - leaf: The leaf value if it is a leaf node
   """
+  @spec to_tabular(EXGBoost.Booster.t()) :: [map()]
   def to_tabular(booster) do
     booster
     |> EXGBoost.Booster.get_dump(format: :json)
@@ -928,6 +932,7 @@ defmodule EXGBoost.Plotting do
   * `:rankdir` - Determines the direction of the graph. Accepts one of `:tb`, `:lr`, `:bt`, or `:rl`. Defaults to `:tb`
 
   """
+  @spec get_data_spec(booster :: EXGBoost.Booster.t(), opts :: keyword()) :: map()
   def get_data_spec(booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @plotting_schema)
 
@@ -1258,6 +1263,7 @@ defmodule EXGBoost.Plotting do
     }
   end
 
+  @spec plot(EXGBoost.Booster.t(), Keyword.t()) :: VegaLite.t()
   def plot(booster, opts \\ []) do
     spec = get_data_spec(booster, opts)
     opts = NimbleOptions.validate!(opts, @plotting_schema)

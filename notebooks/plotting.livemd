@@ -1,17 +1,18 @@
 # Plotting in EXGBoost
 
 ```elixir
-# Mix.install([
-#   {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
-# ],
-#   lockfile: :exgboost)
+# Mix.install(
+#   [
+#     {:exgboost, "~> 0.5", env: :dev}
+#   ]
+# )
 
 Mix.install([
   {:exgboost, path: "/Users/andres/Documents/exgboost"},
   {:nx, "~> 0.5"},
   {:scidata, "~> 0.1"},
   {:scholar, "~> 0.1"},
-  {:kino_vega_lite, "~> 0.1.9"}
+  {:kino_vega_lite, "~> 0.1"}
 ])
 
 # This assumed you launch this livebook from its location in the exgboost/notebooks folder
@@ -413,3 +414,39 @@ At any point, you can check what your default settings are by using `EXGBoost.Pl
 ```elixir
 EXGBoost.Plotting.get_defaults()
 ```
+
+## Low-Level API
+
+If you find yourself needing more granular control over your plots, you can reach towards the `EXGBoost.Plotting` module. This module houses the `EXGBoost.Plotting.plot/2` function, which is what is used under the hood from the `EXGBoost.plot_tree/2` top-level API. This module also has the `get_data_spec/2` function, as well as the `to_tabular/1` function, both of which can be used to specify your own Vega specification. Lastly, the module also houses all of the pre-configured styles, which are 0-arity functions which output the `Keyword`s containing their respective style's options that can be passed to the plotting APIs.
+
+Let's briefly go over the `to_tabular/1` and `get_data_spec/2` functions:
+
+<!-- livebook:{"break_markdown":true} -->
+
+The `to_tabular/1` function is used to convert a `Booster`, which is formatted as a tree structure, to a tabular format which can be ingested specifically by the [Vega Stratify transform](https://vega.github.io/vega/docs/transforms/stratify/). It returns a list of "nodes", which are just `Map`s with info about each node in the tree.
+
+```elixir
+EXGBoost.Plotting.to_tabular(booster) |> hd
+```
+
+You can use this function if you want to have complete control over the visualization, and just want a bit of a head start with respect to data transformation for converting the `Booster` into a more digestible format.
+
+<!-- livebook:{"break_markdown":true} -->
+
+The `get_data_source/2` function is used if you want to use the provided [Vega data specification](https://vega.github.io/vega/docs/data/). This is for those who want to only focus on implementing your own [Vega Marks](https://vega.github.io/vega/docs/marks/), and want to leverage the data transformation pipeline that powers the top-level API.
+
+The data transformation used is the following pipeline:
+
+`to_tabular/1` -> [Filter](https://vega.github.io/vega/docs/transforms/filter/) (by tree index) -> [Stratify](https://vega.github.io/vega/docs/transforms/stratify/) -> [Tree](https://vega.github.io/vega/docs/transforms/tree/)
+
+```elixir
+EXGBoost.Plotting.get_data_spec(booster, rankdir: :bt)
+```
+
+The Vega fields which are not included with `get_data_spec/2` and are included in `plot/2` are:
+
+* [Marks](https://vega.github.io/vega/docs/marks/)
+* [Scales](https://vega.github.io/vega/docs/scales/)
+* [Signals](https://vega.github.io/vega/docs/signals/)
+
+You can make a completely valid plot using only the Data from `get_data_specs/2` and adding the marks you need.
