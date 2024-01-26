@@ -15,4 +15,11 @@ defmodule EXGBoost.Plotting.Styles do
     """ end) |> Enum.join("\n\n")}
   </div>
   """
+
+  @functions [{:a, "a"}, {:b, "b"}, {:c, "c"}]
+  for {name, ret} <- @functions do
+    def unquote(name)() do
+      unquote(ret)
+    end
+  end
 end
