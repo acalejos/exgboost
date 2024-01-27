@@ -1,6 +1,6 @@
 defmodule EXGBoost.MixProject do
   use Mix.Project
-  @version "0.4.0"
+  @version "0.5.0"
 
   def project do
     [
@@ -19,6 +19,9 @@ defmodule EXGBoost.MixProject do
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
       deps: deps(),
+      name: "EXGBoost",
+      source_url: "https://github.com/acalejos/exgboost",
+      homepage_url: "https://github.com/acalejos/exgboost",
       docs: docs(),
       package: package(),
       preferred_cli_env: [
@@ -46,9 +49,15 @@ defmodule EXGBoost.MixProject do
       {:nimble_options, "~> 1.0"},
       {:nx, "~> 0.5"},
       {:jason, "~> 1.3"},
-      {:ex_doc, "~> 0.29.0", only: :docs},
+      {:ex_doc, "~> 0.31.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
-      {:exterval, "0.1.0"}
+      {:exterval, "0.1.0"},
+      {:ex_json_schema, "~> 0.10.2"},
+      {:httpoison, "~> 2.0", runtime: false},
+      {:vega_lite, "~> 0.1"},
+      {:kino, "~> 0.11"},
+      {:scidata, "~> 0.1", only: :dev},
+      {:kino_vega_lite, "~> 0.1.9", only: :dev}
     ]
   end
 
@@ -76,10 +85,26 @@ defmodule EXGBoost.MixProject do
       extras: [
         "notebooks/compiled_benchmarks.livemd",
         "notebooks/iris_classification.livemd",
-        "notebooks/quantile_prediction_interval.livemd"
+        "notebooks/quantile_prediction_interval.livemd",
+        "notebooks/plotting.livemd"
       ],
       groups_for_extras: [
         Notebooks: Path.wildcard("notebooks/*.livemd")
+      ],
+      groups_for_functions: [
+        "System / Native Config": &(&1[:type] == :system),
+        "Training & Prediction": &(&1[:type] == :train_pred),
+        Serialization: &(&1[:type] == :serialization),
+        Plotting: &(&1[:type] == :plotting)
+      ],
+      groups_for_modules: [
+        Plotting: [EXGBoost.Plotting, EXGBoost.Plotting.Styles],
+        Training: [
+          EXGBoost.Training,
+          EXGBoost.Training.Callback,
+          EXGBoost.Booster,
+          EXGBoost.Parameters
+        ]
       ],
       before_closing_body_tag: &before_closing_body_tag/1
     ]
@@ -122,6 +147,38 @@ defmodule EXGBoost.MixProject do
         }
       });
     </script>
+
+    <!-- Render Vega-Lite charts -->
+      <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.1"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
+      <style>
+        .vega-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Create as many columns as can fit items of at least 200px */
+          column-gap: 200px; /* Add a gap between the grid items */
+        }
+
+        .vega-item {
+          width: 100%; /* Make the items take up the full width of the grid cell */
+        }
+      </style>
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          for (const codeEl of document.querySelectorAll("pre code.vega-lite")) {
+            try {
+              const preEl = codeEl.parentElement;
+              const spec = JSON.parse(codeEl.textContent);
+              const plotEl = document.createElement("div");
+              preEl.insertAdjacentElement("afterend", plotEl);
+              vegaEmbed(plotEl, spec);
+              preEl.remove();
+            } catch (error) {
+              console.log("Failed to render Vega-Lite plot: " + error)
+            }
+          }
+        });
+      </script>
     """
   end
 

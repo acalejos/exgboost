@@ -1,6 +1,8 @@
 name: precompile
 
-on: push
+on:
+  - push
+  - workflow_dispatch
 
 jobs:
   linux:
@@ -52,7 +54,7 @@ jobs:
       MIX_ENV: "prod"
     strategy:
       matrix:
-        runner: ["macos-latest", "self-hosted"]
+        runner: ["macos-latest", "exgboost-m2-runner"]
         otp: ["25.0", "26.0"]
         elixir: ["1.14.5"]
     steps:

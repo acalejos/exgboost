@@ -16,7 +16,7 @@ defmodule EXGBoost do
   ```elixir
   def deps do
   [
-    {:exgboost, "~> 0.4"}
+    {:exgboost, "~> 0.5"}
   ]
   end
   ```
@@ -92,7 +92,7 @@ defmodule EXGBoost do
   preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   ```
 
-  ## Serliaztion
+  ## Serialization
 
   A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
   using `EXGBoost.read_*`. The file format can be specified using the `:format` option
@@ -113,6 +113,34 @@ defmodule EXGBoost do
   - `config` - Save the configuration only.
   - `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
   - `model` - Save both the model parameters and the configuration.
+
+  ## Plotting
+
+  `EXGBoost.plot_tree/2` is the primary entry point for plotting a tree from a trained model.
+  It accepts an `EXGBoost.Booster` struct (which is the output of `EXGBoost.train/2`).
+  `EXGBoost.plot_tree/2` returns a VegaLite spec that can be rendered in a notebook or saved to a file.
+  `EXGBoost.plot_tree/2` also accepts a keyword list of options that can be used to configure the plotting process.
+
+  See `EXGBoost.Plotting` for more detail on plotting.
+
+  You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
+  documentation for a gallery of the styles.
+
+  ## Kino & Livebook Integration
+
+  `EXGBoost` integrates with [Kino](https://hexdocs.pm/kino/Kino.html) and [Livebook](https://livebook.dev/)
+  to provide a rich interactive experience for data scientists.
+
+  EXGBoost implements the `Kino.Render` protocol for `EXGBoost.Booster` structs. This allows you to render
+  a Booster in a Livebook notebook.  Under the hood, `EXGBoost` uses [Vega-Lite](https://vega.github.io/vega-lite/)
+  and [Kino Vega-Lite](https://hexdocs.pm/kino_vega_lite/Kino.VegaLite.html) to render the Booster.
+
+  See the [`Plotting in EXGBoost`](notebooks/plotting.livemd) Notebook for an example of how to use `EXGBoost` with `Kino` and `Livebook`.
+
+  ## Examples
+
+  See the example Notebooks in the left sidebar (under the `Pages` tab) for more examples and tutorials
+  on how to use EXGBoost.
   """
 
   alias EXGBoost.ArrayInterface
@@ -121,6 +149,7 @@ defmodule EXGBoost do
   alias EXGBoost.DMatrix
   alias EXGBoost.ProxyDMatrix
   alias EXGBoost.Training
+  alias EXGBoost.Plotting
 
   @doc """
   Check the build information of the xgboost library.
@@ -128,6 +157,7 @@ defmodule EXGBoost do
   Returns a map containing information about the build.
   """
   @spec xgboost_build_info() :: map()
+  @doc type: :system
   def xgboost_build_info,
     do: EXGBoost.NIF.xgboost_build_info() |> Internal.unwrap!() |> Jason.decode!()
 
@@ -137,6 +167,7 @@ defmodule EXGBoost do
   Returns a 3-tuple in the form of `{major, minor, patch}`.
   """
   @spec xgboost_version() :: {integer(), integer(), integer()} | {:error, String.t()}
+  @doc type: :system
   def xgboost_version, do: EXGBoost.NIF.xgboost_version() |> Internal.unwrap!()
 
   @doc """
@@ -147,6 +178,7 @@ defmodule EXGBoost do
   for the full list of parameters supported in the global configuration.
   """
   @spec set_config(map()) :: :ok | {:error, String.t()}
+  @doc type: :system
   def set_config(%{} = config) do
     config = EXGBoost.Parameters.validate_global!(config)
     EXGBoost.NIF.set_global_config(Jason.encode!(config)) |> Internal.unwrap!()
@@ -160,6 +192,7 @@ defmodule EXGBoost do
   for the full list of parameters supported in the global configuration.
   """
   @spec get_config() :: map()
+  @doc type: :system
   def get_config do
     EXGBoost.NIF.get_global_config() |> Internal.unwrap!() |> Jason.decode!()
   end
@@ -208,10 +241,11 @@ defmodule EXGBoost do
   * `opts` - Refer to `EXGBoost.Parameters` for the full list of options.
   """
   @spec train(Nx.Tensor.t(), Nx.Tensor.t(), Keyword.t()) :: EXGBoost.Booster.t()
+  @doc type: :train_pred
   def train(x, y, opts \\ []) do
     x = Nx.concatenate(x)
     y = Nx.concatenate(y)
-    {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
+    dmat_opts = Keyword.take(opts, Internal.dmatrix_feature_opts())
     dmat = DMatrix.from_tensor(x, y, Keyword.put_new(dmat_opts, :format, :dense))
     Training.train(dmat, opts)
   end
@@ -272,6 +306,7 @@ defmodule EXGBoost do
 
   Returns an Nx.Tensor containing the predictions.
   """
+  @doc type: :train_pred
   def predict(%Booster{} = bst, x, opts \\ []) do
     x = Nx.concatenate(x)
     {dmat_opts, opts} = Keyword.split(opts, Internal.dmatrix_feature_opts())
@@ -302,6 +337,7 @@ defmodule EXGBoost do
 
   Returns an Nx.Tensor containing the predictions.
   """
+  @doc type: :train_pred
   def inplace_predict(%Booster{} = boostr, data, opts \\ []) do
     opts =
       Keyword.validate!(opts,
@@ -428,6 +464,7 @@ defmodule EXGBoost do
   ## Options
   #{NimbleOptions.docs(@write_schema)}
   """
+  @doc type: :serialization
   @spec write_model(Booster.t(), String.t()) :: :ok | {:error, String.t()}
   def write_model(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
@@ -437,6 +474,7 @@ defmodule EXGBoost do
   @doc """
   Read a model from a file and return the Booster.
   """
+  @doc type: :serialization
   @spec read_model(String.t()) :: EXGBoost.Booster.t()
   def read_model(path) do
     EXGBoost.Booster.load(path, deserialize: :model)
@@ -449,6 +487,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_model(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_model(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :model, to: :buffer])
@@ -458,6 +497,7 @@ defmodule EXGBoost do
   Read a model from a buffer and return the Booster.
   """
   @spec load_model(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_model(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :model, from: :buffer)
   end
@@ -469,6 +509,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_config(Booster.t(), String.t()) :: :ok | {:error, String.t()}
+  @doc type: :serialization
   def write_config(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
     EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :config])
@@ -481,6 +522,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_config(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_config(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :config, to: :buffer])
@@ -493,6 +535,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@load_schema)}
   """
   @spec read_config(String.t()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def read_config(path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @load_schema)
     EXGBoost.Booster.load(path, opts ++ [deserialize: :config])
@@ -505,6 +548,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@load_schema)}
   """
   @spec load_config(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_config(buffer, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @load_schema)
     EXGBoost.Booster.load(buffer, opts ++ [deserialize: :config, from: :buffer])
@@ -517,6 +561,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@write_schema)}
   """
   @spec write_weights(Booster.t(), String.t()) :: :ok | {:error, String.t()}
+  @doc type: :serialization
   def write_weights(%Booster{} = booster, path, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @write_schema)
     EXGBoost.Booster.save(booster, opts ++ [path: path, serialize: :weights])
@@ -529,6 +574,7 @@ defmodule EXGBoost do
   #{NimbleOptions.docs(@dump_schema)}
   """
   @spec dump_weights(Booster.t()) :: binary()
+  @doc type: :serialization
   def dump_weights(%Booster{} = booster, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @dump_schema)
     EXGBoost.Booster.save(booster, opts ++ [serialize: :weights, to: :buffer])
@@ -538,6 +584,7 @@ defmodule EXGBoost do
   Read a model's trained parameters from a file and return the Booster.
   """
   @spec read_weights(String.t()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def read_weights(path) do
     EXGBoost.Booster.load(path, deserialize: :weights)
   end
@@ -546,7 +593,30 @@ defmodule EXGBoost do
   Read a model's trained parameters from a buffer and return the Booster.
   """
   @spec load_weights(binary()) :: EXGBoost.Booster.t()
+  @doc type: :serialization
   def load_weights(buffer) do
     EXGBoost.Booster.load(buffer, deserialize: :weights, from: :buffer)
+  end
+
+  @doc """
+  Plot a tree from a Booster model and save it to a file.
+
+  ## Options
+  * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
+  * `:local_npm_prefix` - a relative path pointing to a local npm project directory where the necessary npm packages are installed. For instance, in Phoenix projects you may want to pass local_npm_prefix: "assets". By default the npm packages are searched for in the current directory and globally.
+  * `:path` - the path to save the graphic to. If not provided, the graphic is returned as a VegaLite spec.
+  * `:opts` - additional options to pass to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
+  """
+  @doc type: :plotting
+  def plot_tree(booster, opts \\ []) do
+    {path, opts} = Keyword.pop(opts, :path)
+    {save_opts, opts} = Keyword.split(opts, [:format, :local_npm_prefix])
+    vega = Plotting.plot(booster, opts)
+
+    if path != nil do
+      VegaLite.Export.save!(vega, path, save_opts)
+    else
+      vega
+    end
   end
 end
