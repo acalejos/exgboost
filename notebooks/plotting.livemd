@@ -1,17 +1,9 @@
 # Plotting in EXGBoost
 
 ```elixir
-# Mix.install(
-#   [
-#     {:exgboost, "~> 0.5", env: :dev}
-#   ]
-# )
-
 Mix.install([
-  {:exgboost, path: "/Users/andres/Documents/exgboost"},
-  {:nx, "~> 0.5"},
+  {:exgboost, "~> 0.5"},
   {:scidata, "~> 0.1"},
-  {:scholar, "~> 0.1"},
   {:kino_vega_lite, "~> 0.1"}
 ])
 
@@ -32,16 +24,16 @@ This notebook will go over some of the details of the `EXGBoost.Plotting` module
 
 There are 2 main APIs exposed to control plotting in `EXGBoost`:
 
-* Top-level API (`EXGBoost.plot_tree/2`)
+- Top-level API (`EXGBoost.plot_tree/2`)
 
-  * Using predefined styles
-  * Defining custom styles
-  * Mix of the first 2
+  - Using predefined styles
+  - Defining custom styles
+  - Mix of the first 2
 
-* `EXBoost.Plotting` module API
+- `EXBoost.Plotting` module API
 
-  * Use the Vega `data` spec defined in `EXGBoost.get_data_spec/2`
-  * Define your own Vega spec using the data from either `EXGBoost.Plotting.to_tabular/1` or some other means
+  - Use the Vega `data` spec defined in `EXGBoost.Plotting.get_data_spec/2`
+  - Define your own Vega spec using the data from either `EXGBoost.Plotting.to_tabular/1` or some other means
 
   We will walk through each of these in detail.
 
@@ -49,7 +41,7 @@ Regardless of which API you choose to use, it is helpful to understand how the p
 
 ## Implementation Details
 
-The plotting functionality provided in `EXGBoost` is powered by the [Vega](https://vega.github.io/vega/) JavaScript library and the Elixir [`VegaLite`](https://hexdocs.pm/vega_lite/VegaLite.html) library which provides the piping to interop with the JavaScript libraries.  **We do not actually much use the Elixir API provided by the Elixir VegaLite library. It is mainly used for the purposes of rendering.**
+The plotting functionality provided in `EXGBoost` is powered by the [Vega](https://vega.github.io/vega/) JavaScript library and the Elixir [`VegaLite`](https://hexdocs.pm/vega_lite/VegaLite.html) library which provides the piping to interop with the JavaScript libraries. **We do not actually much use the Elixir API provided by the Elixir VegaLite library. It is mainly used for the purposes of rendering.**
 
 Vega is a plotting library built on top of the very powerful [D3](https://d3js.org/) JavaScript library. Vega visualizations are defined according to the respective JSON Schema specification. Vega-Lite offers a [reduced schema](https://vega.github.io/schema/vega-lite/v5.json) compared to the [full Vega spec](https://vega.github.io/schema/vega/v5.json). `EXGBoost.Plotting` leverages several transforms which are not available in the reduced Vega-Lite schema, which is the reason for targeting the lower-level API.
 
@@ -77,7 +69,7 @@ y_test = Nx.tensor(y_test)
 
 ## Train Your Booster
 
-Now go ahead and train your booster. We will use `early_stopping_rounds: 1` because we're not interested in the accuracy of the booster for this demonstration (*Note that we need to set `evals` to use early stopping*).
+Now go ahead and train your booster. We will use `early_stopping_rounds: 1` because we're not interested in the accuracy of the booster for this demonstration (_Note that we need to set `evals` to use early stopping_).
 
 You will notice that `EXGBoost` also provides an implementation for `Kino.Render` so that `EXGBoost.Booster`s are rendered as a plot by default.
 
@@ -120,20 +112,20 @@ This API uses [Vega `Mark`s](https://vega.github.io/vega/docs/marks/) to describ
 
 The plot is composed of the following parts:
 
-* Top-level keys: Options controlling parts of the plot outside of direct control of a `Mark`, such as `:padding`, `:autosize`, etc. Accepts any Vega top-level [top-level key](https://vega.github.io/vega/docs/specification/) in addition to several specific to this API (scuh as `:style` and `:depth`).
-* `:leaves`: `Mark` specifying the leaf nodes of the tree
-  * `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
-  * `:rect`: [Rect Mark](https://vega.github.io/vega/docs/marks/rect/)
-* `:splits` `Mark` specifying the split (or inner / decision) nodes of the tree
-  * `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
-  * `:rect`: [Rect Mark](https://vega.github.io/vega/docs/marks/rect/)
-  * `:children`: [Text Mark](https://vega.github.io/vega/docs/marks/text/) for the child count
-* `:yes`
-  * `:path`: [Path Mark](https://vega.github.io/vega/docs/marks/path/)
-  * `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
-* `:no`
-  * `:path`: [Path Mark](https://vega.github.io/vega/docs/marks/path/)
-  * `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
+- Top-level keys: Options controlling parts of the plot outside of direct control of a `Mark`, such as `:padding`, `:autosize`, etc. Accepts any Vega top-level [top-level key](https://vega.github.io/vega/docs/specification/) in addition to several specific to this API (scuh as `:style` and `:depth`).
+- `:leaves`: `Mark` specifying the leaf nodes of the tree
+  - `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
+  - `:rect`: [Rect Mark](https://vega.github.io/vega/docs/marks/rect/)
+- `:splits` `Mark` specifying the split (or inner / decision) nodes of the tree
+  - `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
+  - `:rect`: [Rect Mark](https://vega.github.io/vega/docs/marks/rect/)
+  - `:children`: [Text Mark](https://vega.github.io/vega/docs/marks/text/) for the child count
+- `:yes`
+  - `:path`: [Path Mark](https://vega.github.io/vega/docs/marks/path/)
+  - `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
+- `:no`
+  - `:path`: [Path Mark](https://vega.github.io/vega/docs/marks/path/)
+  - `:text`: [Text Mark](https://vega.github.io/vega/docs/marks/text/)
 
 `EXGBoost.plot_tree/2` defaults to outputting a `VegaLite` struct. If you pass the `:path` option it will save to a file instead.
 
@@ -348,7 +340,7 @@ For example, if you just want to change the default pre-configured style you can
 Mix.install([
   {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
 ],
-  config: 
+  config:
   [
     exgboost: [
       plotting: [
@@ -363,7 +355,7 @@ You can also make one-off changes to any of the settings with this method. In ef
 <!-- livebook:{"force_markdown":true} -->
 
 ```elixir
-  default_style = 
+  default_style =
   [
     style: nil,
     background: "#3f3f3f",
@@ -398,7 +390,7 @@ You can also make one-off changes to any of the settings with this method. In ef
 Mix.install([
   {:exgboost, path: Path.join(__DIR__, ".."), env: :dev},
 ],
-config: 
+config:
   [
     exgboost: [
       plotting: default_style,
@@ -407,7 +399,7 @@ config:
 )
 ```
 
-**NOTE:  When you specify a parameter in the configuration, it is merged with the defaults which is different from runtime behavior.**
+**NOTE: When you specify a parameter in the configuration, it is merged with the defaults which is different from runtime behavior.**
 
 At any point, you can check what your default settings are by using `EXGBoost.Plotting.get_defaults/0`
 
@@ -445,8 +437,8 @@ EXGBoost.Plotting.get_data_spec(booster, rankdir: :bt)
 
 The Vega fields which are not included with `get_data_spec/2` and are included in `plot/2` are:
 
-* [Marks](https://vega.github.io/vega/docs/marks/)
-* [Scales](https://vega.github.io/vega/docs/scales/)
-* [Signals](https://vega.github.io/vega/docs/signals/)
+- [Marks](https://vega.github.io/vega/docs/marks/)
+- [Scales](https://vega.github.io/vega/docs/scales/)
+- [Signals](https://vega.github.io/vega/docs/signals/)
 
 You can make a completely valid plot using only the Data from `get_data_specs/2` and adding the marks you need.
