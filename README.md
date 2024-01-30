@@ -4,7 +4,7 @@
 
 Elixir bindings to the [XGBoost C API](https://xgboost.readthedocs.io/en/latest/c.html) using [Native Implemented Functions (NIFs)](https://www.erlang.org/doc/man/erl_nif.html).
 
-EXGBoost is currently based off of [this](https://github.com/dmlc/xgboost/tree/08ce495b5de973033160e7c7b650abf59346a984) commit for the upcoming `2.0.0` release of XGBoost.
+EXGBoost is currently based off of [this](https://github.com/dmlc/xgboost/tree/41ce8f28b269dbb7efc70e3a120af3c0bb85efe3) commit for the upcoming `2.0.0` release of XGBoost.
 
 `EXGBoost` provides an implementation of XGBoost that works with
 [Nx](https://hexdocs.pm/nx/Nx.html) tensors.
@@ -62,7 +62,7 @@ primary entry point for training a model. It accepts a Nx tensor for the feature
 accepts a keyword list of options that can be used to configure the training process. See the
 [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
-`Exgbost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training. `EXGBoost.Training.train/1`
+`EXGBoost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training. `EXGBoost.Training.train/1`
 and can be used directly if you wish to work directly with the `DMatrix` and `Booster` structs.
 
 One of the main features of `EXGBoost.train/2` is the ability for the end user to provide a custom training function
@@ -95,7 +95,7 @@ to `EXGBoost.train/2`. See the [XGBoost documentation](https://xgboost.readthedo
 list of parameters.
 
 ```elixir
-Exgboot.train(X,
+EXGBoost.train(X,
               y,
               obj: &EXGBoost.Training.train/1,
               evals: [{X_test, y_test, "test"}],
