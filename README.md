@@ -1,10 +1,11 @@
-[![Documentation](https://img.shields.io/badge/-Documentation-blueviolet)](https://hexdocs.pm/exgboost)
-
 # EXGBoost
 
+[![EXGBoost version](https://img.shields.io/hexpm/v/exgboost.svg)](https://hex.pm/packages/exgboost)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/exgboost/)
+[![Hex Downloads](https://img.shields.io/hexpm/dt/exgboost)](https://hex.pm/packages/exgboost)
+[![Twitter Follow](https://img.shields.io/twitter/follow/ac_alejos?style=social)](https://twitter.com/ac_alejos)
+<!-- BEGIN MODULEDOC -->
 Elixir bindings to the [XGBoost C API](https://xgboost.readthedocs.io/en/latest/c.html) using [Native Implemented Functions (NIFs)](https://www.erlang.org/doc/man/erl_nif.html).
-
-EXGBoost is currently based off of [this](https://github.com/dmlc/xgboost/tree/08ce495b5de973033160e7c7b650abf59346a984) commit for the upcoming `2.0.0` release of XGBoost.
 
 `EXGBoost` provides an implementation of XGBoost that works with
 [Nx](https://hexdocs.pm/nx/Nx.html) tensors.
@@ -118,13 +119,90 @@ It accepts a `Booster` struct (which is the output of `EXGBoost.train/2`).
 preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 ```
 
+## Serialization
+
+  A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
+  using `EXGBoost.read_*`. The file format can be specified using the `:format` option
+  which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will NOT
+  be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
+  Boosters can be serialized in three different ways: configuration only, configuration and model, or
+  model only. `dump` functions will serialize the Booster to a binary string.
+  Functions named with `weights` will serialize the model's trained parameters only. This is best used when the model
+  is already trained and only inferences/predictions are going to be performed. Functions named with `config` will
+  serialize the configuration only. Functions that specify `model` will serialize both the model parameters
+  and the configuration.
+
+### Output Formats
+
+- `read`/`write` -  File.
+- `load`/`dump` - Binary buffer.
+
+### Output Contents
+
+- `config` - Save the configuration only.
+- `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
+- `model` - Save both the model parameters and the configuration.
+
+## Plotting
+
+  `EXGBoost.plot_tree/2` is the primary entry point for plotting a tree from a trained model.
+  It accepts an `EXGBoost.Booster` struct (which is the output of `EXGBoost.train/2`).
+  `EXGBoost.plot_tree/2` returns a VegaLite spec that can be rendered in a notebook or saved to a file.
+  `EXGBoost.plot_tree/2` also accepts a keyword list of options that can be used to configure the plotting process.
+
+  See `EXGBoost.Plotting` for more detail on plotting.
+
+  You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
+  documentation for a gallery of the styles.
+
+## Kino & Livebook Integration
+
+  `EXGBoost` integrates with [Kino](https://hexdocs.pm/kino/Kino.html) and [Livebook](https://livebook.dev/)
+  to provide a rich interactive experience for data scientists.
+
+  EXGBoost implements the `Kino.Render` protocol for `EXGBoost.Booster` structs. This allows you to render
+  a Booster in a Livebook notebook.  Under the hood, `EXGBoost` uses [Vega-Lite](https://vega.github.io/vega-lite/)
+  and [Kino Vega-Lite](https://hexdocs.pm/kino_vega_lite/Kino.VegaLite.html) to render the Booster.
+
+  See the [`Plotting in EXGBoost`](notebooks/plotting.livemd) Notebook for an example of how to use `EXGBoost` with `Kino` and `Livebook`.
+
+## Examples
+
+  See the example Notebooks in the left sidebar (under the `Pages` tab) for more examples and tutorials
+  on how to use EXGBoost.
+
 ## Requirements
+
+### Precompiled Distribution
+
+We currenly offer the following precompiled packages for EXGBoost:
+
+```elixir
+%{
+  "exgboost-nif-2.16-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:c659d086d07e9c209bdffbbf982951c6109b2097c4d3008ef9af59c3050663d2",
+  "exgboost-nif-2.16-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:05256238700456c57e279558765b54b5b5ed4147878c6861cd4c937472abbe52",
+  "exgboost-nif-2.16-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:ad3ba6aba8c3c2821dce4afc05b66a5e529764e0cea092c5a90e826446653d99",
+  "exgboost-nif-2.17-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:745e7e970316b569a10d76ceb711b9189360b3bf9ab5ee6133747f4355f45483",
+  "exgboost-nif-2.17-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:73948d6f2ef298e3ca3dceeca5d8a36a2d88d842827e1168c64589e4931af8d7",
+  "exgboost-nif-2.17-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:a0b5ff0b074a9726c69d632b2dc0214fc7b66dccb4f5879e01255eeb7b9d4282",
+}
+```
+
+The correct package will be downloaded and installed (if supported) when you install
+the dependency through Mix (as shown above), otherwise you will need to compile
+manually.
+
+**NOTE** If MacOS, you still need to install `libomp` even to use the precompiled libraries:
+
+ `brew install libomp`
+
+### Dev Requirements
 
 If you are contributing to the library and need to compile locally or choose to not use the precompiled libraries, you will need the following:
 
-* Make
-* CMake
-* If MacOS: `brew install libomp`
+- Make
+- CMake
+- If MacOS: `brew install libomp`
 
 When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
 
@@ -132,12 +210,15 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 
 ## Known Limitations
 
-The XGBoost C API uses C function pointers to implement streaming data types.  The Python ctypes library is able to pass function pointers to the C API which are then executed by XGBoost. Erlang/Elixir NIFs do not have this capability, and as such, streaming data types are not supported in EXGBoost.
-
+- The XGBoost C API uses C function pointers to implement streaming data types.  The Python ctypes library is able to pass function pointers to the C API which are then executed by XGBoost. Erlang/Elixir NIFs do not have this capability, and as such, streaming data types are not supported in EXGBoost.
+- Currently, EXGBoost only works with tensors from the `Nx.Binarybackend`. If you are using any other backend you will need to perform an `Nx.backend_transfer` or `Nx.backend_copy` before training an `EXGBoost.Booster`. This is because Nx tensors are JSON-encoded and serialized before
+being sent to XGBoost and the binary backend is required for proper JSON-encoding of the underlying
+tensor.
+<!-- END MODULEDOC -->
 ## Roadmap
 
-* [ ] CUDA support
-* [ ] [Collective API](https://xgboost.readthedocs.io/en/latest/c.html#collective)?
+- [ ] CUDA support
+- [ ] [Collective API](https://xgboost.readthedocs.io/en/latest/c.html#collective)?
 
 ## License
 
