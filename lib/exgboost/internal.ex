@@ -111,20 +111,31 @@ defmodule EXGBoost.Internal do
   # a string, so if we pass string NaN to XGBoost, it will fail.
   # This allows the user to use Nx.Constants.nan() and have it work as expected.
   defimpl Jason.Encoder, for: Nx.Tensor do
-    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FC0::16-native>>}}, _opts),
-      do: "NaN"
-
-    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7E00::16-native>>}}, _opts),
-      do: "NaN"
-
-    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FC00000::32-native>>}}, _opts),
-      do: "NaN"
-
-    def encode(
-          %Nx.Tensor{data: %Nx.BinaryBackend{state: <<0x7FF8000000000000::64-native>>}},
-          _opts
-        ),
+    @binary_nans [
+      <<0x7FC0::16-native>>,
+      <<0x7E00::16-native>>,
+      <<0x7FC00000::32-native>>,
+      <<0x7FF8000000000000::64-native>>
+    ]
+    def encode(%Nx.Tensor{data: %Nx.BinaryBackend{state: state}}, _opts)
+        when state in @binary_nans,
         do: "NaN"
+
+    def encode(%Nx.Tensor{} = tensor, _opts) do
+      case Nx.to_binary(tensor, limit: 1) do
+        binary when binary in @binary_nans ->
+          "NaN"
+
+        _ ->
+          raise ArgumentError,
+                """
+                JSON Encoding only implemented for NaN Tensors (Nx.Constants.nan())!
+
+                This normally is only used to map the `missing` parameter during EXGBoost
+                training when `missing` is Nx.Constants.nan()
+                """
+      end
+    end
   end
 
   def unwrap!({:ok, val}), do: val

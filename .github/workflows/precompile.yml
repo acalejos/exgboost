@@ -13,9 +13,9 @@ jobs:
     strategy:
       matrix:
         # Elixir 1.14.5 is first version compatible with OTP 26
-        # NIF versionsss change according to
+        # NIF versions change according to
         # https://github.com/erlang/otp/blob/dd57c853a324a9572a9e5ce227d8675ff004c6fe/erts/emulator/beam/erl_nif.h#L33
-        otp: ["25.0", "26.0"]
+        otp: ["25.0", "26.0", "27.0"]
         elixir: ["1.14.5"]
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +32,7 @@ jobs:
       - name: Mix Test
         run: |
           mix deps.get
-          MIX_ENV=test mix test
+          MIX_ENV=test mix tests
       - name: Create precompiled library
         run: |
           export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
@@ -49,13 +49,13 @@ jobs:
     # Homebrew supports versioned Erlang/OTP but not Elixir
     # It's a deliberate design decision from Homebrew to
     # only support versioned distrinutions for certin packages
-    name: Mac (${{ matrix.runner == 'macos-latest' && 'Intel' || 'ARM' }}) Erlang/OTP ${{matrix.otp}} / Elixir
+    name: Mac (${{ matrix.runner == 'macos-13' && 'Intel' || 'ARM' }}) Erlang/OTP ${{matrix.otp}} / Elixir
     env:
       MIX_ENV: "prod"
     strategy:
       matrix:
-        runner: ["macos-latest", "exgboost-m2-runner"]
-        otp: ["25.0", "26.0"]
+        runner: ["macos-13", "macos-14"]
+        otp: ["25.0", "26.0", "27.0"]
         elixir: ["1.14.5"]
     steps:
       - uses: actions/checkout@v3
@@ -82,7 +82,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            ${{ matrix.runner == 'macos-latest' && 'cache/*x86_64*.tar.gz' || 'cache/*aarch64*.tar.gz' }}
-      - name: Cleanup # We need this since self-hosted runners are not ephemeral
-        run: |
-          make clean
+            ${{ matrix.runner == 'macos-13' && 'cache/*x86_64*.tar.gz' || 'cache/*aarch64*.tar.gz' }}

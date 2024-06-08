@@ -1,6 +1,6 @@
 defmodule EXGBoost.MixProject do
   use Mix.Project
-  @version "0.5.0"
+  @version "0.5.1"
 
   def project do
     [
@@ -47,7 +47,7 @@ defmodule EXGBoost.MixProject do
     [
       {:elixir_make, "~> 0.4", runtime: false},
       {:nimble_options, "~> 1.0"},
-      {:nx, "~> 0.5"},
+      {:nx, "~> 0.7"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.31.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
