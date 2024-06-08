@@ -32,7 +32,7 @@ jobs:
       - name: Mix Test
         run: |
           mix deps.get
-          MIX_ENV=test mix tests
+          MIX_ENV=test mix test
       - name: Create precompiled library
         run: |
           export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
