@@ -211,9 +211,6 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 ## Known Limitations
 
 - The XGBoost C API uses C function pointers to implement streaming data types.  The Python ctypes library is able to pass function pointers to the C API which are then executed by XGBoost. Erlang/Elixir NIFs do not have this capability, and as such, streaming data types are not supported in EXGBoost.
-- Currently, EXGBoost only works with tensors from the `Nx.Binarybackend`. If you are using any other backend you will need to perform an `Nx.backend_transfer` or `Nx.backend_copy` before training an `EXGBoost.Booster`. This is because Nx tensors are JSON-encoded and serialized before
-being sent to XGBoost and the binary backend is required for proper JSON-encoding of the underlying
-tensor.
 <!-- END MODULEDOC -->
 ## Roadmap
 
