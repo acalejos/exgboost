@@ -44,6 +44,8 @@ jobs:
           restore-keys: test-${{ runner.os }}-${{ runner.arch }}-${{ matrix.otp }}-${{ matrix.elixir }}-
       - run: mix local.hex --force && mix local.rebar --force
       - run: mix deps.get --check-locked
+      - name: Test release validation and publication retries
+        run: python3 -m unittest discover -s test -p 'test_release*.py' -v
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix coveralls.json

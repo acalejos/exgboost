@@ -76,6 +76,10 @@ jobs:
   package:
     needs: [build, quality]
     runs-on: ubuntu-22.04
+    env:
+      MIX_ENV: docs
+      EXGBOOST_BUILD: 'false'
+      ELIXIR_MAKE_CACHE_DIR: ${{ github.workspace }}/release
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: erlef/setup-beam@v1
@@ -93,17 +97,51 @@ jobs:
       - name: Build Hex package with the complete checksum manifest
         run: mix hex.build
       - run: cp exgboost-*.tar checksum.exs release/
+      - name: Build documentation using the already-built native archive
+        run: mix docs
+      - name: Assemble and verify the exact Hex publication payloads
+        run: python3 scripts/prepare_release.py release
+      - name: Validate publication without uploading anything
+        run: python3 scripts/publish_hex.py release
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: hex-package
           path: |
             release/exgboost-*.tar
+            release/exgboost-*-docs.tar.gz
             release/checksum.exs
+            release/release.json
             release/SHA256SUMS
           if-no-files-found: error
+  consumer:
+    needs: package
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-22.04-arm, macos-15-intel, macos-14]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '28.3'
+          elixir-version: '1.19.5'
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: native-*
+          path: release
+          merge-multiple: true
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: hex-package
+          path: release
+      - run: mix local.hex --force && mix local.rebar --force
+      - name: Consume the Hex package through the real downloader, with source fallback forbidden
+        run: python3 scripts/smoke_hex_package.py release
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build, package]
+    needs: [build, package, consumer]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -111,12 +149,18 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/download-artifact@v8.0.1
         with:
+          pattern: native-*
           path: release
           merge-multiple: true
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: hex-package
+          path: release
       - name: Check tag matches package version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: python3 scripts/check_release_tag.py "$RELEASE_TAG"
+      - run: python3 scripts/publish_hex.py release
       - uses: softprops/action-gh-release@v3
         with:
           draft: true
@@ -125,5 +169,7 @@ jobs:
             release/*.tar.gz
             release/*.sha256
             release/exgboost-*.tar
+            release/exgboost-*-docs.tar.gz
             release/checksum.exs
+            release/release.json
             release/SHA256SUMS

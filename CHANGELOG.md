@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   precompilation, inspect actual binary architectures, and smoke-test archives.
 - Bundle macOS OpenMP and native dependency licenses. Build complete release
   checksums into Hex packages and stage draft GitHub releases after all jobs pass.
+- Publish the exact CI-built Hex package and docs when the GitHub draft release is published, with source/checksum verification and resumable uploads.
+- Test fresh Hex consumers on all four platforms with source compilation forbidden.
 - Add Elixir coverage reports, build caches, locked-dependency and formatting
   checks, warnings-as-errors, and deterministic maintenance regression tests.
 - Preserve the deprecated file NIF wrapper using upstream's URI API, because
