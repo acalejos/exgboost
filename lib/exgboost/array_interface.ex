@@ -19,7 +19,8 @@ defmodule EXGBoost.ArrayInterface do
           shape: tuple(),
           address: pos_integer(),
           readonly: boolean(),
-          tensor: Nx.Tensor.t()
+          tensor: Nx.Tensor.t(),
+          binary: binary()
         }
 
   @enforce_keys [:typestr, :shape, :address, :readonly]
@@ -29,6 +30,7 @@ defmodule EXGBoost.ArrayInterface do
     :address,
     :readonly,
     :tensor,
+    :binary,
     version: 3
   ]
 
@@ -125,15 +127,17 @@ defmodule EXGBoost.ArrayInterface do
           "<#{Atom.to_string(tensor_type)}#{div(type_width, 8)}"
       end
 
+    binary = Nx.to_binary(tensor)
     tensor_addr =
-      EXGBoost.NIF.get_binary_address(Nx.to_binary(tensor)) |> EXGBoost.Internal.unwrap!()
+      EXGBoost.NIF.get_binary_address(binary) |> EXGBoost.Internal.unwrap!()
 
     %__MODULE__{
       typestr: type_char,
       shape: Nx.shape(tensor),
       address: tensor_addr,
       readonly: true,
-      tensor: tensor
+      tensor: tensor,
+      binary: binary
     }
   end
 

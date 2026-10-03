@@ -558,7 +558,9 @@ defmodule EXGBoost.Booster do
       |> Internal.unwrap!()
 
     res =
-      Regex.scan(~r/[[:blank:]](\w+)-(\w+):(-?\d+\.?\d+)/, to_string(msg), capture: :all_but_first)
+      Regex.scan(~r/[[:blank:]](\w+)-(\w+):(-?\d+\.?\d+)/, to_string(msg),
+        capture: :all_but_first
+      )
       |> Enum.map(fn [ev_name | [metric_name | [value]]] ->
         {fval, _rem} = Float.parse(value)
         {ev_name, metric_name, fval}

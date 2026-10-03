@@ -45,7 +45,7 @@ defmodule EXGBoostTest do
     _booster =
       EXGBoost.Training.train(dmat, num_boost_rounds: num_boost_round, tree_method: :hist)
 
-    {indptr, data} = DMatrix.get_quantile_cut(dmat)
+    {_indptr, _data} = DMatrix.get_quantile_cut(dmat)
   end
 
   test "booster params" do

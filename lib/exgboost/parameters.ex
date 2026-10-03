@@ -647,7 +647,7 @@ defmodule EXGBoost.Parameters do
 
   @doc false
   def validate_colsample(x) do
-    unless is_list(x) do
+    if not is_list(x) do
       {:error, "Parameter `colsample` must be a list, got #{inspect(x)}"}
     else
       Enum.reduce_while(x, {:ok, []}, fn x, {_status, acc} ->

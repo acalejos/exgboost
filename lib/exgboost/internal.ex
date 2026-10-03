@@ -27,7 +27,7 @@ defmodule EXGBoost.Internal do
   def dmatrix_config_feature_opts, do: [:nthread, :missing]
 
   def validate_type!(%Nx.Tensor{} = tensor, type) do
-    unless Nx.type(tensor) == type do
+    if Nx.type(tensor) != type do
       raise ArgumentError,
             "invalid type #{inspect(Nx.type(tensor))}, vector type" <>
               " must be #{inspect(type)}"
@@ -35,7 +35,7 @@ defmodule EXGBoost.Internal do
   end
 
   def validate_features!(%Booster{} = booster, %DMatrix{} = dmatrix) do
-    unless DMatrix.get_num_rows(dmatrix) == 0 do
+    if DMatrix.get_num_rows(dmatrix) != 0 do
       booster_names = Booster.get_feature_names(booster)
       booster_types = Booster.get_feature_types(booster)
       dmatrix_names = DMatrix.get_feature_names(dmatrix)

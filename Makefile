@@ -5,8 +5,8 @@
 TEMP ?= $(HOME)/.cache
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-# 2.0.2 Release Commit
-XGBOOST_GIT_REV ?= 41ce8f28b269dbb7efc70e3a120af3c0bb85efe3
+# v3.0.5 tagged release
+XGBOOST_GIT_REV ?= v3.0.5
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
@@ -21,7 +21,7 @@ EXGBOOST_SO = $(PRIV_DIR)/libexgboost.so
 EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
-CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) -I$(ERTS_INCLUDE_DIR)  -fPIC -O3 --verbose -shared -std=c11
+CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) $(if $(ERTS_INCLUDE_DIR),-I$(ERTS_INCLUDE_DIR)) -fPIC -O3 --verbose -shared -std=c11
 
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
 
@@ -54,19 +54,24 @@ $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
 	$(POST_INSTALL)
 
-$(XGBOOST_LIB_DIR_FLAG):
-		rm -rf $(XGBOOST_DIR) && \
-		mkdir -p $(XGBOOST_DIR) && \
-			cd $(XGBOOST_DIR) && \
-			git init && \
-			git remote add origin $(XGBOOST_GIT_REPO) && \
-			git fetch --depth 1 --recurse-submodules origin $(XGBOOST_GIT_REV) && \
-			git checkout FETCH_HEAD && \
-			git submodule update --init --recursive && \
-			sed 's|learner_parameters\["generic_param"\] = ToJson(ctx_);|&\nlearner_parameters\["default_metric"\] = String(obj_->DefaultEvalMetric());|' src/learner.cc > src/learner.cc.tmp && mv src/learner.cc.tmp src/learner.cc && \
-			cmake -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -B build . $(CMAKE_FLAGS) && \
-			make -C build -j1 install
-		touch $(XGBOOST_LIB_DIR_FLAG)
+# This new target handles fetching the source code.
+# It only runs if the .git directory inside the source folder is missing.
+$(XGBOOST_DIR)/.git:
+	mkdir -p $(XGBOOST_DIR) && \
+		cd $(XGBOOST_DIR) && \
+		git init && \
+		git remote add origin $(XGBOOST_GIT_REPO) && \
+		git fetch --depth 1 --recurse-submodules origin $(XGBOOST_GIT_REV) && \
+		git checkout FETCH_HEAD && \
+		git submodule update --init --recursive
+
+# This modified target now depends on the fetch target.
+# It only contains the build commands.
+$(XGBOOST_LIB_DIR_FLAG): $(XGBOOST_DIR)/.git
+	cd $(XGBOOST_DIR) && \
+		cmake -B build -S . -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -DCMAKE_BUILD_TYPE=RelWithDebInfo -GNinja $(CMAKE_FLAGS) && \
+		ninja -C build install
+	touch $(XGBOOST_LIB_DIR_FLAG)
 
 clean:
 	rm -rf $(EXGBOOST_CACHE_SO)

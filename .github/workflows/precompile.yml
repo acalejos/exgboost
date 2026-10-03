@@ -7,16 +7,13 @@ on:
 jobs:
   linux:
     name: Linux Erlang/OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
       MIX_ENV: "prod"
     strategy:
       matrix:
-        # Elixir 1.14.5 is first version compatible with OTP 26
-        # NIF versions change according to
-        # https://github.com/erlang/otp/blob/dd57c853a324a9572a9e5ce227d8675ff004c6fe/erts/emulator/beam/erl_nif.h#L33
-        otp: ["25.0", "26.0"]
-        elixir: ["1.14.5"]
+        otp: ["27.0", "28.0"]
+        elixir: ["1.18.4"]
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
@@ -48,15 +45,15 @@ jobs:
     runs-on: ${{matrix.runner}}
     # Homebrew supports versioned Erlang/OTP but not Elixir
     # It's a deliberate design decision from Homebrew to
-    # only support versioned distrinutions for certin packages
-    name: Mac (${{ matrix.runner == 'macos-13' && 'Intel' || 'ARM' }}) Erlang/OTP ${{matrix.otp}} / Elixir
+    # only support versioned distributions for certain packages
+    name: Mac (ARM) Erlang/OTP ${{matrix.otp}} / Elixir
     env:
       MIX_ENV: "prod"
     strategy:
       matrix:
-        runner: ["macos-13", "macos-14"]
-        otp: ["25.0", "26.0"]
-        elixir: ["1.14.5"]
+        runner: ["macos-15"]
+        otp: ["27.0", "28.0"]
+        elixir: ["1.18.4"]
     steps:
       - uses: actions/checkout@v3
       - uses: asdf-vm/actions/install@v2
@@ -82,4 +79,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            ${{ matrix.runner == 'macos-13' && 'cache/*x86_64*.tar.gz' || 'cache/*aarch64*.tar.gz' }}
+            ${{ 'cache/*aarch64*.tar.gz' }}

@@ -12,10 +12,10 @@ defmodule NifTest do
   end
 
   test "set_global_config" do
-    assert EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity":1}') == :ok
+    assert EXGBoost.NIF.set_global_config(~c'{"use_rmm":false,"verbosity":1}') == :ok
 
-    assert EXGBoost.NIF.set_global_config('{"use_rmm":false,"verbosity": true}') ==
-             {:error, 'Invalid Parameter format for verbosity expect int but value=\'true\''}
+    assert EXGBoost.NIF.set_global_config(~c'{"use_rmm":false,"verbosity": true}') ==
+             {:error, ~c"Invalid Parameter format for verbosity expect int but value='true'"}
   end
 
   test "get_global_config" do
@@ -140,10 +140,10 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    assert EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', [
-             'name',
-             'color',
-             'length'
+    assert EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, ~c"feature_name", [
+             ~c"name",
+             ~c"color",
+             ~c"length"
            ]) == :ok
   end
 
@@ -157,9 +157,13 @@ defmodule NifTest do
       EXGBoost.NIF.dmatrix_create_from_dense(array_interface, config)
       |> unwrap!()
 
-    EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, 'feature_name', ['name', 'color', 'length'])
+    EXGBoost.NIF.dmatrix_set_str_feature_info(dmat, ~c"feature_name", [
+      ~c"name",
+      ~c"color",
+      ~c"length"
+    ])
 
-    assert EXGBoost.NIF.dmatrix_get_str_feature_info(dmat, 'feature_name') |> unwrap!()
+    assert EXGBoost.NIF.dmatrix_get_str_feature_info(dmat, ~c"feature_name") |> unwrap!()
   end
 
   test "dmatrix_num_row" do
@@ -216,14 +220,14 @@ defmodule NifTest do
 
     assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
-             'label',
+             ~c"label",
              label_interface
            ) ==
              :ok
 
     assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
-             'unsupported',
+             ~c"unsupported",
              label_interface
            ) != :ok
   end
@@ -241,7 +245,7 @@ defmodule NifTest do
 
     interface = from_tensor(labels) |> Jason.encode!()
 
-    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'label', interface)
+    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, ~c"label", interface)
 
     path = Path.join(System.tmp_dir!(), "test.buffer") |> String.to_charlist()
     assert EXGBoost.NIF.dmatrix_save_binary(dmat, path, 1) == :ok
@@ -259,9 +263,9 @@ defmodule NifTest do
       |> unwrap!()
 
     interface = from_tensor(weights) |> Jason.encode!()
-    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, 'feature_weights', interface)
+    EXGBoost.NIF.dmatrix_set_info_from_interface(dmat, ~c"feature_weights", interface)
 
-    assert EXGBoost.NIF.dmatrix_get_float_info(dmat, 'feature_weights') |> unwrap!() ==
+    assert EXGBoost.NIF.dmatrix_get_float_info(dmat, ~c"feature_weights") |> unwrap!() ==
              Nx.to_list(weights)
   end
 
@@ -363,10 +367,10 @@ defmodule NifTest do
 
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    assert EXGBoost.NIF.booster_set_str_feature_info(booster, 'feature_name', [
-             'name',
-             'color',
-             'length'
+    assert EXGBoost.NIF.booster_set_str_feature_info(booster, ~c"feature_name", [
+             ~c"name",
+             ~c"color",
+             ~c"length"
            ]) == :ok
   end
 
@@ -382,9 +386,13 @@ defmodule NifTest do
 
     booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
 
-    EXGBoost.NIF.booster_set_str_feature_info(booster, 'feature_name', ['name', 'color', 'length'])
+    EXGBoost.NIF.booster_set_str_feature_info(booster, ~c"feature_name", [
+      ~c"name",
+      ~c"color",
+      ~c"length"
+    ])
 
-    assert EXGBoost.NIF.booster_get_str_feature_info(booster, 'feature_name') |> unwrap!()
+    assert EXGBoost.NIF.booster_get_str_feature_info(booster, ~c"feature_name") |> unwrap!()
   end
 
   test "test_boster_feature_score" do

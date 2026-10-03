@@ -52,9 +52,10 @@ defmodule EXGBoost.MixProject do
       {:ex_doc, "~> 0.31.0", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
       {:exterval, "0.2.0"},
-      {:ex_json_schema, "~> 0.10.2"},
+      {:ex_json_schema, "~> 0.11.0"},
       {:httpoison, "~> 2.0", runtime: false},
       {:vega_lite, "~> 0.1"},
+      {:vega_lite_convert, "~> 1.0.1"},
       {:kino, "~> 0.11"},
       {:scidata, "~> 0.1", only: :dev},
       {:kino_vega_lite, "~> 0.1.9", only: :dev}

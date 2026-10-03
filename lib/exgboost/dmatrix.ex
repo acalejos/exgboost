@@ -239,7 +239,7 @@ defmodule EXGBoost.DMatrix do
     {cacheprefix, opts} = Keyword.pop!(opts, :cacheprefix)
     {data_split_mode, opts} = Keyword.pop!(opts, :data_split_mode)
 
-    unless data_split_mode in [:row, :column] do
+    if data_split_mode not in [:row, :column] do
       raise ArgumentError, "data_split_mode must be :row or :column"
     end
 

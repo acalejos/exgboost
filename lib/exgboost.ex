@@ -474,7 +474,7 @@ defmodule EXGBoost do
     vega = Plotting.plot(booster, opts)
 
     if path != nil do
-      VegaLite.Export.save!(vega, path, save_opts)
+      VegaLite.Convert.save!(vega, path, save_opts)
     else
       vega
     end

@@ -62,15 +62,15 @@ defmodule EXGBoost.Training.Callback do
   end
 
   def validate!(%__MODULE__{} = callback) do
-    unless is_atom(callback.name) and not is_nil(callback.name) do
+    if !(is_atom(callback.name) and not is_nil(callback.name)) do
       raise "A callback must have a non-`nil` atom for a name. Found: #{callback.name}."
     end
 
-    unless callback.event in @valid_events do
+    if callback.event not in @valid_events do
       raise "Callback #{callback.name} must have an event in #{@valid_events}. Found: #{callback.event}."
     end
 
-    unless is_function(callback.fun, 1) do
+    if not is_function(callback.fun, 1) do
       raise "Callback #{callback.name} must have a 1-arity function. Found: #{callback.event}."
     end
 
@@ -130,12 +130,12 @@ defmodule EXGBoost.Training.Callback do
       since_last_improvement: since_last_improvement
     } = early_stop
 
-    unless Map.has_key?(metrics, target_eval) do
+    if !Map.has_key?(metrics, target_eval) do
       raise ArgumentError,
             "target eval_set #{inspect(target_eval)} not found in metrics #{inspect(metrics)}"
     end
 
-    unless Map.has_key?(metrics[target_eval], target_metric) do
+    if !Map.has_key?(metrics[target_eval], target_metric) do
       raise ArgumentError,
             "target metric #{inspect(target_metric)} not found in metrics #{inspect(metrics)}"
     end
