@@ -64,7 +64,7 @@ $(XGBOOST_LIB_DIR_FLAG):
 			git checkout FETCH_HEAD && \
 			git submodule update --init --recursive && \
 			sed 's|learner_parameters\["generic_param"\] = ToJson(ctx_);|&\nlearner_parameters\["default_metric"\] = String(obj_->DefaultEvalMetric());|' src/learner.cc > src/learner.cc.tmp && mv src/learner.cc.tmp src/learner.cc && \
-			cmake -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -B build . $(CMAKE_FLAGS) && \
+			cmake -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -B build . $(CMAKE_FLAGS) && \
 			make -C build -j1 install
 		touch $(XGBOOST_LIB_DIR_FLAG)
 

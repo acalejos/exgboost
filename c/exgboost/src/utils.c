@@ -160,7 +160,7 @@ ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, address, size);
+  memcpy(out_bin.data, (const void *)(uintptr_t)address, size);
   ret = exg_ok(env, enif_make_binary(env, &out_bin));
 END:
   return ret;

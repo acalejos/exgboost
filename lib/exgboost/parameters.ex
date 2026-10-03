@@ -97,7 +97,7 @@ defmodule EXGBoost.Parameters do
 
   @tree_booster_params [
     eta: [
-      type: {:in, ~I<[0,1]>},
+      type: {:in, ~i<[0,1]>},
       default: 0.3,
       doc: """
       Step size shrinkage used in update to prevents overfitting. After each
@@ -107,7 +107,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     gamma: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 0.0,
       doc: ~S"""
       Minimum loss reduction required to make a further partition on a leaf node
@@ -126,7 +126,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     min_child_weight: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 1,
       doc: ~S"""
       Minimum sum of instance weight (hessian) needed in a child. If the tree partition
@@ -138,7 +138,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     max_delta_step: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 0,
       doc: ~S"""
       Maximum delta step we allow each tree's weight estimation to be. If the value is set
@@ -149,7 +149,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     subsample: [
-      type: {:in, ~I<(0,1]>},
+      type: {:in, ~i<(0,1]>},
       default: 1.0,
       doc: """
       Subsample ratio of the training instance. Setting it to `0.5` means that XGBoost
@@ -179,7 +179,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     lambda: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 1,
       doc: ~S"""
       L2 regularization term on weights. Increasing this value will make model more conservative.
@@ -187,7 +187,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     alpha: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 0,
       doc: ~S"""
       L1 regularization term on weights. Increasing this value will make model more conservative.
@@ -358,7 +358,7 @@ defmodule EXGBoost.Parameters do
                              """
                            ],
                            rate_drop: [
-                             type: {:in, ~I<[0,1]>},
+                             type: {:in, ~i<[0,1]>},
                              default: 0.0,
                              doc: """
                              Dropout rate (a fraction of previous trees to drop during the dropout). Valid range is [0, 1].
@@ -372,7 +372,7 @@ defmodule EXGBoost.Parameters do
                              """
                            ],
                            skip_drop: [
-                             type: {:in, ~I<[0,1]>},
+                             type: {:in, ~i<[0,1]>},
                              default: 0.0,
                              doc: """
                              Probability of skipping the dropout procedure during a boosting iteration. Valid range is [0, 1].
@@ -517,7 +517,7 @@ defmodule EXGBoost.Parameters do
 
   @tweedie_params [
     tweedie_variance_power: [
-      type: {:in, ~I<(1,2)>},
+      type: {:in, ~i<(1,2)>},
       default: 1.5,
       doc: """
       Parameter that controls the variance of the Tweedie distribution `var(y) ~ E(y)^tweedie_variance_power`.
@@ -530,7 +530,7 @@ defmodule EXGBoost.Parameters do
 
   @pseudohubererror_params [
     huber_slope: [
-      type: {:in, ~I<[0,:infinity]>},
+      type: {:in, ~i<[0,:infinity]>},
       default: 1.0,
       doc: """
       A parameter used for Pseudo-Huber loss.
@@ -549,7 +549,7 @@ defmodule EXGBoost.Parameters do
 
   @quantileerror_params [
     quantile_alpha: [
-      type: {:in, ~I<(0,1)>},
+      type: {:in, ~i<(0,1)>},
       default: 0.5,
       doc: """
       Targeted Quantile.
@@ -578,7 +578,7 @@ defmodule EXGBoost.Parameters do
       """
     ],
     lambdarank_num_pair_per_sample: [
-      type: {:in, ~I<[1,:infinity]>},
+      type: {:in, ~i<[1,:infinity]>},
       doc: ~S"""
            It specifies the number of pairs sampled for each document when pair method is `:mean`, or the truncation level for queries when the pair method is `:topk`. For example, to train with `{:ndcg,6}`, set `:lambdarank_num_pair_per_sample` to `6` and `:lambdarank_pair_method` to `topk`. Valid range is [1, $\infty$].
       """
@@ -653,7 +653,7 @@ defmodule EXGBoost.Parameters do
       Enum.reduce_while(x, {:ok, []}, fn x, {_status, acc} ->
         case x do
           {key, value} when key in [:tree, :level, :node] and is_number(value) ->
-            if value in ~I<(0,1]> do
+            if value in ~i<(0,1]> do
               {:cont, {:ok, [{String.to_atom("colsample_by#{key}"), value} | acc]}}
             else
               {:halt, {:error, "Parameter `colsample` must be in (0,1], got #{inspect(x)}"}}
