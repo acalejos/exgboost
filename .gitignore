@@ -15,3 +15,5 @@ checksum.exs
 # Generated release outputs (included in Hex by the release workflow).
 checksum.exs
 /exgboost-*.tar
+**/__pycache__/
+release/

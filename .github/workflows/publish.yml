@@ -1,0 +1,56 @@
+name: Publish Hex
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published GitHub release tag (for example v0.6.0)
+        required: true
+        type: string
+      publish:
+        description: Upload to Hex (leave unchecked for a dry run)
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: hex-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+      - run: python3 scripts/check_release_tag.py "$RELEASE_TAG"
+      - name: Require a published GitHub release before Hex can refer to it
+        run: |
+          gh release view "$RELEASE_TAG" --json tagName,isDraft > release-info.json
+          python3 - <<'PY'
+          import json, os
+          info = json.load(open('release-info.json'))
+          if info['isDraft'] or info['tagName'] != os.environ['RELEASE_TAG']:
+              raise SystemExit('Publish the matching GitHub release before publishing Hex')
+          PY
+      - name: Download the exact CI-built release payloads
+        run: gh release download "$RELEASE_TAG" --dir release
+      - name: Check source commit, package contents, URLs and every checksum
+        run: python3 scripts/publish_hex.py release
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '28.3'
+          elixir-version: '1.19.5'
+      - run: mix local.hex --force && mix local.rebar --force
+      - name: Verify a fresh consumer downloads from the public GitHub release
+        run: python3 scripts/smoke_hex_package.py release --public
+      - name: Publish the exact CI package and documentation to Hex
+        if: github.event_name == 'release' || inputs.publish
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: python3 scripts/publish_hex.py release --publish

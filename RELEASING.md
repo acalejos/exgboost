@@ -4,6 +4,8 @@ The native distribution uses XGBoost 3.4.2 at the immutable commit pinned in
 `Makefile`. Source builds do not patch upstream code. A NIF built on OTP 26
 (ABI 2.17) is reused on newer OTP releases. Each architecture builds on its own
 native runner; cross compilation is deliberately rejected.
+The bundled OpenMP library sets the macOS minimum to 14.0 on both architectures;
+archive validation rejects any dependency requiring a newer OS.
 
 ## Validate a change
 
@@ -23,24 +25,72 @@ source builds, creates and inspects archives, loads each archive in a fresh BEAM
 and builds a Hex package containing all four checksums. Download the
 `hex-package` artifact to inspect the exact deliverable.
 
-## Prepare a release
+## One-time Hex setup
 
-1. Update `@version` in `mix.exs`, `CHANGELOG.md`, and the README installation example.
-2. Merge the maintenance change after both workflows pass.
-3. Tag that commit as `v<VERSION>` and push the tag. The native workflow creates
-   a **draft** GitHub release after all platforms and the Hex packaging job pass.
-4. Inspect the draft's four native archives, SHA256 sidecars, `SHA256SUMS`,
-   `checksum.exs`, and `exgboost-<VERSION>.tar`.
-5. Publish the GitHub release before publishing Hex, so downloads are reachable.
-6. Download `checksum.exs` from that release into the matching clean tagged
-   checkout. Run `MIX_ENV=docs mix deps.get`, `mix hex.build`, and compare the
-   package contents with the CI package. Run `mix hex.publish` to publish the
-   package and documentation using your Hex credentials.
+Create a publishing API key in your [Hex dashboard](https://hex.pm/dashboard/keys)
+with API write permission, then save it as the **`HEX_API_KEY`** repository secret
+in [GitHub Actions settings](https://github.com/acalejos/exgboost/settings/secrets/actions).
+This uses the API-key authentication described in [Hex's publishing guide](https://hex.pm/docs/publish#publishing-from-ci).
+The key is only supplied to the final upload step; PR builds and dry runs do not use it.
 
-Hex publishing remains an explicit maintainer command. Never publish a package
-without its complete checksum manifest, or regenerate checksums from unchecked
-remote assets. `scripts/release_checksums.exs` computes SHA256 from the actual
-archives and fails if any platform is missing or unexpected.
+## Ship a release
+
+1. Set `@version` in `mix.exs`, update the README/notebook installation examples,
+   and date the corresponding changelog entry. Merge the change with green CI.
+2. From the matching clean `main` checkout, push the version tag. For 0.6.0:
+
+   ```sh
+   python3 scripts/check_release_tag.py v0.6.0
+   git tag v0.6.0
+   git push origin v0.6.0
+   ```
+
+   Actions builds and tests all four native archives, calculates `checksum.exs`,
+   embeds it in the Hex package, and builds the documentation using that same
+   native archive. Fresh consumers on all four platforms use the real downloader
+   and are forbidden from compiling XGBoost. Only after every check passes does
+   Actions create a **draft** GitHub release with the complete payloads.
+3. Inspect and publish that draft in GitHub, or run:
+
+   ```sh
+   gh release edit v0.6.0 --draft=false
+   ```
+
+   The **Publish Hex** workflow then verifies the published release against the
+   tagged checkout, tests an unauthenticated consumer download from the public
+   GitHub URL, and uploads the exact CI-built package and documentation to Hex.
+
+**No local native builds, checksum copying, or package rebuilding are required.**
+Publishing the GitHub release comes first, so the URLs embedded in Hex already
+exist. The naming contract is package `0.6.0`, Git tag `v0.6.0`, and native archive
+`exgboost-nif-2.17-<target>-0.6.0.tar.gz`. The version in `mix.exs` generates the
+GitHub download URL; CI rejects mismatched tags.
+
+## Inspect or retry publication
+
+Run the publication workflow manually against an already-published GitHub release.
+The default performs all validation and the public consumer test without uploading:
+
+```sh
+gh workflow run publish.yml --ref main -f tag=v0.6.0
+# Explicitly publish, or resume after a missing secret/docs upload failure:
+gh workflow run publish.yml --ref main -f tag=v0.6.0 -f publish=true
+```
+
+If the same package is already on Hex, the publisher compares its CDN tarball
+byte for byte, skips the package upload, and publishes the documentation. A
+different package at that version fails; it is never overwritten automatically.
+Missing or altered assets, incomplete manifests, wrong commits, and stale package
+contents also fail before upload. No failure path regenerates archives or changes
+checksums. Resolve the failure and rerun the workflow.
+
+The draft and CI artifacts contain the four native archives and SHA256 sidecars,
+`checksum.exs`, `exgboost-<version>.tar`, `exgboost-<version>-docs.tar.gz`,
+`release.json` (source commit and native hashes), and `SHA256SUMS` for every payload.
+Package publication uses [Hex's documented HTTP API](https://github.com/hexpm/specifications/blob/main/apiary.apib)
+to upload those existing tarballs, rather than rebuilding with `mix hex.publish`.
+For a local dry run, download the complete bundle into `release/` in its matching
+checkout and run `python3 scripts/publish_hex.py release`.
 
 ## Reproduce a native package locally
 

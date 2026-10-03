@@ -17,6 +17,13 @@ esac
 for library in "$stage/libexgboost.so" "$stage"/lib/*; do
   file -L "$library" | tee /dev/stderr | grep -Eq "$arch"
   if [[ "$target" == *apple* ]]; then
+    minimum=$(otool -l "$library" | awk '/minos / {value=$2} /LC_VERSION_MIN_MACOSX/ {legacy=1} legacy && /version / {value=$2; legacy=0} END {print value}')
+    python3 - "$minimum" <<'PY'
+import sys
+value = sys.argv[1]
+if not value or tuple(map(int, value.split('.'))) > (14, 0, 0)[:len(value.split('.'))]:
+    raise SystemExit(f'Library requires macOS {value or "unknown"}; advertised baseline is 14.0')
+PY
     # Only system paths and library-relative references are allowed.
     otool -L "$library" | tail -n +2 | awk '{print $1}' | while IFS= read -r dependency; do
       case "$dependency" in

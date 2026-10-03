@@ -117,7 +117,9 @@ defmodule EXGBoost.MixProject do
         "README.md",
         "CHANGELOG.md",
         "RELEASING.md",
-        "scripts",
+        "scripts/*.sh",
+        "scripts/*.py",
+        "scripts/*.exs",
         "LICENSE",
         ".formatter.exs",
         "checksum.exs"
@@ -128,6 +130,7 @@ defmodule EXGBoost.MixProject do
   defp docs do
     [
       main: "EXGBoost",
+      source_ref: "v#{@version}",
       extras: [
         "RELEASING.md",
         "CONTRIBUTING.md",
