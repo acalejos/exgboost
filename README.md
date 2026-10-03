@@ -63,7 +63,7 @@ primary entry point for training a model. It accepts a Nx tensor for the feature
 accepts a keyword list of options that can be used to configure the training process. See the
 [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
-`EXGBoost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training. `EXGBoost.Training.train/1`
+`EXGBoost.train/2` uses the `EXGBoost.Training.train/2` function to perform the actual training. `EXGBoost.Training.train/2`
 and can be used directly if you wish to work directly with the `DMatrix` and `Booster` structs.
 
 One of the main features of `EXGBoost.train/2` is the ability for the end user to provide a custom training function
@@ -98,7 +98,6 @@ list of parameters.
 ```elixir
 EXGBoost.train(X,
               y,
-              obj: &EXGBoost.Training.train/1,
               evals: [{X_test, y_test, "test"}],
               learning_rates: fn i -> i/10 end,
               num_boost_rounds: 10,

@@ -7,6 +7,8 @@ on:
 permissions:
   contents: read
 jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
   build:
     timeout-minutes: 45
     strategy:
@@ -68,7 +70,7 @@ jobs:
             cache/precompiled/*.sha256
           if-no-files-found: error
   package:
-    needs: build
+    needs: [build, quality]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5

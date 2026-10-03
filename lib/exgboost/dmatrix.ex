@@ -1,5 +1,5 @@
 defmodule EXGBoost.DMatrix do
-  @moduledoc false
+  @moduledoc "An XGBoost data matrix backed by a native resource. Construct matrices from Nx tensors or sparse data using the functions in this module."
 
   # Internal docs for development only
   _docstring = """

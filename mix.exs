@@ -89,6 +89,7 @@ defmodule EXGBoost.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.9", runtime: false},
+      {:castore, "~> 1.0", only: :test, runtime: false},
       {:excoveralls, "~> 0.18", only: :test, runtime: false},
       {:nimble_options, "~> 1.0"},
       {:nx, "~> 0.9"},
@@ -128,6 +129,9 @@ defmodule EXGBoost.MixProject do
     [
       main: "EXGBoost",
       extras: [
+        "RELEASING.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md",
         "notebooks/iris_classification.livemd",
         "notebooks/quantile_prediction_interval.livemd",
         "notebooks/plotting.livemd"
@@ -135,7 +139,7 @@ defmodule EXGBoost.MixProject do
       groups_for_extras: [
         Notebooks: Path.wildcard("notebooks/*.livemd")
       ],
-      groups_for_functions: [
+      groups_for_docs: [
         "System / Native Config": &(&1[:type] == :system),
         "Training & Prediction": &(&1[:type] == :train_pred),
         Serialization: &(&1[:type] == :serialization),

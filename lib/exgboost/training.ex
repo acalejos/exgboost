@@ -1,5 +1,5 @@
 defmodule EXGBoost.Training do
-  @moduledoc false
+  @moduledoc "Training with evaluation datasets, early stopping, and callbacks. Most callers should use `EXGBoost.train/3`; this module accepts an `EXGBoost.DMatrix` directly."
   alias EXGBoost.Booster
   alias EXGBoost.DMatrix
   alias EXGBoost.Training.{State, Callback}

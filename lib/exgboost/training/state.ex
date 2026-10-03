@@ -1,5 +1,5 @@
 defmodule EXGBoost.Training.State do
-  @moduledoc false
+  @moduledoc "State passed to training callbacks, including the current booster, iteration, metrics, and callback metadata."
 
   @type t :: %__MODULE__{
           booster: EXGBoost.Booster.t(),
