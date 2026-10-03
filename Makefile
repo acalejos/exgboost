@@ -1,5 +1,7 @@
 # elixir_make supplies MIX_APP_PATH and ERTS_INCLUDE_DIR.
 .DEFAULT_GOAL := all
+MIX_ENV ?= dev
+MIX_APP_PATH ?= $(CURDIR)/_build/$(MIX_ENV)/lib/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
 # XGBoost v3.4.2; pin the immutable commit, not a movable tag.
 XGBOOST_GIT_REV ?= fdf0888bedddbd444d72994d845c59b3ca182c5b
@@ -21,7 +23,7 @@ LDFLAGS += -L$(PRIV_DIR)/lib -lxgboost
 
 ifeq ($(shell uname -s),Darwin)
 LIBXGBOOST := libxgboost.dylib
-LDFLAGS += -undefined dynamic_lookup -Wl,-rpath,@loader_path/lib
+LDFLAGS += -Wl,-install_name,@rpath/libexgboost.so -undefined dynamic_lookup -Wl,-rpath,@loader_path/lib
 else
 LIBXGBOOST := libxgboost.so
 LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
@@ -67,6 +69,7 @@ $(NIF): $(SRC) $(HEADERS) $(PRIV_DIR)/lib/$(LIBXGBOOST) Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) -shared $(SRC) $(LDFLAGS) -o "$@"
 ifeq ($(shell uname -s),Darwin)
 	install_name_tool -change @rpath/libxgboost.3.dylib @loader_path/lib/libxgboost.dylib "$@"
+	codesign --force --sign - "$@"
 endif
 
 # Keep the expensive upstream cache for routine cleans.

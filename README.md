@@ -166,6 +166,10 @@ by multiple tasks in calling applications.
   You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
   documentation for a gallery of the styles.
 
+Saving plot images with `path:` requires adding `{:vega_lite_convert, "~> 1.0.1"}`
+to your application. Returning a Vega spec, training, and prediction do not need
+that additional native image-conversion runtime.
+
 ## Examples
 
   See the example Notebooks in the left sidebar (under the `Pages` tab) for more examples and tutorials

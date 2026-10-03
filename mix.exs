@@ -99,7 +99,7 @@ defmodule EXGBoost.MixProject do
       {:exterval, "~> 0.2.0"},
       {:ex_json_schema, "~> 0.11.4"},
       {:vega_lite, "~> 0.1"},
-      {:vega_lite_convert, "~> 1.0.1"},
+      {:vega_lite_convert, "~> 1.0.1", only: [:dev, :docs], optional: true},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   portable JSON/UBJ; legacy snapshots remain readable. Internal raw-pointer NIF
   helpers are removed. Kino rendering is provided by the example notebook instead
   of requiring Kino in every application.
+- Make the large native plot-image converter an optional dependency; core training and Vega specifications do not require it.
 - Bundle the Vega schema for offline compilation and plot validation, with plotting regression tests.
 - Remove the obsolete compiled-model benchmark notebook from published docs.
 

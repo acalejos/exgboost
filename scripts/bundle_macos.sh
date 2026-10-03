@@ -13,6 +13,8 @@ while IFS= read -r dep; do
       rm -f "$priv/lib/libomp.dylib"
       cp "$source" "$priv/lib/libomp.dylib"
       chmod u+w "$priv/lib/libomp.dylib"
+      install_name_tool -id @loader_path/libomp.dylib "$priv/lib/libomp.dylib"
+      codesign --force --sign - "$priv/lib/libomp.dylib"
       install_name_tool -change "$dep" @loader_path/libomp.dylib "$library"
       # Include the runtime license with the redistributed binary.
       license="$(brew --prefix libomp)/share/doc/libomp/LICENSE.TXT"
