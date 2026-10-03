@@ -92,7 +92,7 @@ defmodule EXGBoost.MixProject do
       {:castore, "~> 1.0", only: :test, runtime: false},
       {:excoveralls, "~> 0.18", only: :test, runtime: false},
       {:nimble_options, "~> 1.0"},
-      {:nx, "~> 0.9"},
+      {:nx, "~> 1.0"},
       {:jason, "~> 1.3"},
       {:ex_doc, "~> 0.40", only: :docs, runtime: false},
       {:cc_precompiler, "~> 0.1.11", runtime: false},
