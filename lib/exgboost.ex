@@ -483,7 +483,7 @@ defmodule EXGBoost do
   ## Options
   * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
   * `:path` - the path to save the graphic to. File export requires the optional `:vega_lite_convert` dependency. If not provided, the graphic is returned as a VegaLite spec.
-  * `:opts` - additional options to pass to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
+  Other options are forwarded to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
   """
   @doc type: :plotting
   def plot_tree(booster, opts \\ []) do

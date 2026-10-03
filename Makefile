@@ -40,7 +40,7 @@ xgboost: $(XGBOOST_DIR)/.exgboost-source
 	  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_MESSAGE=NEVER -DCMAKE_C_COMPILER="$(CC)" -DCMAKE_CXX_COMPILER="$(CXX)" \
 	  -DKEEP_BUILD_ARTIFACTS_IN_BINARY_DIR=ON -DUSE_CUDA=OFF -DUSE_OPENMP=$(USE_OPENMP) $(CMAKE_FLAGS)
 	cmake --build "$(XGBOOST_BUILD)" --parallel $(BUILD_JOBS)
-	cmake --install "$(XGBOOST_BUILD)"
+	cmake --install "$(XGBOOST_BUILD)" --prefix "$(XGBOOST_INSTALL)"
 	mkdir -p "$(PRIV_DIR)/lib" "$(PRIV_DIR)/licenses"
 	cmp -s "$(XGBOOST_INSTALL)/lib/$(LIBXGBOOST)" "$(PRIV_DIR)/lib/$(LIBXGBOOST)" || cp "$(XGBOOST_INSTALL)/lib/$(LIBXGBOOST)" "$(PRIV_DIR)/lib/$(LIBXGBOOST)"
 ifeq ($(shell uname -s),Darwin)

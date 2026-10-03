@@ -39,8 +39,8 @@ defmodule EXGBoost.MixProject do
         only_listed_targets: true,
         compilers: %{
           {:unix, :linux} => %{
-            "x86_64-linux-gnu" => {"cc", "c++"},
-            "aarch64-linux-gnu" => {"cc", "c++"}
+            "x86_64-linux-gnu" => {"cc", "g++"},
+            "aarch64-linux-gnu" => {"cc", "g++"}
           },
           {:unix, :darwin} => %{
             "x86_64-apple-darwin" => {"cc", "c++"},
