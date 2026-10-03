@@ -1,0 +1,34 @@
+{
+  "name": "EXGBoost Erlang 29 GCC 14",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "containerEnv": {
+    "CC": "gcc-14",
+    "CXX": "g++-14",
+    "MIX_ENV": "dev"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "jakebecker.elixir-ls",
+        "xaver.clang-format"
+      ]
+    }
+  },
+  "postCreateCommand": "mix deps.get",
+  "remoteUser": "dev",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": false
+    }
+  }
+}

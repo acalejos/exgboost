@@ -7,6 +7,13 @@ Mix.install([
   {:kino_vega_lite, "~> 0.1"}
 ])
 
+# Implement the Kino renderer for later
+defimpl Kino.Render, for: EXGBoost.Booster do
+  def to_livebook(booster) do
+    EXGBoost.Plotting.plot(booster) |> Kino.Render.to_livebook()
+  end
+end
+
 # This assumed you launch this livebook from its location in the exgboost/notebooks folder
 ```
 

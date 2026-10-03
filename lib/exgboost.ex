@@ -233,12 +233,15 @@ defmodule EXGBoost do
 
     case data do
       %Nx.Tensor{} = data ->
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        arr = ArrayInterface.from_tensor(data)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
             boostr.ref,
-            data_interface,
+            arr.binary,
+            arr.typestr,
+            Tuple.to_list(arr.shape),
+            arr.readonly,
             Jason.encode!(params),
             proxy
           )
@@ -247,16 +250,25 @@ defmodule EXGBoost do
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = ArrayInterface.from_tensor(indptr) |> Jason.encode!()
-        indices_interface = ArrayInterface.from_tensor(indices) |> Jason.encode!()
-        values_interface = ArrayInterface.from_tensor(values) |> Jason.encode!()
+        indptr_arr = ArrayInterface.from_tensor(indptr)
+        indices_arr = ArrayInterface.from_tensor(indices)
+        values_arr = ArrayInterface.from_tensor(values)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_csr(
             boostr.ref,
-            indptr_interface,
-            indices_interface,
-            values_interface,
+            indptr_arr.binary,
+            indptr_arr.typestr,
+            Tuple.to_list(indptr_arr.shape),
+            indptr_arr.readonly,
+            indices_arr.binary,
+            indices_arr.typestr,
+            Tuple.to_list(indices_arr.shape),
+            indices_arr.readonly,
+            values_arr.binary,
+            values_arr.typestr,
+            Tuple.to_list(values_arr.shape),
+            values_arr.readonly,
             ncol,
             Jason.encode!(params),
             proxy
@@ -267,12 +279,15 @@ defmodule EXGBoost do
 
       data ->
         data = Nx.concatenate(data)
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        arr = ArrayInterface.from_tensor(data)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
             boostr.ref,
-            data_interface,
+            arr.binary,
+            arr.typestr,
+            Tuple.to_list(arr.shape),
+            arr.readonly,
             Jason.encode!(params),
             proxy
           )

@@ -1,5 +1,15 @@
 defmodule EXGBoost.Training.State do
   @moduledoc false
+
+  @type t :: %__MODULE__{
+          booster: EXGBoost.Booster.t(),
+          iteration: non_neg_integer(),
+          max_iteration: -1 | non_neg_integer(),
+          meta_vars: map(),
+          metrics: map(),
+          status: :cont | :halt
+        }
+
   @enforce_keys [:booster]
   defstruct [
     :booster,

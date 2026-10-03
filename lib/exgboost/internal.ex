@@ -139,6 +139,17 @@ defmodule EXGBoost.Internal do
   end
 
   def unwrap!({:ok, val}), do: val
-  def unwrap!({:error, reason}), do: raise(reason)
+
+  def unwrap!({:error, reason}) when is_exception(reason) do
+    raise(reason)
+  end
+
+  def unwrap!({:error, reason}) when is_list(reason) do
+    message = if List.ascii_printable?(reason), do: List.to_string(reason), else: inspect(reason)
+    raise ArgumentError, message
+  end
+
+  def unwrap!({:error, reason}) when is_binary(reason), do: raise(ArgumentError, reason)
+  def unwrap!({:error, reason}), do: raise(ArgumentError, inspect(reason))
   def unwrap!(:ok), do: :ok
 end

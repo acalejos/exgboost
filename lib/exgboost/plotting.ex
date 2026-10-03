@@ -392,11 +392,15 @@ defmodule EXGBoost.Plotting do
     ]
   end
 
-  HTTPoison.start()
+  :inets.start()
+  :ssl.start()
 
-  @schema HTTPoison.get!("https://vega.github.io/schema/vega/v5.json").body
-          |> Jason.decode!()
-          |> ExJsonSchema.Schema.resolve()
+  @schema (fn ->
+             {:ok, {{_, 200, _}, _, body}} =
+               :httpc.request(:get, {"https://vega.github.io/schema/vega/v5.json", []}, [], [])
+
+             body |> to_string() |> Jason.decode!() |> ExJsonSchema.Schema.resolve()
+           end).()
 
   @mark_text_doc "Accepts a keyword list of Vega `text` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/text/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
   @mark_rect_doc "Accepts a keyword list of Vega `rect` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/rect/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
@@ -797,15 +801,6 @@ defmodule EXGBoost.Plotting do
   to ensure that it is valid. Note that this will only validate the specification against the Vega schema, and not against the
   VegaLite schema. This requires the [`ex_json_schema`] package to be installed.
 
-  ## Livebook Integration
-
-  This module also provides a `Kino.Render` implementation for `EXGBoost.Booster` which allows
-  models to be rendered directly in Livebook. This is done by converting the model into a Vega specification
-  and then using the `Kino.Render` implementation for Elixir's [`VegaLite`](https://hexdocs.pm/vega_lite/VegaLite.html) API
-  to render the model.
-
-  . The Vega specification is then passed to [VegaLite](https://hexdocs.pm/vega_lite/readme.html)
-
   ## Plotting Parameters
 
   This module exposes a high-level API for customizing the EXGBoost model visualization, but it is also possible to
@@ -834,7 +829,7 @@ defmodule EXGBoost.Plotting do
   @spec get_defaults() :: Keyword.t()
   def get_defaults(), do: @defaults
 
-  @spec get_styles() :: [{atom(), [style(), ...]}, ...]
+  @spec get_styles() :: EXGBoost.Plotting.Style.t()
   def get_styles(), do: @styles
 
   defp validate_spec(spec) do
@@ -1764,11 +1759,5 @@ defmodule EXGBoost.Plotting do
 
   def __after_compile__(env) do
     IO.inspect(env)
-  end
-end
-
-defimpl Kino.Render, for: EXGBoost.Booster do
-  def to_livebook(booster) do
-    EXGBoost.Plotting.plot(booster) |> Kino.Render.to_livebook()
   end
 end

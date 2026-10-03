@@ -59,7 +59,7 @@ EXGBoost.predict(model, x)
 
 EXGBoost is designed to feel familiar to the users of the Python XGBoost library. `EXGBoost.train/2` is the
 primary entry point for training a model. It accepts a Nx tensor for the features and a Nx tensor for the labels.
-`EXGBoost.train/2` returns a trained`Booster` struct that can be used for prediction. `EXGBoost.train/2` also
+`EXGBoost.train/2` returns a trained `Booster` struct that can be used for prediction. `EXGBoost.train/2` also
 accepts a keyword list of options that can be used to configure the training process. See the
 [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
@@ -119,6 +119,17 @@ It accepts a `Booster` struct (which is the output of `EXGBoost.train/2`).
 preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 ```
 
+## Concurrency and Thread Safety
+
+**Important**: Booster objects are **not thread-safe** for concurrent predictions. The underlying XGBoost C API does not provide synchronization mechanisms, and sharing a single booster reference across multiple Elixir processes for concurrent predictions can lead to race conditions, memory corruption, or incorrect results. For this reason it is not recommended that you cache boosters to be used
+by multiple tasks in calling applications.
+
+### Why This Matters
+
+- `EXGBoost.predict/2` and `EXGBoost.inplace_predict/2` both use dirty CPU-bound NIF schedulers
+- This prevents blocking the BEAM scheduler but **does not** provide thread safety
+- Concurrent access to the same booster from multiple processes can cause undefined behavior
+
 ## Serialization
 
   A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
@@ -155,17 +166,6 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
   documentation for a gallery of the styles.
 
-## Kino & Livebook Integration
-
-  `EXGBoost` integrates with [Kino](https://hexdocs.pm/kino/Kino.html) and [Livebook](https://livebook.dev/)
-  to provide a rich interactive experience for data scientists.
-
-  EXGBoost implements the `Kino.Render` protocol for `EXGBoost.Booster` structs. This allows you to render
-  a Booster in a Livebook notebook.  Under the hood, `EXGBoost` uses [Vega-Lite](https://vega.github.io/vega-lite/)
-  and [Kino Vega-Lite](https://hexdocs.pm/kino_vega_lite/Kino.VegaLite.html) to render the Booster.
-
-  See the [`Plotting in EXGBoost`](notebooks/plotting.livemd) Notebook for an example of how to use `EXGBoost` with `Kino` and `Livebook`.
-
 ## Examples
 
   See the example Notebooks in the left sidebar (under the `Pages` tab) for more examples and tutorials
@@ -175,7 +175,7 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 
 ### Precompiled Distribution
 
-We currenly offer the following precompiled packages for EXGBoost:
+We currently offer the following precompiled packages for EXGBoost:
 
 ```elixir
 %{
@@ -204,6 +204,8 @@ If you are contributing to the library and need to compile locally or choose to 
 - CMake
 - If MacOS: `brew install libomp`
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, including NIF safety requirements and testing procedures.
+
 When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
 
 You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the first local compilation, otherwise you will get an error related to a missing checksum file.
@@ -220,3 +222,21 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 ## License
 
 Licensed under an [Apache-2](https://github.com/acalejos/exgboost/blob/main/LICENSE) license.
+
+## Maintaining this fork
+
+Recommended fork maintenance cadence:
+
+- Keep dependencies current with Dependabot PRs (configured in `.github/dependabot.yml`).
+- Ensure all PRs pass CI (`.github/workflows/ci.yml`) before merge.
+- Keep precompiled artefacts and checksums aligned with each release tag (`.github/workflows/precompile.yml`).
+- When upgrading `nx`, verify supported Elixir/OTP versions in CI matrix and `mix.exs`.
+
+Native compatibility checks:
+
+- Run `make check-xgboost-c-api` after changing `XGBOOST_GIT_REV` or native C files.
+- Run `mix test test/nif_test.exs` to validate runtime behavior after the API check passes.
+- To compare API declarations between two XGBoost versions, run:
+  `scripts/check_xgboost_c_api.sh --compare <old-include-dir> <new-include-dir>`
+- Or use make to fetch and compare tags directly:
+  `make compare-xgboost-c-api OLD_XGBOOST_GIT_REV=v3.0.5 NEW_XGBOOST_GIT_REV=v3.1.3`

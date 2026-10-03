@@ -127,12 +127,12 @@ defmodule EXGBoost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = ArrayInterface.from_tensor(value) |> Jason.encode!()
+      arr = ArrayInterface.from_tensor(value)
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
         Atom.to_string(key),
-        data_interface
+        ArrayInterface.to_tuple(arr)
       )
     end)
 
@@ -146,6 +146,7 @@ defmodule EXGBoost.DMatrix do
   @doc """
   Slice the DMatrix and return a new DMatrix that only contains rindex.
   """
+  @spec slice(any(), Nx.Tensor.t()) :: reference()
   def slice(dmat, %Nx.Tensor{shape: {_rows}} = r_index, opts \\ [])
       when is_list(opts) do
     opts = Keyword.validate!(opts, allow_groups: false)
@@ -164,21 +165,25 @@ defmodule EXGBoost.DMatrix do
     # config – JSON configuration string. At the moment it should be an empty document, preserved for future use.
     config = %{} |> Jason.encode!()
 
-    {indptr, data} =
+    {indptr_data, data_data} =
       EXGBoost.NIF.dmatrix_get_quantile_cut(dmat.ref, config)
       |> Internal.unwrap!()
 
-    indptr =
-      Jason.decode!(indptr)
-      |> ArrayInterface.from_map()
-      |> ArrayInterface.get_tensor()
-
-    data =
-      Jason.decode!(data)
-      |> ArrayInterface.from_map()
-      |> ArrayInterface.get_tensor()
+    # NIF now returns maps with :binary, :typestr, :shape - no JSON parsing needed
+    indptr = build_tensor_from_map(indptr_data)
+    data = build_tensor_from_map(data_data)
 
     {indptr, data}
+  end
+
+  defp build_tensor_from_map(%{binary: binary, typestr: typestr, shape: shape}) do
+    # Parse typestr using shared ArrayInterface helper (raises ArgumentError on invalid format)
+    nx_type = EXGBoost.ArrayInterface.parse_typestr!(typestr)
+
+    # Convert shape list to tuple
+    shape_tuple = List.to_tuple(shape)
+
+    Nx.from_binary(binary, nx_type) |> Nx.reshape(shape_tuple)
   end
 
   defimpl Inspect do
@@ -208,8 +213,15 @@ defmodule EXGBoost.DMatrix do
     end
   end
 
+  @deprecated "Since 0.9.1 -- Read the file yourself and use `EXGBoost.DMatrix.from_tensor/2` instead"
   @doc """
   Create a DMatrix from a file.
+
+  > #### Deprecated {: .warning}
+  >
+  > XGBoost deprecated text file input (LIBSVM and CSV) in 3.1 and will remove it in a
+  > future release. Loading a file through this function emits a deprecation warning from
+  > XGBoost itself. Parse the file into an `Nx.Tensor` and use `from_tensor/2` instead.
 
   Refer to https://xgboost.readthedocs.io/en/latest/tutorials/external_memory.html#text-file-inputs
   for proper formatting of the file and the options.
@@ -304,9 +316,14 @@ defmodule EXGBoost.DMatrix do
     config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
     format = Keyword.fetch!(format_opts, :format)
 
+    arr_tuple =
+      tensor
+      |> ArrayInterface.from_tensor()
+      |> ArrayInterface.to_tuple()
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(ArrayInterface.from_tensor(tensor)),
+        arr_tuple,
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -363,11 +380,15 @@ defmodule EXGBoost.DMatrix do
       raise ArgumentError, "Sparse format must be :csr or :csc"
     end
 
+    indptr_arr_tuple = ArrayInterface.from_tensor(indptr) |> ArrayInterface.to_tuple()
+    indices_arr_tuple = ArrayInterface.from_tensor(indices) |> ArrayInterface.to_tuple()
+    data_arr_tuple = ArrayInterface.from_tensor(data) |> ArrayInterface.to_tuple()
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(ArrayInterface.from_tensor(indptr)),
-        Jason.encode!(ArrayInterface.from_tensor(indices)),
-        Jason.encode!(ArrayInterface.from_tensor(data)),
+        indptr_arr_tuple,
+        indices_arr_tuple,
+        data_arr_tuple,
         n,
         Jason.encode!(config),
         Atom.to_string(format)

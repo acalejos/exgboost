@@ -1,6 +1,7 @@
 defmodule EXGBoost.MixProject do
   use Mix.Project
-  @version "0.5.2"
+
+  @version "0.11.0"
 
   def project do
     [
@@ -8,32 +9,32 @@ defmodule EXGBoost.MixProject do
       version: @version,
       make_precompiler: {:nif, CCPrecompiler},
       make_precompiler_url:
-        "https://github.com/acalejos/exgboost/releases/download/v#{@version}/@{artefact_filename}",
+        "https://github.com/iperks/exgboost/releases/download/#{@version}/@{artefact_filename}",
       make_precompiler_priv_paths: ["libexgboost.*", "lib"],
       # NIF Versions correspond to OTP Releases
       # https://github.com/erlang/otp/blob/d3aa6c044c3927f011fb76ac087d5ce0e814954c/erts/emulator/beam/erl_nif.h#L57
       make_precompiler_nif_versions: [
-        versions: ["2.15", "2.16", "2.17"]
+        versions: ["2.17", "2.18"]
       ],
-      elixir: "~> 1.14",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
       deps: deps(),
       name: "EXGBoost",
-      source_url: "https://github.com/acalejos/exgboost",
-      homepage_url: "https://github.com/acalejos/exgboost",
+      source_url: "https://github.com/iperks/exgboost",
+      homepage_url: "https://github.com/iperks/exgboost",
       docs: docs(),
       package: package(),
-      preferred_cli_env: [
-        docs: :docs,
-        "hex.publish": :docs
-      ],
       before_closing_body_tag: &before_closing_body_tag/1,
       name: "EXGBoost",
       description:
         "Elixir bindings for the XGBoost library. `EXGBoost` provides an implementation of XGBoost that works with
-      [Nx](https://hexdocs.pm/nx/Nx.html) tensors."
+      [Nx](https://hexdocs.pm/nx/Nx.html) tensors. Maintained fork of acalejos/exgboost."
     ]
+  end
+
+  def cli do
+    [preferred_envs: [docs: :docs, "hex.publish": :docs]]
   end
 
   def application do
@@ -47,26 +48,24 @@ defmodule EXGBoost.MixProject do
     [
       {:elixir_make, "~> 0.4", runtime: false},
       {:nimble_options, "~> 1.0"},
-      {:nx, "~> 0.7"},
+      {:nx, "~> 0.9"},
       {:jason, "~> 1.3"},
-      {:ex_doc, "~> 0.31.0", only: :docs},
+      {:ex_doc, "~> 0.40", only: :docs},
       {:cc_precompiler, "~> 0.1.0", runtime: false},
       {:exterval, "0.2.0"},
-      {:ex_json_schema, "~> 0.11.0"},
-      {:httpoison, "~> 2.0", runtime: false},
+      {:ex_json_schema, "~> 0.11.4"},
       {:vega_lite, "~> 0.1"},
       {:vega_lite_convert, "~> 1.0.1"},
-      {:kino, "~> 0.11"},
       {:scidata, "~> 0.1", only: :dev},
-      {:kino_vega_lite, "~> 0.1.9", only: :dev}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
   defp package do
     [
-      maintainers: ["Andres Alejos"],
+      maintainers: ["Ian Perks"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/acalejos/exgboost"},
+      links: %{"GitHub" => "https://github.com/iperks/exgboost"},
       files: [
         "lib",
         "mix.exs",

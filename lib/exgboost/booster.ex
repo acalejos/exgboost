@@ -27,23 +27,21 @@ defmodule EXGBoost.Booster do
   A Booster can be serialized to a file using `EXGBoost.Booster.save` and loaded from a file
   using `EXGBoost.Booster.load`. The file format can be specified using the `:format` option
   which can be either `:json` or `:ubj`. The default is `:json`. If the file already exists, it will
-  be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
-  Boosters can be serialized in three different ways: configuration only, configuration and model, or
-  model only. Any function that uses the `to` and `from` `buffer` functions will serialize the Booster
-  to a binary string. The `to` and `from` `file` functions will serialize the Booster to a file.
-  Functions named with `weights` will serialize the model weights only. Functions named with `config` will
-  serialize the configuration only. Functions that specify `model` will serialize both the model weights
-  and the configuration.
+  be overwritten by default. Boosters can either be serialized to a file or to a binary string.
+  Model and weight outputs use XGBoost's stable model-I/O representation so they can be loaded by
+  later XGBoost releases. Configuration output contains the internal training configuration and is
+  intended for use with the same XGBoost version.
 
   ### Output Formats
   - `file` - Save to a file.
   - `buffer` - Save to a binary string.
 
   ### Output Contents
-  - `config` - Save the configuration only.
-  - `weights` - Save the model weights only.
-  - `model` - Save both the model weights and the configuration.
+  - `config` - Save the internal training configuration only.
+  - `weights` - Save the portable model representation (retained as a compatibility alias).
+  - `model` - Save the portable model representation, including trees and the objective.
   """
+  alias EXGBoost.ArrayInterface
   alias EXGBoost.DMatrix
   alias EXGBoost.Internal
   alias EXGBoost.NIF
@@ -220,7 +218,10 @@ defmodule EXGBoost.Booster do
           |> then(&File.write!(filepath, &1))
 
         :model ->
-          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref)
+          EXGBoost.NIF.booster_save_model_to_buffer(
+            booster.ref,
+            Jason.encode!(%{format: opts[:format]})
+          )
           |> Internal.unwrap!()
           |> then(&File.write!(filepath, &1))
 
@@ -233,7 +234,11 @@ defmodule EXGBoost.Booster do
           EXGBoost.NIF.booster_save_json_config(booster.ref) |> Internal.unwrap!()
 
         :model ->
-          EXGBoost.NIF.booster_serialize_to_buffer(booster.ref) |> Internal.unwrap!()
+          EXGBoost.NIF.booster_save_model_to_buffer(
+            booster.ref,
+            Jason.encode!(%{format: opts[:format]})
+          )
+          |> Internal.unwrap!()
 
         :weights ->
           EXGBoost.NIF.booster_save_model_to_buffer(
@@ -294,13 +299,23 @@ defmodule EXGBoost.Booster do
           EXGBoost.NIF.booster_load_json_config(booster.ref, config) |> Internal.unwrap!()
 
         :model ->
-          EXGBoost.NIF.booster_deserialize_from_buffer(source) |> Internal.unwrap!()
+          load_model_with_fallback(source)
 
         :weights ->
           EXGBoost.NIF.booster_load_model_from_buffer(source) |> Internal.unwrap!()
       end
 
     struct(booster, ref: booster_ref)
+  end
+
+  defp load_model_with_fallback(source) do
+    case EXGBoost.NIF.booster_load_model_from_buffer(source) do
+      {:error, _reason} ->
+        EXGBoost.NIF.booster_deserialize_from_buffer(source) |> Internal.unwrap!()
+
+      result ->
+        Internal.unwrap!(result)
+    end
   end
 
   @doc """
@@ -350,8 +365,8 @@ defmodule EXGBoost.Booster do
     EXGBoost.NIF.booster_boost_one_iter(
       booster.ref,
       dmatrix.ref,
-      Nx.to_binary(grad),
-      Nx.to_binary(hess)
+      grad |> ArrayInterface.from_tensor() |> ArrayInterface.to_tuple(),
+      hess |> ArrayInterface.from_tensor() |> ArrayInterface.to_tuple()
     )
   end
 

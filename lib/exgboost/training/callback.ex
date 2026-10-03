@@ -43,6 +43,14 @@ defmodule EXGBoost.Training.Callback do
 
   """
   alias EXGBoost.Training.State
+
+  @type t :: %__MODULE__{
+          event: event(),
+          fun: fun(),
+          name: atom(),
+          init_state: any()
+        }
+
   @enforce_keys [:event, :fun]
   defstruct [:event, :fun, :name, :init_state]
 
@@ -54,7 +62,7 @@ defmodule EXGBoost.Training.Callback do
   @doc """
   Factory for a new callback with an initial state.
   """
-  @spec new(event :: event(), fun :: fun(), name :: atom(), init_state :: any()) :: Callback.t()
+  @spec new(event :: event(), fun :: fun(), name :: atom(), init_state :: any()) :: t()
   def new(event, fun, name, init_state \\ %{})
       when event in @valid_events and is_function(fun, 1) and is_atom(name) and not is_nil(name) do
     %__MODULE__{event: event, fun: fun, name: name, init_state: init_state}
