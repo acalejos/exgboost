@@ -1,119 +1,80 @@
-# Environment variables passed via elixir_make
-# ERTS_INCLUDE_DIR
-# MIX_APP_PATH
-# MIX_ENV
-
-TEMP ?= $(HOME)/.cache
-MIX_ENV ?= dev
-XGBOOST_CACHE ?= $(TEMP)/exgboost
+# elixir_make supplies MIX_APP_PATH and ERTS_INCLUDE_DIR.
+.DEFAULT_GOAL := all
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
+# XGBoost v3.4.2; pin the immutable commit, not a movable tag.
+XGBOOST_GIT_REV ?= fdf0888bedddbd444d72994d845c59b3ca182c5b
+XGBOOST_CACHE ?= $(CURDIR)/cache/xgboost
+BUILD_TARGET := $(shell uname -s)-$(shell uname -m)
+XGBOOST_DIR ?= $(XGBOOST_CACHE)/$(XGBOOST_GIT_REV)/source
+XGBOOST_BUILD := $(XGBOOST_CACHE)/$(XGBOOST_GIT_REV)/$(BUILD_TARGET)/build
+XGBOOST_INSTALL := $(XGBOOST_CACHE)/$(XGBOOST_GIT_REV)/$(BUILD_TARGET)/install
+PRIV_DIR := $(MIX_APP_PATH)/priv
+NIF := $(PRIV_DIR)/libexgboost.so
+SRC := $(wildcard c/exgboost/src/*.c)
+HEADERS := $(wildcard c/exgboost/include/*.h)
+BUILD_JOBS ?= 2
+USE_OPENMP ?= ON
+CFLAGS ?= -O3
+CPPFLAGS += -Ic/exgboost/include -I$(XGBOOST_INSTALL)/include -I$(ERTS_INCLUDE_DIR)
+CFLAGS += -fPIC -std=c11 -Wall -Werror=implicit-function-declaration
+LDFLAGS += -L$(PRIV_DIR)/lib -lxgboost
 
-# Use tagged releases in the checks below.
-XGBOOST_GIT_REV ?= v3.2.0
-OLD_XGBOOST_GIT_REV ?= v3.1.3
-NEW_XGBOOST_GIT_REV ?= $(XGBOOST_GIT_REV)
-
-XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
-XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
-XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
-XGBOOST_LIB_DIR_FLAG = $(XGBOOST_LIB_DIR)/exgboost.ok
-
-.PHONY: check-xgboost-c-api compare-xgboost-c-api clean
-
-# Set build type based on MIX_ENV
-ifeq ($(MIX_ENV), prod)
-	CMAKE_BUILD_TYPE = Release
+ifeq ($(shell uname -s),Darwin)
+LIBXGBOOST := libxgboost.dylib
+LDFLAGS += -undefined dynamic_lookup -Wl,-rpath,@loader_path/lib
 else
-	CMAKE_BUILD_TYPE = RelWithDebInfo
+LIBXGBOOST := libxgboost.so
+LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
 endif
 
-# Private configuration
-PRIV_DIR = $(MIX_APP_PATH)/priv
-EXGBOOST_DIR = $(realpath c/exgboost)
-EXGBOOST_CACHE_SO = cache/libexgboost.so
-EXGBOOST_CACHE_LIB_DIR = cache/lib
-EXGBOOST_SO = $(PRIV_DIR)/libexgboost.so
-EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
+.PHONY: all xgboost nif clean distclean
+all: xgboost
+	$(MAKE) nif
 
-# Build flags
-CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) $(if $(ERTS_INCLUDE_DIR),-I$(ERTS_INCLUDE_DIR)) -fPIC -O3 -shared -std=c11
-
-C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
-
-LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR) -lxgboost
-
-ifeq ($(shell uname -s), Darwin)
-	POST_INSTALL = install_name_tool $(EXGBOOST_CACHE_SO) -change @rpath/libxgboost.dylib @loader_path/lib/libxgboost.dylib
-	LDFLAGS += -flat_namespace -undefined suppress
-	LIBXGBOOST = libxgboost.dylib
-	ifeq ($(USE_LLVM_BREW), true)
-		LLVM_PREFIX=$(shell brew --prefix llvm)
-		CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(LLVM_PREFIX)/bin/clang++
-	endif
+# CMake tracks compiler/options and rebuilds incrementally; no stale success marker.
+xgboost: $(XGBOOST_DIR)/.exgboost-source
+	cmake -S "$(XGBOOST_DIR)" -B "$(XGBOOST_BUILD)" \
+	  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$(XGBOOST_INSTALL)" \
+	  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_MESSAGE=NEVER -DCMAKE_C_COMPILER="$(CC)" -DCMAKE_CXX_COMPILER="$(CXX)" \
+	  -DKEEP_BUILD_ARTIFACTS_IN_BINARY_DIR=ON -DUSE_CUDA=OFF -DUSE_OPENMP=$(USE_OPENMP) $(CMAKE_FLAGS)
+	cmake --build "$(XGBOOST_BUILD)" --parallel $(BUILD_JOBS)
+	cmake --install "$(XGBOOST_BUILD)"
+	mkdir -p "$(PRIV_DIR)/lib" "$(PRIV_DIR)/licenses"
+	cmp -s "$(XGBOOST_INSTALL)/lib/$(LIBXGBOOST)" "$(PRIV_DIR)/lib/$(LIBXGBOOST)" || cp "$(XGBOOST_INSTALL)/lib/$(LIBXGBOOST)" "$(PRIV_DIR)/lib/$(LIBXGBOOST)"
+ifeq ($(shell uname -s),Darwin)
+	ln -sf libxgboost.dylib "$(PRIV_DIR)/lib/libxgboost.3.dylib"
 else
-	LIBXGBOOST = libxgboost.so
-	LDFLAGS += -Wl,-rpath,'$$ORIGIN/lib'
-	LDFLAGS += -Wl,--allow-multiple-definition
-	POST_INSTALL = $(NOOP)
+	ln -sf libxgboost.so "$(PRIV_DIR)/lib/libxgboost.so.3"
+endif
+	cp "$(XGBOOST_DIR)/LICENSE" "$(PRIV_DIR)/licenses/XGBoost-LICENSE"
+	cp "$(XGBOOST_DIR)/dmlc-core/LICENSE" "$(PRIV_DIR)/licenses/dmlc-core-LICENSE"
+	head -n 22 c/exgboost/include/yyjson.h > "$(PRIV_DIR)/licenses/yyjson-LICENSE"
+ifeq ($(shell uname -s),Darwin)
+	bash scripts/bundle_macos.sh "$(PRIV_DIR)"
 endif
 
-$(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
-	@mkdir -p $(EXGBOOST_LIB_DIR)
-	cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR))/. $(EXGBOOST_LIB_DIR)/ ; \
-	cp -a $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ;
+$(XGBOOST_DIR)/.exgboost-source:
+	mkdir -p "$(XGBOOST_DIR)"
+	git -C "$(XGBOOST_DIR)" init
+	git -C "$(XGBOOST_DIR)" remote add origin "$(XGBOOST_GIT_REPO)" || git -C "$(XGBOOST_DIR)" remote set-url origin "$(XGBOOST_GIT_REPO)"
+	git -C "$(XGBOOST_DIR)" fetch --depth 1 origin "$(XGBOOST_GIT_REV)"
+	git -C "$(XGBOOST_DIR)" checkout --detach FETCH_HEAD
+	git -C "$(XGBOOST_DIR)" submodule update --init --recursive --depth 1
+	touch "$@"
 
-$(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
-	@mkdir -p $(EXGBOOST_CACHE_LIB_DIR)
-	cp -R $(XGBOOST_LIB_DIR)/. $(EXGBOOST_CACHE_LIB_DIR)/
-	cp $(XGBOOST_DIR)/lib/$(LIBXGBOOST) $(EXGBOOST_CACHE_LIB_DIR)
-	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
-	$(POST_INSTALL)
+nif: $(NIF)
+$(NIF): $(SRC) $(HEADERS) $(PRIV_DIR)/lib/$(LIBXGBOOST) Makefile
+	$(CC) $(CPPFLAGS) $(CFLAGS) -shared $(SRC) $(LDFLAGS) -o "$@"
+ifeq ($(shell uname -s),Darwin)
+	install_name_tool -change @rpath/libxgboost.3.dylib @loader_path/lib/libxgboost.dylib "$@"
+endif
 
-# This new target handles fetching the source code.
-# It only runs if the .git directory inside the source folder is missing.
-$(XGBOOST_DIR)/.git:
-	@mkdir -p $(XGBOOST_DIR) && \
-		cd $(XGBOOST_DIR) && \
-		git init && \
-		git remote add origin $(XGBOOST_GIT_REPO) && \
-		git fetch --depth 1 --recurse-submodules origin $(XGBOOST_GIT_REV) && \
-		git checkout FETCH_HEAD && \
-		git submodule update --init --recursive
-
-# This modified target now depends on the fetch target.
-# It only contains the build commands.
-$(XGBOOST_LIB_DIR_FLAG): $(XGBOOST_DIR)/.git
-	cd $(XGBOOST_DIR) && \
-		cmake -B build -S . -DCMAKE_INSTALL_PREFIX=$(XGBOOST_LIB_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -GNinja $(CMAKE_FLAGS) && \
-		ninja -C build install
-	touch $(XGBOOST_LIB_DIR_FLAG)
-
-check-xgboost-c-api: $(XGBOOST_LIB_DIR_FLAG)
-	./scripts/check_xgboost_c_api.sh \
-		"$(XGBOOST_LIB_DIR)/include" \
-		"$(XGBOOST_LIB_DIR)/lib/$(LIBXGBOOST)"
-
-compare-xgboost-c-api:
-	@set -eu; \
-	for rev in "$(OLD_XGBOOST_GIT_REV)" "$(NEW_XGBOOST_GIT_REV)"; do \
-		dir="$(XGBOOST_CACHE)/xgboost-$$rev"; \
-		mkdir -p "$$dir"; \
-		if [ ! -d "$$dir/.git" ]; then \
-			git -C "$$dir" init; \
-			git -C "$$dir" remote add origin "$(XGBOOST_GIT_REPO)"; \
-		fi; \
-		git -C "$$dir" fetch --depth 1 --recurse-submodules origin "$$rev"; \
-		git -C "$$dir" checkout -f FETCH_HEAD; \
-		git -C "$$dir" submodule update --init --recursive; \
-	done; \
-	./scripts/check_xgboost_c_api.sh --compare \
-		"$(XGBOOST_CACHE)/xgboost-$(OLD_XGBOOST_GIT_REV)/include" \
-		"$(XGBOOST_CACHE)/xgboost-$(NEW_XGBOOST_GIT_REV)/include"
-
+# Keep the expensive upstream cache for routine cleans.
 clean:
-	rm -rf $(EXGBOOST_CACHE_SO)
-	rm -rf $(EXGBOOST_CACHE_LIB_DIR)
-	rm -rf $(EXGBOOST_SO)
-	rm -rf $(EXGBOOST_LIB_DIR)
-	rm -rf $(XGBOOST_DIR)
-	rm -rf $(XGBOOST_LIB_DIR_FLAG)
+	rm -f "$(NIF)"
+	rm -rf "$(PRIV_DIR)/lib" "$(PRIV_DIR)/licenses"
+distclean: clean
+	rm -rf "$(XGBOOST_CACHE)"
+
+check-xgboost-c-api: xgboost
+	bash scripts/check_xgboost_c_api.sh "$(XGBOOST_INSTALL)/include" "$(XGBOOST_INSTALL)/lib/$(LIBXGBOOST)"

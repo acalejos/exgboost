@@ -572,32 +572,39 @@ defmodule EXGBoost.Booster do
       EXGBoost.NIF.booster_eval_one_iter(booster.ref, iteration, dmats_refs, evnames)
       |> Internal.unwrap!()
 
+    # Match known dataset prefixes so names and parameterized metrics can contain
+    # hyphens, dots and '@'. Float.parse also handles scientific notation.
+    names = Enum.map(evals, &elem(&1, 1)) |> Enum.sort_by(&byte_size/1, :desc)
+
     res =
-      Regex.scan(~r/[[:blank:]](\w+)-(\w+):(-?\d+\.?\d+)/, to_string(msg),
-        capture: :all_but_first
-      )
-      |> Enum.map(fn [ev_name | [metric_name | [value]]] ->
-        {fval, _rem} = Float.parse(value)
-        {ev_name, metric_name, fval}
+      msg
+      |> to_string()
+      |> String.split("\t", trim: true)
+      |> Enum.drop(1)
+      |> Enum.map(fn entry ->
+        name = Enum.find(names, &String.starts_with?(entry, &1 <> "-"))
+        if is_nil(name), do: raise(ArgumentError, "Unknown evaluation result: #{entry}")
+
+        [metric, value] =
+          entry |> String.replace_prefix(name <> "-", "") |> String.split(":", parts: 2)
+
+        case Float.parse(value) do
+          {number, ""} -> {name, metric, number}
+          _ -> raise ArgumentError, "Non-finite or invalid evaluation metric: #{entry}"
+        end
       end)
 
     if feval do
-      Enum.each(evals, fn {dmat, evname} ->
-        feval_ret =
-          feval.(
-            predict(booster, dmat, training: false, output_margin: output_margin),
-            dmat
-          )
+      custom_results =
+        Enum.flat_map(evals, fn {dmat, evname} ->
+          predictions = predict(booster, dmat, training: false, output_margin: output_margin)
 
-        if is_list(feval_ret) do
-          Enum.each(feval_ret, fn {name, value} ->
-            [{evname, name, value} | res]
-          end)
-        else
-          {name, value} = feval_ret
-          [{evname, name, value} | res]
-        end
-      end)
+          feval.(predictions, dmat)
+          |> List.wrap()
+          |> Enum.map(fn {name, value} -> {evname, name, value} end)
+        end)
+
+      res ++ custom_results
     else
       res
     end

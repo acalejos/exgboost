@@ -168,16 +168,12 @@ defmodule EXGBoost.Training.Callback do
 
         %{state | booster: bst, meta_vars: %{meta_vars | early_stop: early_stop}}
 
-      since_last_improvement < patience ->
+      since_last_improvement + 1 < patience ->
         early_stop = Map.update!(early_stop, :since_last_improvement, &(&1 + 1))
         %{state | meta_vars: %{meta_vars | early_stop: early_stop}}
 
       true ->
         early_stop = Map.update!(early_stop, :since_last_improvement, &(&1 + 1))
-        # TODO: Should this actually update the best iteration and score?
-        # This iteration is not the best, but it is the last one, so do we want
-        # another way to track last iteration?
-        bst = struct(bst, best_iteration: state.iteration, best_score: score)
         %{state | booster: bst, meta_vars: %{meta_vars | early_stop: early_stop}, status: :halt}
     end
   end
@@ -195,12 +191,12 @@ defmodule EXGBoost.Training.Callback do
         %State{
           booster: bst,
           iteration: iter,
-          meta_vars: %{eval_metrics: %{evals: evals, filter: filter}},
+          meta_vars: %{eval_metrics: %{evals: evals, filter: filter} = config},
           status: :cont
         } = state
       ) do
     metrics =
-      EXGBoost.Booster.eval_set(bst, evals, iter)
+      EXGBoost.Booster.eval_set(bst, evals, iter, feval: Map.get(config, :feval))
       |> Enum.reduce(%{}, fn {evname, mname, value}, acc ->
         Map.update(acc, evname, %{mname => value}, fn existing ->
           Map.put(existing, mname, value)

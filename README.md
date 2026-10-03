@@ -23,7 +23,7 @@ billions of examples.
 ```elixir
 def deps do
 [
-  {:exgboost, "~> 0.5"}
+  {:exgboost, "~> 0.6"}
 ]
 end
 ```
@@ -101,7 +101,7 @@ EXGBoost.train(X,
               obj: &EXGBoost.Training.train/1,
               evals: [{X_test, y_test, "test"}],
               learning_rates: fn i -> i/10 end,
-              num_boost_round: 10,
+              num_boost_rounds: 10,
               early_stopping_rounds: 3,
               max_depth: 3,
               eval_metric: [:rmse,:logloss]
@@ -138,10 +138,11 @@ by multiple tasks in calling applications.
   be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
   Boosters can be serialized in three different ways: configuration only, configuration and model, or
   model only. `dump` functions will serialize the Booster to a binary string.
-  Functions named with `weights` will serialize the model's trained parameters only. This is best used when the model
-  is already trained and only inferences/predictions are going to be performed. Functions named with `config` will
-  serialize the configuration only. Functions that specify `model` will serialize both the model parameters
-  and the configuration.
+  Model and weight exports use XGBoost's portable model representation in the
+  requested JSON or UBJ format. It includes trees and the objective; training
+  configuration can be saved separately with the configuration API. Readers also
+  accept legacy serialized snapshots. Configuration files are intended for the
+  same XGBoost version.
 
 ### Output Formats
 
@@ -152,7 +153,7 @@ by multiple tasks in calling applications.
 
 - `config` - Save the configuration only.
 - `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
-- `model` - Save both the model parameters and the configuration.
+- `model` - Save the portable model representation.
 
 ## Plotting
 
@@ -173,42 +174,40 @@ by multiple tasks in calling applications.
 
 ## Requirements
 
-### Precompiled Distribution
+### Precompiled distribution
 
-We currently offer the following precompiled packages for EXGBoost:
+EXGBoost 0.6 targets XGBoost 3.4.2, Elixir 1.17+, and OTP 26+.
+Releases provide CPU archives for these native targets:
 
-```elixir
-%{
-  "exgboost-nif-2.16-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:c659d086d07e9c209bdffbbf982951c6109b2097c4d3008ef9af59c3050663d2",
-  "exgboost-nif-2.16-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:05256238700456c57e279558765b54b5b5ed4147878c6861cd4c937472abbe52",
-  "exgboost-nif-2.16-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:ad3ba6aba8c3c2821dce4afc05b66a5e529764e0cea092c5a90e826446653d99",
-  "exgboost-nif-2.17-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:745e7e970316b569a10d76ceb711b9189360b3bf9ab5ee6133747f4355f45483",
-  "exgboost-nif-2.17-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:73948d6f2ef298e3ca3dceeca5d8a36a2d88d842827e1168c64589e4931af8d7",
-  "exgboost-nif-2.17-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:a0b5ff0b074a9726c69d632b2dc0214fc7b66dccb4f5879e01255eeb7b9d4282",
-}
+| Platform | Architectures | Build baseline |
+| --- | --- | --- |
+| Linux (glibc) | x86_64, aarch64 | Ubuntu 22.04 / glibc 2.35 |
+| macOS | x86_64, aarch64 | macOS 15 Intel / macOS 14 Apple Silicon |
+
+Mix downloads the matching archive and verifies its SHA256 checksum. The NIF,
+XGBoost, and dependency license notices are packaged together. macOS archives
+include the OpenMP runtime, so consumers do not need Homebrew. Linux consumers
+need the standard C++ and OpenMP runtimes (`libstdc++6` and `libgomp1` on Debian
+and Ubuntu). Windows, musl, and CUDA archives are not currently provided.
+Unsupported platforms fall back to a source build when the toolchain supports it.
+
+### Source builds and development
+
+Install Git, a C11/C++ compiler, Make, and CMake 3.18+. On macOS install the
+Xcode command line tools and `brew install libomp` for source builds.
+
+```sh
+mix deps.get
+EXGBOOST_BUILD=true mix compile
+EXGBOOST_BUILD=true mix quality
+EXGBOOST_BUILD=true MIX_ENV=test mix coveralls.html
 ```
 
-The correct package will be downloaded and installed (if supported) when you install
-the dependency through Mix (as shown above), otherwise you will need to compile
-manually.
-
-**NOTE** If MacOS, you still need to install `libomp` even to use the precompiled libraries:
-
- `brew install libomp`
-
-### Dev Requirements
-
-If you are contributing to the library and need to compile locally or choose to not use the precompiled libraries, you will need the following:
-
-- Make
-- CMake
-- If MacOS: `brew install libomp`
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, including NIF safety requirements and testing procedures.
-
-When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
-
-You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the first local compilation, otherwise you will get an error related to a missing checksum file.
+Use `BUILD_JOBS=4` to adjust upstream build parallelism or `USE_OPENMP=OFF`
+to disable OpenMP. Builds retain an architecture-specific upstream cache under
+`cache/xgboost`; they neither move files out of that cache nor patch upstream
+source. See [RELEASING.md](RELEASING.md) for precompilation, artifact verification,
+checksums, and Hex publishing.
 
 ## Known Limitations
 
@@ -223,20 +222,9 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 
 Licensed under an [Apache-2](https://github.com/acalejos/exgboost/blob/main/LICENSE) license.
 
-## Maintaining this fork
+## Maintenance
 
-Recommended fork maintenance cadence:
-
-- Keep dependencies current with Dependabot PRs (configured in `.github/dependabot.yml`).
-- Ensure all PRs pass CI (`.github/workflows/ci.yml`) before merge.
-- Keep precompiled artefacts and checksums aligned with each release tag (`.github/workflows/precompile.yml`).
-- When upgrading `nx`, verify supported Elixir/OTP versions in CI matrix and `mix.exs`.
-
-Native compatibility checks:
-
-- Run `make check-xgboost-c-api` after changing `XGBOOST_GIT_REV` or native C files.
-- Run `mix test test/nif_test.exs` to validate runtime behavior after the API check passes.
-- To compare API declarations between two XGBoost versions, run:
-  `scripts/check_xgboost_c_api.sh --compare <old-include-dir> <new-include-dir>`
-- Or use make to fetch and compare tags directly:
-  `make compare-xgboost-c-api OLD_XGBOOST_GIT_REV=v3.0.5 NEW_XGBOOST_GIT_REV=v3.1.3`
+Contributor PRs, dependency updates, and native API changes run the CI and
+four-platform packaging workflows. Both source builds and archived libraries
+are tested. See [CONTRIBUTING.md](CONTRIBUTING.md) for NIF development and
+[RELEASING.md](RELEASING.md) for the release procedure.

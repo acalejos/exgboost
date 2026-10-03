@@ -89,6 +89,10 @@ defmodule EXGBoost do
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
 
+  * `:feval` - A function of predictions and DMatrix that returns `{name, value}` or a list of such tuples. The last custom metric is used for early stopping.
+
+  * `:maximize` - Whether to maximize the early stopping metric. Defaults to automatic selection for built-in metrics, and minimization for custom metrics.
+
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
 
   * `:callbacks` - List of `EXGBoost.Training.Callback` that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Training.Callback` module.

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.0 (unreleased)
+
+- Integrate contributor PRs #45 and #47, and the subsequent MatchSense fork
+  maintenance, preserving contributor commits and authorship.
+- Pin XGBoost 3.4.2 by full commit SHA. Remove the learner.cc `sed` patch;
+  discover the objective's default evaluation metric through upstream evaluation.
+- Fix early-stopping patience and retain the actual best score and iteration.
+  Add custom `feval` metrics and `maximize`, and parse dataset names with hyphens.
+- Use native runners for Linux Intel/ARM and macOS Intel/ARM. Reject cross-target
+  precompilation, inspect actual binary architectures, and smoke-test archives.
+- Bundle macOS OpenMP and native dependency licenses. Build complete release
+  checksums into Hex packages and stage draft GitHub releases after all jobs pass.
+- Add Elixir coverage reports, build caches, locked-dependency and formatting
+  checks, warnings-as-errors, and deterministic maintenance regression tests.
+- Preserve the deprecated file NIF wrapper using upstream's URI API, because
+  XGBoost removed `XGDMatrixCreateFromFile`.
+- Elixir 1.17 and OTP 26 are now the supported minimums. Models and weights use
+  portable JSON/UBJ; legacy snapshots remain readable. Internal raw-pointer NIF
+  helpers are removed. Kino rendering is provided by the example notebook instead
+  of requiring Kino in every application.
+- Bundle the Vega schema for offline compilation and plot validation, with plotting regression tests.
+- Remove the obsolete compiled-model benchmark notebook from published docs.
+
+## Contributor fork history
+
+The entries below were retained from the MatchSense fork integrated into this
+release. These version numbers describe that fork, not releases of acalejos/exgboost.
+
 ## 0.11.0
 
 ### Added

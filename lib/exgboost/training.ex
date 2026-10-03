@@ -12,6 +12,8 @@ defmodule EXGBoost.Training do
       callbacks: [],
       early_stopping_rounds: nil,
       evals: [],
+      feval: nil,
+      maximize: nil,
       learning_rates: nil,
       num_boost_rounds: 10,
       obj: nil,
@@ -26,11 +28,26 @@ defmodule EXGBoost.Training do
       disable_default_eval_metric: disable_default_eval_metric,
       early_stopping_rounds: early_stopping_rounds,
       evals: evals,
+      feval: feval,
       learning_rates: learning_rates,
+      maximize: maximize,
       num_boost_rounds: num_boost_rounds,
       obj: objective,
       verbose_eval: verbose_eval
     ] = opts |> Keyword.validate!(valid_opts) |> Enum.sort()
+
+    if not (is_nil(feval) or is_function(feval, 2)),
+      do: raise(ArgumentError, "feval must be a function/2")
+
+    if maximize not in [nil, true, false],
+      do: raise(ArgumentError, "maximize must be a boolean or nil")
+
+    if not (is_integer(num_boost_rounds) and num_boost_rounds > 0),
+      do: raise(ArgumentError, "num_boost_rounds must be a positive integer")
+
+    if not (is_nil(early_stopping_rounds) or
+              (is_integer(early_stopping_rounds) and early_stopping_rounds > 0)),
+       do: raise(ArgumentError, "early_stopping_rounds must be a positive integer")
 
     if !(is_nil(learning_rates) or is_function(learning_rates, 1) or is_list(learning_rates)) do
       raise ArgumentError, "learning_rates must be a function/1 or a list"
@@ -55,7 +72,7 @@ defmodule EXGBoost.Training do
     bst =
       Booster.booster(
         [dmat | Enum.map(evals_dmats, fn {dmat, _name} -> dmat end)],
-        booster_params
+        Keyword.put(booster_params, :disable_default_eval_metric, disable_default_eval_metric)
       )
 
     defaults =
@@ -65,7 +82,9 @@ defmodule EXGBoost.Training do
         verbose_eval,
         evals_dmats,
         early_stopping_rounds,
-        disable_default_eval_metric
+        disable_default_eval_metric,
+        feval,
+        maximize
       )
 
     callbacks =
@@ -136,7 +155,9 @@ defmodule EXGBoost.Training do
          verbose_eval,
          evals_dmats,
          early_stopping_rounds,
-         disable_default_eval_metric
+         _disable_default_eval_metric,
+         feval,
+         maximize
        ) do
     default_callbacks = []
 
@@ -172,21 +193,18 @@ defmodule EXGBoost.Training do
       if early_stopping_rounds && evals_dmats != [] do
         [{_dmat, target_eval} | _tail] = Enum.reverse(evals_dmats)
 
-        config = EXGBoost.dump_config(bst) |> Jason.decode!()
-        metrics = get_in(config, ["learner", "metrics"]) || []
-        default_metric = get_in(config, ["learner", "default_metric"])
+        # Evaluation asks upstream to select and register the objective's default
+        # metric. No patched config field or hard-coded objective mapping is needed.
+        results = Booster.eval_set(bst, evals_dmats, 0, feval: feval)
 
         metric_name =
-          cond do
-            Enum.empty?(metrics) && disable_default_eval_metric ->
+          case Enum.filter(results, fn {name, _, _} -> name == target_eval end) |> List.last() do
+            {_, name, _} ->
+              name
+
+            nil ->
               raise ArgumentError,
-                    "`:early_stopping_rounds` requires at least one evaluation set. This means you have likely set `disable_default_eval_metric: true` and have not set any explicit evalutation metrics. Please supply at least one metric in the `:eval_metric` option or set `disable_default_eval_metric: false` (default option)"
-
-            Enum.empty?(metrics) ->
-              default_metric
-
-            true ->
-              metrics |> Enum.reverse() |> hd() |> Map.fetch!("name")
+                    "early stopping requires an evaluation metric; set :eval_metric or enable the default metric"
           end
 
         early_stop = %Callback{
@@ -197,7 +215,14 @@ defmodule EXGBoost.Training do
             patience: early_stopping_rounds,
             best: nil,
             since_last_improvement: 0,
-            mode: :min,
+            mode:
+              if(
+                maximize == true or
+                  (is_nil(maximize) and
+                     String.starts_with?(metric_name, ["auc", "ndcg", "map", "pre@"])),
+                do: :max,
+                else: :min
+              ),
             target_eval: target_eval,
             target_metric: metric_name
           }
@@ -214,7 +239,7 @@ defmodule EXGBoost.Training do
           event: :after_iteration,
           fun: &Callback.eval_metrics/1,
           name: :eval_metrics,
-          init_state: %{evals: evals_dmats, filter: fn {_, _} -> true end}
+          init_state: %{evals: evals_dmats, feval: feval, filter: fn {_, _} -> true end}
         }
 
         [eval_metrics | default_callbacks]

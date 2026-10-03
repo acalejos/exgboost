@@ -1,91 +1,123 @@
-name: precompile
-
+name: Native packages
 on:
+  pull_request:
   push:
-    tags:
-      - "*.*.*"
-
+    tags: ['v*']
+  workflow_dispatch:
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  linux:
-    name: Linux Erlang/OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    runs-on: ubuntu-24.04
-    env:
-      MIX_ENV: "prod"
-      CC: gcc-14
-      CXX: g++-14
+  build:
+    timeout-minutes: 45
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - otp: "28.3"
-            elixir: "1.18.4"
-          - otp: "28.3"
-            elixir: "1.19.5"
-          - otp: "29.0.2"
-            elixir: "1.20.2"
-    steps:
-      - uses: actions/checkout@v5
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - name: Install Hex and Rebar
-        run: |
-          mix local.hex --force
-          mix local.rebar --force
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip \
-            cmake ninja-build gcc-14 g++-14 \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
-      - name: Mix Test
-        run: |
-          mix deps.get
-          MIX_ENV=test mix test
-      - name: Create precompiled library
-        run: |
-          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
-          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
-          mix elixir_make.precompile
-      - uses: softprops/action-gh-release@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            cache/*.tar.gz
-            cache/*.tar.gz.sha256
-
-  macos:
-    runs-on: macos-15
-    name: Mac (ARM) Erlang/OTP 29.0.2 / Elixir 1.20.2
+          - runner: ubuntu-22.04
+            target: x86_64-linux-gnu
+          - runner: ubuntu-22.04-arm
+            target: aarch64-linux-gnu
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-14
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
     env:
-      MIX_ENV: "prod"
+      MIX_ENV: prod
+      EXGBOOST_BUILD: 'true'
+      BUILD_JOBS: '2'
+      ELIXIR_MAKE_CACHE_DIR: ${{ github.workspace }}/cache/precompiled
+      MACOSX_DEPLOYMENT_TARGET: '13.0'
     steps:
       - uses: actions/checkout@v5
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: "29.0.2"
-          elixir-version: "1.20.2"
-      - name: Install libomp
+          otp-version: '26.2'
+          elixir-version: '1.17.3'
+      - name: Install build tools
+        shell: bash
         run: |
-          brew install libomp
-          mix local.hex --force
-          mix local.rebar --force
-      - name: Mix Test
-        run: |
-          mix deps.get
-          MIX_ENV=test mix test
-      - name: Create precompiled library
-        run: |
-          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
-          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
-          mix elixir_make.precompile
-      - uses: softprops/action-gh-release@v3
-        if: startsWith(github.ref, 'refs/tags/')
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            sudo apt-get update
+            sudo apt-get install -y cmake build-essential
+          else
+            brew install libomp
+          fi
+      - uses: actions/cache@v4
         with:
+          path: |
+            deps
+            _build
+            cache/xgboost
+          key: native-${{ matrix.target }}-${{ hashFiles('mix.lock', 'Makefile', 'c/**', 'scripts/bundle_macos.sh') }}
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get --check-locked
+      - name: Test the source build
+        run: MIX_ENV=test mix test
+      - name: Build archive
+        run: mix elixir_make.precompile
+      - name: Verify architecture and shared libraries
+        run: bash scripts/verify_archive.sh cache/precompiled/*.tar.gz '${{ matrix.target }}'
+      - name: Load archive in a fresh BEAM and compare predictions
+        run: bash scripts/smoke_archive.sh cache/precompiled/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.target }}
+          path: |
+            cache/precompiled/*.tar.gz
+            cache/precompiled/*.sha256
+          if-no-files-found: error
+  package:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '26.2'
+          elixir-version: '1.17.3'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: release
+          merge-multiple: true
+      - run: elixir scripts/release_checksums.exs release
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get --check-locked
+      - name: Build Hex package with the complete checksum manifest
+        run: mix hex.build
+      - run: cp exgboost-*.tar checksum.exs release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hex-package
+          path: |
+            release/exgboost-*.tar
+            release/checksum.exs
+            release/SHA256SUMS
+          if-no-files-found: error
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, package]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Check tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/check_release_tag.py "$RELEASE_TAG"
+      - uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          fail_on_unmatched_files: true
           files: |
-            ${{ 'cache/*aarch64*.tar.gz' }}
-            ${{ 'cache/*aarch64*.tar.gz.sha256' }}
+            release/*.tar.gz
+            release/*.sha256
+            release/exgboost-*.tar
+            release/checksum.exs
+            release/SHA256SUMS

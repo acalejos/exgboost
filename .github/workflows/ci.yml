@@ -1,53 +1,54 @@
-name: ci
-
+name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
-
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
-    name: Test OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
-    runs-on: ubuntu-24.04
-    env:
-      CC: gcc-14
-      CXX: g++-14
-      MIX_ENV: test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
-          - otp: "28.3"
-            elixir: "1.18.4"
-          - otp: "28.3"
-            elixir: "1.19.5"
-          - otp: "29.0.2"
-            elixir: "1.20.2"
-
+          - otp: '26.2'
+            elixir: '1.17.3'
+          - otp: '28.3'
+            elixir: '1.19.5'
+          - otp: '29.0.2'
+            elixir: '1.20.2'
+    env:
+      MIX_ENV: test
+      EXGBOOST_BUILD: 'true'
+      BUILD_JOBS: '2'
     steps:
       - uses: actions/checkout@v5
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build gcc-14 g++-14
-
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
-
-      - name: Install Hex and Rebar
-        run: |
-          mix local.hex --force
-          mix local.rebar --force
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Check formatting
-        run: mix format --check-formatted
-
-      - name: Run tests
-        run: MIX_ENV=test mix test
+      - run: sudo apt-get update && sudo apt-get install -y cmake build-essential
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            cache/xgboost
+          key: test-${{ runner.os }}-${{ runner.arch }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('mix.lock', 'Makefile', 'c/**') }}
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get --check-locked
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix coveralls.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-otp-${{ matrix.otp }}
+          path: cover/
+          if-no-files-found: error

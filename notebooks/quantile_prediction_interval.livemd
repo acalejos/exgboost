@@ -2,11 +2,11 @@
 
 ```elixir
 Mix.install([
-  {:exgboost, "~> 0.4"},
+  {:exgboost, "~> 0.6"},
   {:explorer, "~> 0.7"},
   {:kino_explorer, "~> 0.1.8"},
   {:kino_vega_lite, "~> 0.1.8"},
-  {:nx, "~> 0.6"},
+  {:nx, "~> 0.12"},
   {:tucan, "~> 0.3"}
 ])
 ```

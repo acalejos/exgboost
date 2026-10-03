@@ -392,15 +392,10 @@ defmodule EXGBoost.Plotting do
     ]
   end
 
-  :inets.start()
-  :ssl.start()
-
-  @schema (fn ->
-             {:ok, {{_, 200, _}, _, body}} =
-               :httpc.request(:get, {"https://vega.github.io/schema/vega/v5.json", []}, [], [])
-
-             body |> to_string() |> Jason.decode!() |> ExJsonSchema.Schema.resolve()
-           end).()
+  # Bundle the schema so compilation and plot validation do not require network access.
+  @schema_path Path.join(__DIR__, "schemas/vega-v5.json")
+  @external_resource @schema_path
+  @schema @schema_path |> File.read!() |> Jason.decode!() |> ExJsonSchema.Schema.resolve()
 
   @mark_text_doc "Accepts a keyword list of Vega `text` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/text/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
   @mark_rect_doc "Accepts a keyword list of Vega `rect` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/rect/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
@@ -1756,8 +1751,4 @@ defmodule EXGBoost.Plotting do
 
   defp capitalize(<<first, rest::binary>>) when first in ?a..?z, do: <<first - 32, rest::binary>>
   defp capitalize(rest), do: rest
-
-  def __after_compile__(env) do
-    IO.inspect(env)
-  end
 end

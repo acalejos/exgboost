@@ -23,7 +23,8 @@ static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env, DMatrixHandle handle) 
 // Deprecated since XGBoost 2.0.0
 ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   char *fname = NULL;
-  char *format = NULL;
+  char *config = NULL;
+  yyjson_mut_doc *doc = NULL;
   int silent = 0;
   int result = -1;
   DMatrixHandle handle;
@@ -40,7 +41,26 @@ ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TE
     ret = exg_error(env, "Silent must be an integer");
     goto END;
   }
-  result = XGDMatrixCreateFromFile(fname, 1, &handle);
+  // XGDMatrixCreateFromFile was removed upstream. Preserve the deprecated
+  // wrapper by forwarding to the supported URI API with properly escaped JSON.
+  doc = yyjson_mut_doc_new(NULL);
+  if (doc == NULL) {
+    ret = exg_error(env, "Failed to allocate URI configuration");
+    goto END;
+  }
+  yyjson_mut_val *root = yyjson_mut_obj(doc);
+  yyjson_mut_doc_set_root(doc, root);
+  if (root == NULL || !yyjson_mut_obj_add_str(doc, root, "uri", fname) ||
+      !yyjson_mut_obj_add_int(doc, root, "silent", silent)) {
+    ret = exg_error(env, "Failed to construct URI configuration");
+    goto END;
+  }
+  config = yyjson_mut_write(doc, 0, NULL);
+  if (config == NULL) {
+    ret = exg_error(env, "Failed to encode URI configuration");
+    goto END;
+  }
+  result = XGDMatrixCreateFromURI(config, &handle);
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
@@ -51,10 +71,8 @@ END:
     enif_free(fname);
     fname = NULL;
   }
-  if (format != NULL) {
-    enif_free(format);
-    format = NULL;
-  }
+  free(config);
+  yyjson_mut_doc_free(doc);
   return ret;
 }
 

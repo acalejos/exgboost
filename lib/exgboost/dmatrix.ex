@@ -336,9 +336,9 @@ defmodule EXGBoost.DMatrix do
   end
 
   def from_tensor(%Nx.Tensor{shape: x_shape}, %Nx.Tensor{shape: {y_shape}}, _opts)
-      when is_tuple(x_shape) and elem(x_shape, 0) != elem(y_shape, 0) do
+      when is_tuple(x_shape) and elem(x_shape, 0) != y_shape do
     raise ArgumentError,
-          "x and y must have the same number of rows, got #{elem(x_shape, 0)} and #{elem(y_shape, 0)}"
+          "x and y must have the same number of rows, got #{elem(x_shape, 0)} and #{y_shape}"
   end
 
   def from_tensor(%Nx.Tensor{shape: x_shape} = x, %Nx.Tensor{shape: y_shape} = y, opts)

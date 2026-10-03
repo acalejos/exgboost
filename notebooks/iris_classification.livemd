@@ -2,8 +2,8 @@
 
 ```elixir
 Mix.install([
-  {:exgboost, "~> 0.5"},
-  {:nx, "~> 0.5"},
+  {:exgboost, "~> 0.6"},
+  {:nx, "~> 0.12"},
   {:scidata, "~> 0.1"},
   {:scholar, "~> 0.1"}
 ])
