@@ -23,7 +23,7 @@ billions of examples.
 ```elixir
 def deps do
 [
-  {:exgboost, "~> 0.5"}
+  {:exgboost, "~> 0.6"}
 ]
 end
 ```
@@ -59,11 +59,11 @@ EXGBoost.predict(model, x)
 
 EXGBoost is designed to feel familiar to the users of the Python XGBoost library. `EXGBoost.train/2` is the
 primary entry point for training a model. It accepts a Nx tensor for the features and a Nx tensor for the labels.
-`EXGBoost.train/2` returns a trained`Booster` struct that can be used for prediction. `EXGBoost.train/2` also
+`EXGBoost.train/2` returns a trained `Booster` struct that can be used for prediction. `EXGBoost.train/2` also
 accepts a keyword list of options that can be used to configure the training process. See the
 [XGBoost documentation](https://xgboost.readthedocs.io/en/latest/parameter.html) for the full list of options.
 
-`EXGBoost.train/2` uses the `EXGBoost.Training.train/1` function to perform the actual training. `EXGBoost.Training.train/1`
+`EXGBoost.train/2` uses the `EXGBoost.Training.train/2` function to perform the actual training. `EXGBoost.Training.train/2`
 and can be used directly if you wish to work directly with the `DMatrix` and `Booster` structs.
 
 One of the main features of `EXGBoost.train/2` is the ability for the end user to provide a custom training function
@@ -98,10 +98,9 @@ list of parameters.
 ```elixir
 EXGBoost.train(X,
               y,
-              obj: &EXGBoost.Training.train/1,
               evals: [{X_test, y_test, "test"}],
               learning_rates: fn i -> i/10 end,
-              num_boost_round: 10,
+              num_boost_rounds: 10,
               early_stopping_rounds: 3,
               max_depth: 3,
               eval_metric: [:rmse,:logloss]
@@ -119,6 +118,17 @@ It accepts a `Booster` struct (which is the output of `EXGBoost.train/2`).
 preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 ```
 
+## Concurrency and Thread Safety
+
+**Important**: Booster objects are **not thread-safe** for concurrent predictions. The underlying XGBoost C API does not provide synchronization mechanisms, and sharing a single booster reference across multiple Elixir processes for concurrent predictions can lead to race conditions, memory corruption, or incorrect results. For this reason it is not recommended that you cache boosters to be used
+by multiple tasks in calling applications.
+
+### Why This Matters
+
+- `EXGBoost.predict/2` and `EXGBoost.inplace_predict/2` both use dirty CPU-bound NIF schedulers
+- This prevents blocking the BEAM scheduler but **does not** provide thread safety
+- Concurrent access to the same booster from multiple processes can cause undefined behavior
+
 ## Serialization
 
   A Booster can be serialized to a file using `EXGBoost.write_*` and loaded from a file
@@ -127,10 +137,11 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   be overwritten by default.  Boosters can either be serialized to a file or to a binary string.
   Boosters can be serialized in three different ways: configuration only, configuration and model, or
   model only. `dump` functions will serialize the Booster to a binary string.
-  Functions named with `weights` will serialize the model's trained parameters only. This is best used when the model
-  is already trained and only inferences/predictions are going to be performed. Functions named with `config` will
-  serialize the configuration only. Functions that specify `model` will serialize both the model parameters
-  and the configuration.
+  Model and weight exports use XGBoost's portable model representation in the
+  requested JSON or UBJ format. It includes trees and the objective; training
+  configuration can be saved separately with the configuration API. Readers also
+  accept legacy serialized snapshots. Configuration files are intended for the
+  same XGBoost version.
 
 ### Output Formats
 
@@ -141,7 +152,7 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 
 - `config` - Save the configuration only.
 - `weights` - Save the model parameters only. Use this when you want to save the model to a format that can be ingested by other XGBoost APIs.
-- `model` - Save both the model parameters and the configuration.
+- `model` - Save the portable model representation.
 
 ## Plotting
 
@@ -155,16 +166,9 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
   You can see available styles by running `EXGBoost.Plotting.get_styles()` or refer to the `EXGBoost.Plotting.Styles`
   documentation for a gallery of the styles.
 
-## Kino & Livebook Integration
-
-  `EXGBoost` integrates with [Kino](https://hexdocs.pm/kino/Kino.html) and [Livebook](https://livebook.dev/)
-  to provide a rich interactive experience for data scientists.
-
-  EXGBoost implements the `Kino.Render` protocol for `EXGBoost.Booster` structs. This allows you to render
-  a Booster in a Livebook notebook.  Under the hood, `EXGBoost` uses [Vega-Lite](https://vega.github.io/vega-lite/)
-  and [Kino Vega-Lite](https://hexdocs.pm/kino_vega_lite/Kino.VegaLite.html) to render the Booster.
-
-  See the [`Plotting in EXGBoost`](notebooks/plotting.livemd) Notebook for an example of how to use `EXGBoost` with `Kino` and `Livebook`.
+Saving plot images with `path:` requires adding `{:vega_lite_convert, "~> 1.0.1"}`
+to your application. Returning a Vega spec, training, and prediction do not need
+that additional native image-conversion runtime.
 
 ## Examples
 
@@ -173,40 +177,40 @@ preds = EXGBoost.train(X, y) |> EXGBoost.predict(X)
 
 ## Requirements
 
-### Precompiled Distribution
+### Precompiled distribution
 
-We currenly offer the following precompiled packages for EXGBoost:
+EXGBoost 0.6 targets XGBoost 3.4.2, Elixir 1.17+, and OTP 26+.
+Releases provide CPU archives for these native targets:
 
-```elixir
-%{
-  "exgboost-nif-2.16-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:c659d086d07e9c209bdffbbf982951c6109b2097c4d3008ef9af59c3050663d2",
-  "exgboost-nif-2.16-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:05256238700456c57e279558765b54b5b5ed4147878c6861cd4c937472abbe52",
-  "exgboost-nif-2.16-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:ad3ba6aba8c3c2821dce4afc05b66a5e529764e0cea092c5a90e826446653d99",
-  "exgboost-nif-2.17-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:745e7e970316b569a10d76ceb711b9189360b3bf9ab5ee6133747f4355f45483",
-  "exgboost-nif-2.17-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:73948d6f2ef298e3ca3dceeca5d8a36a2d88d842827e1168c64589e4931af8d7",
-  "exgboost-nif-2.17-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:a0b5ff0b074a9726c69d632b2dc0214fc7b66dccb4f5879e01255eeb7b9d4282",
-}
+| Platform | Architectures | Build baseline |
+| --- | --- | --- |
+| Linux (glibc) | x86_64, aarch64 | Ubuntu 22.04 / glibc 2.35 |
+| macOS | x86_64, aarch64 | macOS 15 Intel / macOS 14 Apple Silicon |
+
+Mix downloads the matching archive and verifies its SHA256 checksum. The NIF,
+XGBoost, and dependency license notices are packaged together. macOS archives
+include the OpenMP runtime, so consumers do not need Homebrew. Linux consumers
+need the standard C++ and OpenMP runtimes (`libstdc++6` and `libgomp1` on Debian
+and Ubuntu). Windows, musl, and CUDA archives are not currently provided.
+Unsupported platforms fall back to a source build when the toolchain supports it.
+
+### Source builds and development
+
+Install Git, a C11/C++ compiler, Make, and CMake 3.18+. On macOS install the
+Xcode command line tools and `brew install libomp` for source builds.
+
+```sh
+mix deps.get
+EXGBOOST_BUILD=true mix compile
+EXGBOOST_BUILD=true mix quality
+EXGBOOST_BUILD=true MIX_ENV=test mix coveralls.html
 ```
 
-The correct package will be downloaded and installed (if supported) when you install
-the dependency through Mix (as shown above), otherwise you will need to compile
-manually.
-
-**NOTE** If MacOS, you still need to install `libomp` even to use the precompiled libraries:
-
- `brew install libomp`
-
-### Dev Requirements
-
-If you are contributing to the library and need to compile locally or choose to not use the precompiled libraries, you will need the following:
-
-- Make
-- CMake
-- If MacOS: `brew install libomp`
-
-When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
-
-You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the first local compilation, otherwise you will get an error related to a missing checksum file.
+Use `BUILD_JOBS=4` to adjust upstream build parallelism or `USE_OPENMP=OFF`
+to disable OpenMP. Builds retain an architecture-specific upstream cache under
+`cache/xgboost`; they neither move files out of that cache nor patch upstream
+source. See [RELEASING.md](RELEASING.md) for precompilation, artifact verification,
+checksums, and Hex publishing.
 
 ## Known Limitations
 
@@ -220,3 +224,10 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 ## License
 
 Licensed under an [Apache-2](https://github.com/acalejos/exgboost/blob/main/LICENSE) license.
+
+## Maintenance
+
+Contributor PRs, dependency updates, and native API changes run the CI and
+four-platform packaging workflows. Both source builds and archived libraries
+are tested. See [CONTRIBUTING.md](CONTRIBUTING.md) for NIF development and
+[RELEASING.md](RELEASING.md) for the release procedure.

@@ -2,10 +2,17 @@
 
 ```elixir
 Mix.install([
-  {:exgboost, "~> 0.5"},
+  {:exgboost, "~> 0.6"},
   {:scidata, "~> 0.1"},
   {:kino_vega_lite, "~> 0.1"}
 ])
+
+# Implement the Kino renderer for later
+defimpl Kino.Render, for: EXGBoost.Booster do
+  def to_livebook(booster) do
+    EXGBoost.Plotting.plot(booster) |> Kino.Render.to_livebook()
+  end
+end
 
 # This assumed you launch this livebook from its location in the exgboost/notebooks folder
 ```
@@ -32,7 +39,7 @@ There are 2 main APIs exposed to control plotting in `EXGBoost`:
 
 * `EXBoost.Plotting` module API
 
-  * Use the Vega `data` spec defined in `EXGBoost.get_data_spec/2`
+  * Use the Vega `data` spec defined in `EXGBoost.Plotting.get_data_spec/2`
   * Define your own Vega spec using the data from either `EXGBoost.Plotting.to_tabular/1` or some other means
 
   We will walk through each of these in detail.

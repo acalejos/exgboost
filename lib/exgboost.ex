@@ -89,6 +89,10 @@ defmodule EXGBoost do
       integer then the evaluation metric on the validation set is printed at every given `verbose_eval` boosting stage. The last boosting stage / the boosting stage found by using `early_stopping_rounds`
       is also printed. Example: with `verbose_eval=4` and at least one item in evals, an evaluation metric is printed every 4 boosting stages, instead of every boosting stage.
 
+  * `:feval` - A function of predictions and DMatrix that returns `{name, value}` or a list of such tuples. The last custom metric is used for early stopping.
+
+  * `:maximize` - Whether to maximize the early stopping metric. Defaults to automatic selection for built-in metrics, and minimization for custom metrics.
+
   * `:learning_rates` - Either an arity 1 function that accept an integer parameter epoch and returns the corresponding learning rate or a list with the same length as num_boost_rounds.
 
   * `:callbacks` - List of `EXGBoost.Training.Callback` that are called during a given event. It is possible to use predefined callbacks by using `EXGBoost.Training.Callback` module.
@@ -233,12 +237,15 @@ defmodule EXGBoost do
 
     case data do
       %Nx.Tensor{} = data ->
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        arr = ArrayInterface.from_tensor(data)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
             boostr.ref,
-            data_interface,
+            arr.binary,
+            arr.typestr,
+            Tuple.to_list(arr.shape),
+            arr.readonly,
             Jason.encode!(params),
             proxy
           )
@@ -247,16 +254,25 @@ defmodule EXGBoost do
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = ArrayInterface.from_tensor(indptr) |> Jason.encode!()
-        indices_interface = ArrayInterface.from_tensor(indices) |> Jason.encode!()
-        values_interface = ArrayInterface.from_tensor(values) |> Jason.encode!()
+        indptr_arr = ArrayInterface.from_tensor(indptr)
+        indices_arr = ArrayInterface.from_tensor(indices)
+        values_arr = ArrayInterface.from_tensor(values)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_csr(
             boostr.ref,
-            indptr_interface,
-            indices_interface,
-            values_interface,
+            indptr_arr.binary,
+            indptr_arr.typestr,
+            Tuple.to_list(indptr_arr.shape),
+            indptr_arr.readonly,
+            indices_arr.binary,
+            indices_arr.typestr,
+            Tuple.to_list(indices_arr.shape),
+            indices_arr.readonly,
+            values_arr.binary,
+            values_arr.typestr,
+            Tuple.to_list(values_arr.shape),
+            values_arr.readonly,
             ncol,
             Jason.encode!(params),
             proxy
@@ -267,12 +283,15 @@ defmodule EXGBoost do
 
       data ->
         data = Nx.concatenate(data)
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        arr = ArrayInterface.from_tensor(data)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
             boostr.ref,
-            data_interface,
+            arr.binary,
+            arr.typestr,
+            Tuple.to_list(arr.shape),
+            arr.readonly,
             Jason.encode!(params),
             proxy
           )
@@ -463,9 +482,8 @@ defmodule EXGBoost do
 
   ## Options
   * `:format` - the format to export the graphic as, must be either of: `:json`, `:html`, `:png`, `:svg`, `:pdf`. By default the format is inferred from the file extension.
-  * `:local_npm_prefix` - a relative path pointing to a local npm project directory where the necessary npm packages are installed. For instance, in Phoenix projects you may want to pass local_npm_prefix: "assets". By default the npm packages are searched for in the current directory and globally.
-  * `:path` - the path to save the graphic to. If not provided, the graphic is returned as a VegaLite spec.
-  * `:opts` - additional options to pass to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
+  * `:path` - the path to save the graphic to. File export requires the optional `:vega_lite_convert` dependency. If not provided, the graphic is returned as a VegaLite spec.
+  Other options are forwarded to `EXGBoost.Plotting.plot/2`. See `EXGBoost.Plotting` for more information.
   """
   @doc type: :plotting
   def plot_tree(booster, opts \\ []) do
@@ -474,7 +492,12 @@ defmodule EXGBoost do
     vega = Plotting.plot(booster, opts)
 
     if path != nil do
-      VegaLite.Export.save!(vega, path, save_opts)
+      if not Code.ensure_loaded?(VegaLite.Convert) do
+        raise ArgumentError,
+              "Saving plot images requires the optional dependency {:vega_lite_convert, \"~> 1.0.1\"}; add it to your application's dependencies"
+      end
+
+      apply(VegaLite.Convert, :save!, [vega, path, save_opts])
     else
       vega
     end

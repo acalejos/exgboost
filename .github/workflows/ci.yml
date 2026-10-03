@@ -1,0 +1,55 @@
+name: CI
+on:
+  workflow_call:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - otp: '26.2'
+            elixir: '1.17.3'
+          - otp: '28.3'
+            elixir: '1.19.5'
+          - otp: '29.0.2'
+            elixir: '1.20.2'
+    env:
+      MIX_ENV: test
+      EXGBOOST_BUILD: 'true'
+      BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - run: sudo apt-get update && sudo apt-get install -y cmake build-essential
+      - uses: actions/cache@v6.1.0
+        with:
+          path: |
+            deps
+            _build
+            cache/xgboost
+          key: test-${{ runner.os }}-${{ runner.arch }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('mix.lock', 'Makefile', 'c/**') }}
+          restore-keys: test-${{ runner.os }}-${{ runner.arch }}-${{ matrix.otp }}-${{ matrix.elixir }}-
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get --check-locked
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix coveralls.json
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: coverage-otp-${{ matrix.otp }}
+          path: cover/
+          if-no-files-found: error

@@ -27,7 +27,7 @@ defmodule EXGBoost.Internal do
   def dmatrix_config_feature_opts, do: [:nthread, :missing]
 
   def validate_type!(%Nx.Tensor{} = tensor, type) do
-    unless Nx.type(tensor) == type do
+    if Nx.type(tensor) != type do
       raise ArgumentError,
             "invalid type #{inspect(Nx.type(tensor))}, vector type" <>
               " must be #{inspect(type)}"
@@ -35,7 +35,7 @@ defmodule EXGBoost.Internal do
   end
 
   def validate_features!(%Booster{} = booster, %DMatrix{} = dmatrix) do
-    unless DMatrix.get_num_rows(dmatrix) == 0 do
+    if DMatrix.get_num_rows(dmatrix) != 0 do
       booster_names = Booster.get_feature_names(booster)
       booster_types = Booster.get_feature_types(booster)
       dmatrix_names = DMatrix.get_feature_names(dmatrix)
@@ -139,6 +139,17 @@ defmodule EXGBoost.Internal do
   end
 
   def unwrap!({:ok, val}), do: val
-  def unwrap!({:error, reason}), do: raise(reason)
+
+  def unwrap!({:error, reason}) when is_exception(reason) do
+    raise(reason)
+  end
+
+  def unwrap!({:error, reason}) when is_list(reason) do
+    message = if List.ascii_printable?(reason), do: List.to_string(reason), else: inspect(reason)
+    raise ArgumentError, message
+  end
+
+  def unwrap!({:error, reason}) when is_binary(reason), do: raise(ArgumentError, reason)
+  def unwrap!({:error, reason}), do: raise(ArgumentError, inspect(reason))
   def unwrap!(:ok), do: :ok
 end

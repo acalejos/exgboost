@@ -43,6 +43,14 @@ defmodule EXGBoost.Training.Callback do
 
   """
   alias EXGBoost.Training.State
+
+  @type t :: %__MODULE__{
+          event: event(),
+          fun: fun(),
+          name: atom(),
+          init_state: any()
+        }
+
   @enforce_keys [:event, :fun]
   defstruct [:event, :fun, :name, :init_state]
 
@@ -54,7 +62,7 @@ defmodule EXGBoost.Training.Callback do
   @doc """
   Factory for a new callback with an initial state.
   """
-  @spec new(event :: event(), fun :: fun(), name :: atom(), init_state :: any()) :: Callback.t()
+  @spec new(event :: event(), fun :: fun(), name :: atom(), init_state :: any()) :: t()
   def new(event, fun, name, init_state \\ %{})
       when event in @valid_events and is_function(fun, 1) and is_atom(name) and not is_nil(name) do
     %__MODULE__{event: event, fun: fun, name: name, init_state: init_state}
@@ -62,15 +70,15 @@ defmodule EXGBoost.Training.Callback do
   end
 
   def validate!(%__MODULE__{} = callback) do
-    unless is_atom(callback.name) and not is_nil(callback.name) do
+    if !(is_atom(callback.name) and not is_nil(callback.name)) do
       raise "A callback must have a non-`nil` atom for a name. Found: #{callback.name}."
     end
 
-    unless callback.event in @valid_events do
+    if callback.event not in @valid_events do
       raise "Callback #{callback.name} must have an event in #{@valid_events}. Found: #{callback.event}."
     end
 
-    unless is_function(callback.fun, 1) do
+    if not is_function(callback.fun, 1) do
       raise "Callback #{callback.name} must have a 1-arity function. Found: #{callback.event}."
     end
 
@@ -130,12 +138,12 @@ defmodule EXGBoost.Training.Callback do
       since_last_improvement: since_last_improvement
     } = early_stop
 
-    unless Map.has_key?(metrics, target_eval) do
+    if !Map.has_key?(metrics, target_eval) do
       raise ArgumentError,
             "target eval_set #{inspect(target_eval)} not found in metrics #{inspect(metrics)}"
     end
 
-    unless Map.has_key?(metrics[target_eval], target_metric) do
+    if !Map.has_key?(metrics[target_eval], target_metric) do
       raise ArgumentError,
             "target metric #{inspect(target_metric)} not found in metrics #{inspect(metrics)}"
     end
@@ -160,16 +168,12 @@ defmodule EXGBoost.Training.Callback do
 
         %{state | booster: bst, meta_vars: %{meta_vars | early_stop: early_stop}}
 
-      since_last_improvement < patience ->
+      since_last_improvement + 1 < patience ->
         early_stop = Map.update!(early_stop, :since_last_improvement, &(&1 + 1))
         %{state | meta_vars: %{meta_vars | early_stop: early_stop}}
 
       true ->
         early_stop = Map.update!(early_stop, :since_last_improvement, &(&1 + 1))
-        # TODO: Should this actually update the best iteration and score?
-        # This iteration is not the best, but it is the last one, so do we want
-        # another way to track last iteration?
-        bst = struct(bst, best_iteration: state.iteration, best_score: score)
         %{state | booster: bst, meta_vars: %{meta_vars | early_stop: early_stop}, status: :halt}
     end
   end
@@ -187,12 +191,12 @@ defmodule EXGBoost.Training.Callback do
         %State{
           booster: bst,
           iteration: iter,
-          meta_vars: %{eval_metrics: %{evals: evals, filter: filter}},
+          meta_vars: %{eval_metrics: %{evals: evals, filter: filter} = config},
           status: :cont
         } = state
       ) do
     metrics =
-      EXGBoost.Booster.eval_set(bst, evals, iter)
+      EXGBoost.Booster.eval_set(bst, evals, iter, feval: Map.get(config, :feval))
       |> Enum.reduce(%{}, fn {evname, mname, value}, acc ->
         Map.update(acc, evname, %{mname => value}, fn existing ->
           Map.put(existing, mname, value)

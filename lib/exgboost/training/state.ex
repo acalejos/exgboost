@@ -1,5 +1,15 @@
 defmodule EXGBoost.Training.State do
-  @moduledoc false
+  @moduledoc "State passed to training callbacks, including the current booster, iteration, metrics, and callback metadata."
+
+  @type t :: %__MODULE__{
+          booster: EXGBoost.Booster.t(),
+          iteration: non_neg_integer(),
+          max_iteration: -1 | non_neg_integer(),
+          meta_vars: map(),
+          metrics: map(),
+          status: :cont | :halt
+        }
+
   @enforce_keys [:booster]
   defstruct [
     :booster,
@@ -11,7 +21,7 @@ defmodule EXGBoost.Training.State do
   ]
 
   def validate!(%__MODULE__{} = state) do
-    unless state.status in [:cont, :halt] do
+    if state.status not in [:cont, :halt] do
       raise ArgumentError,
             "`status` must be `:cont` or `:halt`, found: `#{inspect(state.status)}`."
     end
