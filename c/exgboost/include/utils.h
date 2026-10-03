@@ -9,8 +9,8 @@
 #include <string.h>
 #include <xgboost/c_api.h>
 
-ErlNifResourceType *DMatrix_RESOURCE_TYPE;
-ErlNifResourceType *Booster_RESOURCE_TYPE;
+extern ErlNifResourceType *DMatrix_RESOURCE_TYPE;
+extern ErlNifResourceType *Booster_RESOURCE_TYPE;
 typedef uint64_t bst_ulong;
 
 // Initialize atoms (must be called during NIF load)

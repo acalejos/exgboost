@@ -1,5 +1,8 @@
 #include "exgboost.h"
 
+ErlNifResourceType *DMatrix_RESOURCE_TYPE = NULL;
+ErlNifResourceType *Booster_RESOURCE_TYPE = NULL;
+
 static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
   exg_init_atoms(env);
 
