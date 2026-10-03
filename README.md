@@ -194,6 +194,9 @@ need the standard C++ and OpenMP runtimes (`libstdc++6` and `libgomp1` on Debian
 and Ubuntu). Windows, musl, and CUDA archives are not currently provided.
 Unsupported platforms fall back to a source build when the toolchain supports it.
 
+Both macOS archives require macOS 14.0 or newer because of the bundled OpenMP
+runtime. CI checks the minimum OS recorded in every packaged library.
+
 ### Source builds and development
 
 Install Git, a C11/C++ compiler, Make, and CMake 3.18+. On macOS install the

@@ -4,6 +4,8 @@ The native distribution uses XGBoost 3.4.2 at the immutable commit pinned in
 `Makefile`. Source builds do not patch upstream code. A NIF built on OTP 26
 (ABI 2.17) is reused on newer OTP releases. Each architecture builds on its own
 native runner; cross compilation is deliberately rejected.
+The bundled OpenMP library sets the macOS minimum to 14.0 on both architectures;
+archive validation rejects any dependency requiring a newer OS.
 
 ## Validate a change
 

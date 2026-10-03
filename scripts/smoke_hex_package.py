@@ -43,7 +43,8 @@ end
 ''')
             env = dict(os.environ, MIX_ENV="prod", EXGBOOST_BUILD="false", ELIXIR_MAKE_CACHE_DIR=str(stage / "native-cache"))
             # Do not let a caller's build/cache/toolchain overrides reuse previously compiled files.
-            for name in ("MIX_BUILD_PATH", "MIX_DEPS_PATH", "XGBOOST_DIR", "XGBOOST_CACHE"):
+            for name in ("MIX_BUILD_PATH", "MIX_DEPS_PATH", "XGBOOST_DIR", "XGBOOST_CACHE",
+                         "GH_TOKEN", "GITHUB_TOKEN", "HEX_API_KEY"):
                 env.pop(name, None)
             for command in (["mix", "deps.get"], ["mix", "compile", "--warnings-as-errors"],
                             ["mix", "run", "--no-compile", str((Path.cwd() / "scripts/smoke.exs").resolve())]):
