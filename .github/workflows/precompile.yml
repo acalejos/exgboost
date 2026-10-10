@@ -86,7 +86,7 @@ jobs:
         with:
           otp-version: '26.2'
           elixir-version: '1.17.3'
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/download-artifact@v8.0.2
         with:
           pattern: native-*
           path: release
@@ -127,12 +127,12 @@ jobs:
         with:
           otp-version: '28.3'
           elixir-version: '1.19.5'
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/download-artifact@v8.0.2
         with:
           pattern: native-*
           path: release
           merge-multiple: true
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/download-artifact@v8.0.2
         with:
           name: hex-package
           path: release
@@ -147,12 +147,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/download-artifact@v8.0.2
         with:
           pattern: native-*
           path: release
           merge-multiple: true
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/download-artifact@v8.0.2
         with:
           name: hex-package
           path: release
